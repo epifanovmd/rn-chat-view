@@ -54,13 +54,17 @@ enum MessageSizeCalculator {
             return textHeight(content.text!, font: font, width: bw - ChatLayout.current.bubbleHPad * 2) + 8
         }
 
-        let innerW = bw - ChatLayout.current.bubbleHPad * 2
+        let isForwarded = msg.forwardedFrom != nil
+        let forwardedInset = isForwarded
+            ? ChatLayout.current.forwardedAccentWidth + ChatLayout.current.forwardedContentInset
+            : 0
+        let innerW = bw - ChatLayout.current.bubbleHPad * 2 - forwardedInset
         var h: CGFloat = ChatLayout.current.bubbleVPad
 
         if showSenderName, msg.senderName != nil, !msg.isMine {
             h += ChatLayout.current.senderNameFont.lineHeight + 2
         }
-        if msg.forwardedFrom != nil {
+        if isForwarded {
             h += ChatLayout.current.forwardedFont.lineHeight + 2
         }
         if msg.reply != nil {
@@ -89,7 +93,7 @@ enum MessageSizeCalculator {
             let fileRowH = ChatLayout.current.fileIconSize + 8
             h += fileRowH * CGFloat(files.count) + 2 * CGFloat(max(0, files.count - 1))
         } else if content.voice != nil {
-            h += ChatLayout.current.voiceWaveformHeight + ChatLayout.current.voicePlaySize / 2 + 8
+            h += ChatLayout.current.voicePlaySize
         } else if let media = content.media, !media.isEmpty {
             h += MediaGridView.gridHeight(for: media, width: width)
         }

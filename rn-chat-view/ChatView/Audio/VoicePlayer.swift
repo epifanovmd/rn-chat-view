@@ -22,6 +22,11 @@ enum VoicePlayerState: Equatable {
         if case .playing = self { return true }
         return false
     }
+
+    var isLoading: Bool {
+        if case .loading = self { return true }
+        return false
+    }
 }
 
 // MARK: - Протокол наблюдателя
@@ -29,6 +34,95 @@ enum VoicePlayerState: Equatable {
 protocol VoicePlayerObserver: AnyObject {
     func voicePlayerDidChangeState(_ state: VoicePlayerState)
 }
+
+// MARK: - AudioCache
+
+final class AudioCache {
+    static let shared = AudioCache()
+
+    private let cacheDir: URL
+    private let fileManager = FileManager.default
+    private let lock = NSLock()
+    private var inFlight: [String: [(URL?) -> Void]] = [:]
+
+    private init() {
+        let dir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("VoiceCache", isDirectory: true)
+        try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+        cacheDir = dir
+    }
+
+    func removeAll() {
+        try? fileManager.removeItem(at: cacheDir)
+        try? fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+    }
+
+    func localURL(for remoteURL: String) -> URL? {
+        let file = cacheDir.appendingPathComponent(remoteURL.sha256FileName)
+        return fileManager.fileExists(atPath: file.path) ? file : nil
+    }
+
+    func fetch(url remoteURL: String, completion: @escaping (URL?) -> Void) {
+        if let local = localURL(for: remoteURL) {
+            completion(local)
+            return
+        }
+
+        lock.lock()
+        if inFlight[remoteURL] != nil {
+            inFlight[remoteURL]?.append(completion)
+            lock.unlock()
+            return
+        }
+        inFlight[remoteURL] = [completion]
+        lock.unlock()
+
+        guard let url = URL(string: remoteURL) else {
+            deliver(remoteURL: remoteURL, local: nil)
+            return
+        }
+
+        let task = URLSession.shared.downloadTask(with: url) { [weak self] tempURL, _, error in
+            guard let self, let tempURL, error == nil else {
+                self?.deliver(remoteURL: remoteURL, local: nil)
+                return
+            }
+            let dest = self.cacheDir.appendingPathComponent(remoteURL.sha256FileName)
+            try? self.fileManager.removeItem(at: dest)
+            do {
+                try self.fileManager.moveItem(at: tempURL, to: dest)
+                self.deliver(remoteURL: remoteURL, local: dest)
+            } catch {
+                self.deliver(remoteURL: remoteURL, local: nil)
+            }
+        }
+        task.resume()
+    }
+
+    private func deliver(remoteURL: String, local: URL?) {
+        lock.lock()
+        let handlers = inFlight.removeValue(forKey: remoteURL) ?? []
+        lock.unlock()
+        DispatchQueue.main.async {
+            handlers.forEach { $0(local) }
+        }
+    }
+}
+
+private extension String {
+    var sha256FileName: String {
+        let data = Data(utf8)
+        var hash = [UInt8](repeating: 0, count: 32)
+        data.withUnsafeBytes { buf in
+            _ = CC_SHA256(buf.baseAddress, CC_LONG(data.count), &hash)
+        }
+        let ext = (self as NSString).pathExtension
+        let name = hash.map { String(format: "%02x", $0) }.joined()
+        return ext.isEmpty ? name : "\(name).\(ext)"
+    }
+}
+
+import CommonCrypto
 
 // MARK: - VoicePlayer
 
@@ -42,6 +136,7 @@ final class VoicePlayer {
     private var player: AVPlayer?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var statusObservation: NSKeyValueObservation?
 
     private struct WeakObserver {
         weak var value: VoicePlayerObserver?
@@ -69,7 +164,6 @@ final class VoicePlayer {
 
     // MARK: - Публичное API
 
-    /// Переключает воспроизведение: play/pause для текущего, stop + play для нового
     func toggle(url: String) {
         switch state {
         case .playing(let u, _, _) where u == url:
@@ -81,18 +175,32 @@ final class VoicePlayer {
         }
     }
 
-    /// Полная остановка и сброс
     func stop() {
         cleanup()
         state = .idle
     }
 
+    func seek(to progress: Float) {
+        guard let player, let item = player.currentItem else { return }
+        let duration = CMTimeGetSeconds(item.duration)
+        guard duration > 0, duration.isFinite else { return }
+        let target = CMTime(seconds: Double(progress) * duration, preferredTimescale: 600)
+        player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+
+        switch state {
+        case .playing(let u, _, _):
+            state = .playing(url: u, progress: progress, currentTime: Double(progress) * duration)
+        case .paused(let u, _, _):
+            state = .paused(url: u, progress: progress, currentTime: Double(progress) * duration)
+        default:
+            break
+        }
+    }
+
     // MARK: - Приватные методы
 
     private func play(url: String) {
-        // Остановить предыдущее воспроизведение
         cleanup()
-        state = .loading(url: url)
 
         do {
             let session = AVAudioSession.sharedInstance()
@@ -103,16 +211,49 @@ final class VoicePlayer {
             return
         }
 
-        guard let assetURL = URL(string: url) else {
-            state = .idle
+        // Check cache first — instant playback if available
+        if let cachedURL = AudioCache.shared.localURL(for: url) {
+            startPlayback(url: url, fileURL: cachedURL)
             return
         }
 
-        let item = AVPlayerItem(asset: AVURLAsset(url: assetURL))
+        // Not cached — show loading, download
+        state = .loading(url: url)
+
+        AudioCache.shared.fetch(url: url) { [weak self] localURL in
+            guard let self, case .loading(let u) = self.state, u == url else { return }
+
+            let assetURL: URL
+            if let localURL {
+                assetURL = localURL
+            } else if let remote = URL(string: url) {
+                assetURL = remote
+            } else {
+                self.state = .idle
+                return
+            }
+
+            self.startPlayback(url: url, fileURL: assetURL)
+        }
+    }
+
+    private func startPlayback(url: String, fileURL: URL) {
+        let item = AVPlayerItem(asset: AVURLAsset(url: fileURL))
         player = AVPlayer(playerItem: item)
+
+        statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            guard let self else { return }
+            if item.status == .readyToPlay {
+                self.statusObservation = nil
+                self.player?.play()
+                self.state = .playing(url: url, progress: 0, currentTime: 0)
+            } else if item.status == .failed {
+                self.statusObservation = nil
+                self.stop()
+            }
+        }
+
         setupObservers(url: url)
-        player?.play()
-        state = .playing(url: url, progress: 0, currentTime: 0)
     }
 
     private func pause() {
@@ -150,6 +291,7 @@ final class VoicePlayer {
         if let obs = endObserver { NotificationCenter.default.removeObserver(obs) }
         timeObserver = nil
         endObserver = nil
+        statusObservation = nil
         player?.pause()
         player = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)

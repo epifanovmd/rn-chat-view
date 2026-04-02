@@ -17,6 +17,9 @@ final class MessageBubbleView: UIView {
     private let stack = UIStackView()
     private let senderLabel = UILabel()
     private let forwardedLabel = UILabel()
+    private let forwardedContainer = UIView()
+    private let forwardedAccent = UIView()
+    private let forwardedStack = UIStackView()
     private let replyPreview = ReplyPreviewView()
     private var contentView: UIView?
     private let reactionsView = ReactionsView()
@@ -53,12 +56,39 @@ final class MessageBubbleView: UIView {
         editedLabel.text = "edited"
         timeLabel.font = ChatLayout.current.timeFont
 
+        setupForwardedContainer()
         setupFooter()
 
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: topAnchor, constant: ChatLayout.current.bubbleVPad),
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: ChatLayout.current.bubbleHPad),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -ChatLayout.current.bubbleHPad),
+        ])
+    }
+
+    private func setupForwardedContainer() {
+        let L = ChatLayout.current
+
+        forwardedAccent.translatesAutoresizingMaskIntoConstraints = false
+        forwardedAccent.layer.cornerRadius = L.forwardedAccentWidth / 2
+
+        forwardedStack.axis = .vertical
+        forwardedStack.spacing = L.bubbleSpacing
+        forwardedStack.translatesAutoresizingMaskIntoConstraints = false
+
+        forwardedContainer.addSubview(forwardedAccent)
+        forwardedContainer.addSubview(forwardedStack)
+
+        NSLayoutConstraint.activate([
+            forwardedAccent.leadingAnchor.constraint(equalTo: forwardedContainer.leadingAnchor),
+            forwardedAccent.topAnchor.constraint(equalTo: forwardedContainer.topAnchor),
+            forwardedAccent.bottomAnchor.constraint(equalTo: forwardedContainer.bottomAnchor),
+            forwardedAccent.widthAnchor.constraint(equalToConstant: L.forwardedAccentWidth),
+
+            forwardedStack.leadingAnchor.constraint(equalTo: forwardedAccent.trailingAnchor, constant: L.forwardedContentInset),
+            forwardedStack.trailingAnchor.constraint(equalTo: forwardedContainer.trailingAnchor),
+            forwardedStack.topAnchor.constraint(equalTo: forwardedContainer.topAnchor),
+            forwardedStack.bottomAnchor.constraint(equalTo: forwardedContainer.bottomAnchor),
         ])
     }
 
@@ -131,24 +161,48 @@ final class MessageBubbleView: UIView {
         }
 
         // Forwarded
+        let isForwarded = message.forwardedFrom != nil
         if let fwd = message.forwardedFrom {
-            forwardedLabel.text = "↗ \(fwd)"
+            let L = ChatLayout.current
+            let accentColor = isMine ? theme.outgoingForwardedAccent : theme.incomingForwardedAccent
+            forwardedAccent.backgroundColor = accentColor
+
+            forwardedLabel.text = "Forwarded from \(fwd)"
             forwardedLabel.textColor = isMine ? theme.outgoingForwardedLabel : theme.incomingForwardedLabel
-            stack.addArrangedSubview(forwardedLabel)
+
+            forwardedStack.arrangedSubviews.forEach { forwardedStack.removeArrangedSubview($0); $0.removeFromSuperview() }
+            forwardedStack.addArrangedSubview(forwardedLabel)
+
+            // Reply Preview inside forwarded
+            if let reply = message.reply {
+                replyPreview.configure(reply: reply, resolved: resolvedReply, isMine: isMine, theme: theme)
+                replyPreview.onTap = { [weak self] in self?.onReplyTap?() }
+                forwardedStack.addArrangedSubview(replyPreview)
+            }
+
+            // Content inside forwarded
+            let contentInnerW = bubbleWidth - L.bubbleHPad * 2 - L.forwardedAccentWidth - L.forwardedContentInset
+            let newContent = createContentView(for: message, width: contentInnerW, isMine: isMine, theme: theme)
+            contentView = newContent
+            forwardedStack.addArrangedSubview(newContent)
+
+            stack.addArrangedSubview(forwardedContainer)
         }
 
-        // Reply Preview
-        if let reply = message.reply {
-            replyPreview.configure(reply: reply, resolved: resolvedReply, isMine: isMine, theme: theme)
-            replyPreview.onTap = { [weak self] in self?.onReplyTap?() }
-            stack.addArrangedSubview(replyPreview)
-        }
+        if !isForwarded {
+            // Reply Preview
+            if let reply = message.reply {
+                replyPreview.configure(reply: reply, resolved: resolvedReply, isMine: isMine, theme: theme)
+                replyPreview.onTap = { [weak self] in self?.onReplyTap?() }
+                stack.addArrangedSubview(replyPreview)
+            }
 
-        // Content
-        let innerW = bubbleWidth - ChatLayout.current.bubbleHPad * 2
-        let newContent = createContentView(for: message, width: innerW, isMine: isMine, theme: theme)
-        contentView = newContent
-        stack.addArrangedSubview(newContent)
+            // Content
+            let innerW = bubbleWidth - ChatLayout.current.bubbleHPad * 2
+            let newContent = createContentView(for: message, width: innerW, isMine: isMine, theme: theme)
+            contentView = newContent
+            stack.addArrangedSubview(newContent)
+        }
 
         // Reactions
         if !message.reactions.isEmpty {
@@ -261,6 +315,7 @@ final class MessageBubbleView: UIView {
 
     func prepareForReuse() {
         stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
+        forwardedStack.arrangedSubviews.forEach { forwardedStack.removeArrangedSubview($0); $0.removeFromSuperview() }
         contentView = nil
         onReplyTap = nil
         onMediaItemTap = nil

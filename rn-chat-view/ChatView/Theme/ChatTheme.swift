@@ -67,6 +67,10 @@ struct ChatTheme {
     var outgoingForwardedLabel: UIColor
     /// Цвет метки «переслано» во входящем сообщении
     var incomingForwardedLabel: UIColor
+    /// Цвет акцентной полоски пересланного в исходящем
+    var outgoingForwardedAccent: UIColor
+    /// Цвет акцентной полоски пересланного во входящем
+    var incomingForwardedAccent: UIColor
 
     // MARK: - Реакции
 
@@ -207,6 +211,8 @@ extension ChatTheme {
         incomingReplyText: UIColor(white: 0.0, alpha: 0.7),
         outgoingForwardedLabel: UIColor(red: 0.2, green: 0.6, blue: 0.35, alpha: 1),
         incomingForwardedLabel: .systemBlue,
+        outgoingForwardedAccent: UIColor(red: 0.2, green: 0.6, blue: 0.35, alpha: 1),
+        incomingForwardedAccent: .systemBlue,
         reactionBackground: UIColor(white: 0.93, alpha: 1),
         reactionMineBackground: UIColor.systemBlue.withAlphaComponent(0.15),
         reactionText: .black,
@@ -275,6 +281,8 @@ extension ChatTheme {
         incomingReplyText: UIColor(white: 1.0, alpha: 0.6),
         outgoingForwardedLabel: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
         incomingForwardedLabel: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        outgoingForwardedAccent: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
+        incomingForwardedAccent: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
         reactionBackground: UIColor(white: 0.2, alpha: 1),
         reactionMineBackground: UIColor.systemBlue.withAlphaComponent(0.25),
         reactionText: .white,

@@ -43,6 +43,10 @@ struct ChatLayout {
     var editedFont: UIFont = .systemFont(ofSize: 11)
     /// Шрифт метки «переслано»
     var forwardedFont: UIFont = .systemFont(ofSize: 13, weight: .medium)
+    /// Ширина акцентной полоски пересланного сообщения
+    var forwardedAccentWidth: CGFloat = 2.5
+    /// Горизонтальный отступ контента от полоски пересланного
+    var forwardedContentInset: CGFloat = 8
 
     // MARK: - Футер (время, статус)
 
@@ -124,7 +128,7 @@ struct ChatLayout {
     /// Интервал между полосками волны
     var voiceBarSpacing: CGFloat = 2
     /// Шрифт длительности голосового
-    var voiceDurationFont: UIFont = .monospacedDigitSystemFont(ofSize: 14, weight: .regular)
+    var voiceDurationFont: UIFont = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
     /// Размер кнопки воспроизведения голосового
     var voicePlaySize: CGFloat = 36
     /// Размер иконки воспроизведения голосового

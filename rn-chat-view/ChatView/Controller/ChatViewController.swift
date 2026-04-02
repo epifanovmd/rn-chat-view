@@ -16,7 +16,7 @@ final class ChatViewController: UIViewController {
     var isLoadingTop = false
     var isLoadingBottom = false
     var scrollToBottomThreshold: CGFloat = 150 { didSet { updateFABVisibility(animated: false) } }
-    var showsSenderName = false
+    var showsSenderName = false { didSet { if oldValue != showsSenderName, isViewLoaded { reloadWithCrossfade() } } }
     var showsFloatingDate = true
     var unreadCount = 0 { didSet { updateFABBadge() } }
     var unreadMessageIDs: Set<String> = []
@@ -459,7 +459,13 @@ final class ChatViewController: UIViewController {
         inputBarBackground.backgroundColor = theme.inputBarBackground
         floatingDatePill.backgroundColor = theme.dateSeparatorBackground
         floatingDateLabel.textColor = theme.dateSeparatorText
-        adapter.performUpdates(animated: false)
+        reloadWithCrossfade()
+    }
+
+    private func reloadWithCrossfade() {
+        UIView.transition(with: collectionView, duration: 0.25, options: .transitionCrossDissolve) {
+            self.adapter.reloadData(completion: nil)
+        }
     }
 
     // MARK: - Update Messages

@@ -127,7 +127,7 @@ enum ChatDemoData {
                 content: MessageContent(
                     text: nil, media: nil,
                     voice: VoicePayload(
-                        url: "https://example.com/voice.m4a",
+                        url: "https://dl.espressif.com/dl/audio/gs-16b-2c-44100hz.m4a",
                         duration: 12.5,
                         waveform: [0.1, 0.3, 0.5, 0.8, 1.0, 0.7, 0.4, 0.6, 0.9, 0.5,
                                    0.3, 0.2, 0.4, 0.7, 0.8, 0.6, 0.3, 0.1, 0.2, 0.4]
@@ -139,6 +139,81 @@ enum ChatDemoData {
                 isMine: true,
                 groupDate: today,
                 status: .delivered,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 6b. Voice message (incoming)
+            ChatMessage(
+                id: "6b",
+                content: MessageContent(
+                    text: nil, media: nil,
+                    voice: VoicePayload(
+                        url: "https://dl.espressif.com/dl/audio/gs-16b-1c-44100hz.m4a",
+                        duration: 8.0,
+                        waveform: [0.2, 0.5, 0.9, 0.7, 0.3, 0.6, 1.0, 0.8, 0.4, 0.2,
+                                   0.5, 0.7, 0.3, 0.9, 0.6, 0.4, 0.8, 0.5, 0.3, 0.1]
+                    ),
+                    poll: nil, files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -3, to: now)!.addingTimeInterval(-1800),
+                senderName: otherUser,
+                isMine: false,
+                groupDate: today,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 6c. Voice message (outgoing, short)
+            ChatMessage(
+                id: "6c",
+                content: MessageContent(
+                    text: nil, media: nil,
+                    voice: VoicePayload(
+                        url: "https://dl.espressif.com/dl/audio/ff-16b-1c-44100hz.m4a",
+                        duration: 3.2,
+                        waveform: [0.4, 0.8, 1.0, 0.6, 0.3, 0.5, 0.9, 0.7, 0.2, 0.4]
+                    ),
+                    poll: nil, files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -3, to: now)!.addingTimeInterval(-1200),
+                senderName: nil,
+                isMine: true,
+                groupDate: today,
+                status: .delivered,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 6d. Voice message (incoming, long)
+            ChatMessage(
+                id: "6d",
+                content: MessageContent(
+                    text: nil, media: nil,
+                    voice: VoicePayload(
+                        url: "https://dl.espressif.com/dl/audio/ff-16b-2c-44100hz.m4a",
+                        duration: 47.0,
+                        waveform: [0.1, 0.2, 0.4, 0.6, 0.8, 1.0, 0.9, 0.7, 0.5, 0.3,
+                                   0.4, 0.6, 0.8, 0.7, 0.5, 0.3, 0.2, 0.4, 0.6, 0.8,
+                                   1.0, 0.7, 0.4, 0.2, 0.3, 0.5, 0.7, 0.9, 0.6, 0.3]
+                    ),
+                    poll: nil, files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -3, to: now)!.addingTimeInterval(-600),
+                senderName: otherUser,
+                isMine: false,
+                groupDate: today,
+                status: .read,
                 reply: nil,
                 forwardedFrom: nil,
                 reactions: [],
@@ -280,15 +355,116 @@ enum ChatDemoData {
     ]
 }
 
+// MARK: - Debug Panel
+
+private final class DebugPanelView: UIView {
+
+    var onThemeChanged: ((ChatTheme) -> Void)?
+    var onSenderNameChanged: ((Bool) -> Void)?
+
+    private let themeToggle: UISegmentedControl = {
+        let control = UISegmentedControl(items: ["Light", "Dark"])
+        control.selectedSegmentIndex = 0
+        control.translatesAutoresizingMaskIntoConstraints = false
+        return control
+    }()
+
+    private let senderNameToggle: UISwitch = {
+        let toggle = UISwitch()
+        toggle.isOn = true
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+        return toggle
+    }()
+
+    private let senderNameLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Sender name"
+        label.font = .systemFont(ofSize: 12, weight: .medium)
+        label.textColor = .secondaryLabel
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    private let titleLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Debug"
+        label.font = .systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = .secondaryLabel
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+
+    private let separator: UIView = {
+        let view = UIView()
+        view.backgroundColor = .separator
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupLayout()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func setupLayout() {
+        backgroundColor = .systemBackground
+
+        addSubview(titleLabel)
+        addSubview(themeToggle)
+        addSubview(senderNameLabel)
+        addSubview(senderNameToggle)
+        addSubview(separator)
+
+        themeToggle.addTarget(self, action: #selector(themeToggleChanged), for: .valueChanged)
+        senderNameToggle.addTarget(self, action: #selector(senderNameToggleChanged), for: .valueChanged)
+
+        NSLayoutConstraint.activate([
+            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+
+            themeToggle.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            themeToggle.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+
+            senderNameLabel.leadingAnchor.constraint(equalTo: themeToggle.trailingAnchor, constant: 16),
+            senderNameLabel.centerYAnchor.constraint(equalTo: themeToggle.centerYAnchor),
+
+            senderNameToggle.leadingAnchor.constraint(equalTo: senderNameLabel.trailingAnchor, constant: 8),
+            senderNameToggle.centerYAnchor.constraint(equalTo: themeToggle.centerYAnchor),
+
+            themeToggle.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+
+            separator.leadingAnchor.constraint(equalTo: leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: trailingAnchor),
+            separator.bottomAnchor.constraint(equalTo: bottomAnchor),
+            separator.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+        ])
+    }
+
+    @objc private func themeToggleChanged() {
+        let theme: ChatTheme = themeToggle.selectedSegmentIndex == 0 ? .light : .dark
+        onThemeChanged?(theme)
+    }
+
+    @objc private func senderNameToggleChanged() {
+        onSenderNameChanged?(senderNameToggle.isOn)
+    }
+}
+
 // MARK: - Demo ViewController
 
 final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate {
 
     private let chatVC = ChatViewController()
+    private let debugPanel = DebugPanelView()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ChatTheme.light.backgroundColor
+
+        setupDebugPanel()
 
         chatVC.delegate = self
         chatVC.theme = .light
@@ -296,13 +472,40 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         chatVC.emojiReactionsList = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
 
         addChild(chatVC)
-        chatVC.view.frame = view.bounds
-        chatVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(chatVC.view)
+        chatVC.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            chatVC.view.topAnchor.constraint(equalTo: debugPanel.bottomAnchor),
+            chatVC.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            chatVC.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            chatVC.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
         chatVC.didMove(toParent: self)
 
-        // Load sample messages
         chatVC.updateMessages(ChatDemoData.makeSampleMessages())
+    }
+
+    private func setupDebugPanel() {
+        debugPanel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(debugPanel)
+
+        NSLayoutConstraint.activate([
+            debugPanel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            debugPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            debugPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
+
+        debugPanel.onThemeChanged = { [weak self] theme in
+            guard let self else { return }
+            self.chatVC.theme = theme
+            self.view.backgroundColor = theme.backgroundColor
+            self.debugPanel.backgroundColor = theme.isDark ? .black : .systemBackground
+        }
+
+        debugPanel.onSenderNameChanged = { [weak self] show in
+            guard let self else { return }
+            self.chatVC.showsSenderName = show
+        }
     }
 
     // MARK: - ChatViewControllerDelegate
