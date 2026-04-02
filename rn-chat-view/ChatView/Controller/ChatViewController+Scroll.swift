@@ -14,7 +14,7 @@ extension ChatViewController: UIScrollViewDelegate {
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        if offset < topThreshold && hasMore && !isLoading && !waitingForNewMessages {
+        if offset < topThreshold && hasMore && !isLoading && !waitingForNewMessages && !isInitialScrollProtected {
             waitingForNewMessages = true
             delegate?.chatDidReachTop(distance: offset)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
@@ -22,7 +22,7 @@ extension ChatViewController: UIScrollViewDelegate {
             }
         }
 
-        if contentH - offset - frameH < bottomThreshold && hasNewer && !isLoadingNewerActive && !waitingForNewerMessages {
+        if contentH - offset - frameH < bottomThreshold && hasNewer && !isLoadingNewerActive && !waitingForNewerMessages && !isInitialScrollProtected {
             waitingForNewerMessages = true
             isLoadingNewerActive = true
             delegate?.chatDidReachBottom(distance: contentH - offset - frameH)

@@ -51,7 +51,7 @@ final class ChatViewController: UIViewController {
 
     // MARK: - IGListKit
 
-    var collectionView: UICollectionView!
+    var collectionView: ChatCollectionView!
     var adapter: ListAdapter!
 
     // MARK: - UI Components
@@ -107,10 +107,9 @@ final class ChatViewController: UIViewController {
 
     // MARK: - Scroll Compensation
 
-    var scrollAnchorId: String?
-    var scrollAnchorOffset: CGFloat = 0
-    var needsScrollCompensation = false
     var savedOffsetForAppend: CGPoint?
+    private var prependContentHeight: CGFloat = 0
+    private var prependContentOffset: CGFloat = 0
 
     // MARK: - Keyboard Freeze (контекстное меню)
 
@@ -125,6 +124,7 @@ final class ChatViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
+        isInitialScrollProtected = true
         setupCollectionView()
         setupAdapter()
         setupEmptyState()
@@ -153,7 +153,7 @@ final class ChatViewController: UIViewController {
         layout.minimumLineSpacing = 0
         layout.minimumInteritemSpacing = 0
 
-        collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView = ChatCollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
         collectionView.keyboardDismissMode = .interactive
         collectionView.contentInsetAdjustmentBehavior = .never
@@ -477,6 +477,9 @@ final class ChatViewController: UIViewController {
         let oldLastId = messages.last?.id
         let oldCount = messages.count
 
+        // Capture prepend anchor BEFORE rebuild (old listItems + old layout)
+        capturePrependAnchor()
+
         messages = newMessages
         messageIndex = Dictionary(newMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         rebuildListItems()
@@ -503,34 +506,19 @@ final class ChatViewController: UIViewController {
 
     // MARK: - Update Handlers
 
+    private func capturePrependAnchor() {
+        guard isViewLoaded else { return }
+        prependContentHeight = collectionView.contentSize.height
+        prependContentOffset = collectionView.contentOffset.y
+    }
+
     private func handlePrepend(oldFirstId: String?, count: Int) {
-        let visibleTop = collectionView.contentOffset.y + collectionView.contentInset.top
-        var anchorId = oldFirstId ?? ""
-        var anchorOffset: CGFloat = 0
-
-        let sorted = collectionView.indexPathsForVisibleItems
-            .compactMap { collectionView.layoutAttributesForItem(at: $0) }
-            .sorted { $0.frame.minY < $1.frame.minY }
-
-        if let topAttr = sorted.first,
-           let item = adapter.object(atSection: topAttr.indexPath.section) as? MessageListItem {
-            anchorId = item.message.id
-            anchorOffset = topAttr.frame.minY - visibleTop
-        }
-
-        let snapshot = collectionView.snapshotView(afterScreenUpdates: false)
-        if let snapshot {
-            snapshot.frame = collectionView.frame
-            view.insertSubview(snapshot, aboveSubview: collectionView)
-        }
-
-        scrollAnchorId = anchorId
-        scrollAnchorOffset = anchorOffset
-        needsScrollCompensation = true
+        collectionView.prePrependContentHeight = prependContentHeight
+        collectionView.prePrependContentOffset = prependContentOffset
+        collectionView.needsPrependCompensation = true
 
         adapter.performUpdates(animated: false) { [weak self] _ in
             guard let self else { return }
-            snapshot?.removeFromSuperview()
             self.finalizeUpdate(count: count, animated: false)
         }
     }
@@ -563,7 +551,7 @@ final class ChatViewController: UIViewController {
         adapter.reloadData { [weak self] _ in
             guard let self else { return }
             if let scrollId = self.pendingScrollMessageId {
-                self.scrollToMessage(id: scrollId, position: "center", animated: false, highlight: false)
+                self.scrollToMessage(id: scrollId, position: "center", animated: false, highlight: true)
                 self.pendingScrollMessageId = nil
             } else {
                 self.scrollToBottom(animated: false)

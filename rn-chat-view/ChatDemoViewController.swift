@@ -435,7 +435,7 @@ private final class DebugPanelView: UIView {
 
     private let themeToggle: UISegmentedControl = {
         let control = UISegmentedControl(items: ["Light", "Dark"])
-        control.selectedSegmentIndex = 0
+        control.selectedSegmentIndex = 1
         control.translatesAutoresizingMaskIntoConstraints = false
         return control
     }()
@@ -550,12 +550,12 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = ChatTheme.light.backgroundColor
+        view.backgroundColor = ChatTheme.dark.backgroundColor
 
         setupDebugPanel()
 
         chatVC.delegate = self
-        chatVC.theme = .light
+        chatVC.theme = .dark
         chatVC.showsSenderName = true
         chatVC.emojiReactionsList = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
 
@@ -575,6 +575,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
     private func setupDebugPanel() {
         debugPanel.translatesAutoresizingMaskIntoConstraints = false
+        debugPanel.backgroundColor = .black
         view.addSubview(debugPanel)
 
         NSLayoutConstraint.activate([
