@@ -197,6 +197,15 @@ final class MessageBubbleView: UIView {
                 stack.addArrangedSubview(replyPreview)
             }
 
+            // Voice top spacer — when voice is first element (no sender name, no reply)
+            let hasHeader = (showSenderName && message.senderName != nil && !isMine) || message.reply != nil
+            if content.voice != nil, !hasHeader {
+                let spacer = UIView()
+                spacer.translatesAutoresizingMaskIntoConstraints = false
+                spacer.heightAnchor.constraint(equalToConstant: 4).isActive = true
+                stack.addArrangedSubview(spacer)
+            }
+
             // Content
             let innerW = bubbleWidth - ChatLayout.current.bubbleHPad * 2
             let newContent = createContentView(for: message, width: innerW, isMine: isMine, theme: theme)

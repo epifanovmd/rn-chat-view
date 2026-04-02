@@ -17,8 +17,10 @@ final class VoiceContentView: UIView {
     private var voiceDuration: TimeInterval = 0
     private var currentTheme: ChatTheme = .light
     private var isMineMessage = false
+    private var accentColor: UIColor = .systemBlue
     private var isCached = false
     private var isPrefetching = false
+    private var isFailed = false
 
     // MARK: - Init
 
@@ -125,7 +127,7 @@ final class VoiceContentView: UIView {
         currentTheme = theme
         isMineMessage = isMine
 
-        let accentColor = isMine ? theme.outgoingStatusRead : theme.voiceWaveformActive
+        accentColor = isMine ? theme.outgoingStatusRead : theme.voiceWaveformActive
         playButton.backgroundColor = accentColor
         playIcon.tintColor = .white
         loadingRing.strokeColor = UIColor.white.cgColor
@@ -141,14 +143,9 @@ final class VoiceContentView: UIView {
 
         // Check cache and prefetch
         isCached = AudioCache.shared.localURL(for: voice.url) != nil
+        isFailed = false
         if !isCached {
-            isPrefetching = true
-            AudioCache.shared.fetch(url: voice.url) { [weak self] localURL in
-                guard let self, self.voiceURL == voice.url else { return }
-                self.isCached = localURL != nil
-                self.isPrefetching = false
-                self.updateUI()
-            }
+            startPrefetch()
         }
 
         VoicePlayer.shared.addObserver(self)
@@ -162,6 +159,21 @@ final class VoiceContentView: UIView {
         let isMe = state.url == voiceURL
         let L = ChatLayout.current
         let config = UIImage.SymbolConfiguration(pointSize: L.voicePlayIconSize, weight: .semibold)
+        let errorConfig = UIImage.SymbolConfiguration(pointSize: L.voicePlayIconSize - 2, weight: .medium)
+
+        // Failed state
+        if isFailed {
+            hideLoadingRing()
+            playButton.backgroundColor = accentColor.withAlphaComponent(0.4)
+            playIcon.image = UIImage(systemName: "arrow.clockwise", withConfiguration: errorConfig)
+            playIcon.alpha = 1
+            waveformView.setDimmed(true)
+            return
+        }
+
+        // Restore normal button color
+        playButton.backgroundColor = accentColor
+        waveformView.setDimmed(false)
 
         // Loading: prefetching or player loading
         let isLoading = isPrefetching || (isMe && state.isLoading)
@@ -180,6 +192,10 @@ final class VoiceContentView: UIView {
         } else {
             playIcon.image = UIImage(systemName: "play.fill", withConfiguration: config)
         }
+
+        // Seek only when this voice is playing or paused
+        let isActive = isMe && (state.isPlaying || { if case .paused = state { return true }; return false }())
+        waveformView.isSeekEnabled = isActive
 
         // Waveform + duration
         if isMe, case .playing(_, let progress, let currentTime) = state {
@@ -214,6 +230,25 @@ final class VoiceContentView: UIView {
         loadingRing.isHidden = true
     }
 
+    // MARK: - Prefetch
+
+    private func startPrefetch() {
+        guard let url = voiceURL else { return }
+        isPrefetching = true
+        isFailed = false
+        AudioCache.shared.fetch(url: url) { [weak self] localURL in
+            guard let self, self.voiceURL == url else { return }
+            self.isPrefetching = false
+            if localURL != nil {
+                self.isCached = true
+                self.isFailed = false
+            } else {
+                self.isFailed = true
+            }
+            self.updateUI()
+        }
+    }
+
     // MARK: - Helpers
 
     private func formatTime(_ seconds: TimeInterval) -> String {
@@ -222,7 +257,14 @@ final class VoiceContentView: UIView {
         return String(format: "%d:%02d", mins, secs)
     }
 
-    @objc private func playTapped() { onPlayTap?() }
+    @objc private func playTapped() {
+        if isFailed {
+            startPrefetch()
+            updateUI()
+            return
+        }
+        onPlayTap?()
+    }
 }
 
 // MARK: - VoicePlayerObserver
@@ -235,8 +277,9 @@ extension VoiceContentView: VoicePlayerObserver {
 
 // MARK: - WaveformView
 
-final class WaveformView: UIView {
+final class WaveformView: UIView, UIGestureRecognizerDelegate {
     var onSeek: ((Float) -> Void)?
+    var isSeekEnabled = false
 
     private var bars: [CALayer] = []
     private var waveform: [Float] = []
@@ -244,10 +287,14 @@ final class WaveformView: UIView {
     private var inactiveColor: UIColor = .lightGray
     private var progress: Float = 0
     private var isSeeking = false
+    private var didLockDirection = false
+    private var isHorizontalPan = false
+    private var isDimmed = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        pan.delegate = self
         addGestureRecognizer(pan)
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         addGestureRecognizer(tapGesture)
@@ -266,6 +313,11 @@ final class WaveformView: UIView {
     func updateProgress(_ progress: Float) {
         guard !isSeeking else { return }
         self.progress = progress
+        updateBarColors()
+    }
+
+    func setDimmed(_ dimmed: Bool) {
+        isDimmed = dimmed
         updateBarColors()
     }
 
@@ -306,6 +358,11 @@ final class WaveformView: UIView {
     }
 
     private func updateBarColors() {
+        if isDimmed {
+            let dimColor = inactiveColor.withAlphaComponent(0.3).cgColor
+            bars.forEach { $0.backgroundColor = dimColor }
+            return
+        }
         let activeCount = Int(Float(bars.count) * progress)
         for (i, bar) in bars.enumerated() {
             bar.backgroundColor = (i < activeCount ? activeColor : inactiveColor).cgColor
@@ -315,33 +372,62 @@ final class WaveformView: UIView {
     // MARK: - Seek gestures
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        let x = gesture.location(in: self).x
-        let clamped = max(0, min(1, Float(x / bounds.width)))
+        guard isSeekEnabled else {
+            gesture.state = .cancelled
+            return
+        }
 
         switch gesture.state {
         case .began:
-            isSeeking = true
-            progress = clamped
-            updateBarColors()
+            didLockDirection = false
+            isHorizontalPan = false
         case .changed:
-            progress = clamped
-            updateBarColors()
+            if !didLockDirection {
+                let velocity = gesture.velocity(in: self)
+                if abs(velocity.x) < abs(velocity.y) {
+                    // Vertical — cancel and let scroll view handle it
+                    gesture.state = .cancelled
+                    return
+                }
+                didLockDirection = true
+                isHorizontalPan = true
+                isSeeking = true
+            }
+
+            if isHorizontalPan {
+                let x = gesture.location(in: self).x
+                let clamped = max(0, min(1, Float(x / bounds.width)))
+                progress = clamped
+                updateBarColors()
+            }
         case .ended, .cancelled:
-            isSeeking = false
-            progress = clamped
-            updateBarColors()
-            onSeek?(clamped)
+            if isSeeking {
+                let x = gesture.location(in: self).x
+                let clamped = max(0, min(1, Float(x / bounds.width)))
+                isSeeking = false
+                progress = clamped
+                updateBarColors()
+                onSeek?(clamped)
+            }
+            didLockDirection = false
+            isHorizontalPan = false
         default:
             break
         }
     }
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+        guard isSeekEnabled else { return }
         let x = gesture.location(in: self).x
         let clamped = max(0, min(1, Float(x / bounds.width)))
         progress = clamped
         updateBarColors()
         onSeek?(clamped)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        true
     }
 
     // MARK: - Resample

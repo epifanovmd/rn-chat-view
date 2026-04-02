@@ -71,6 +71,12 @@ enum MessageSizeCalculator {
             h += ChatLayout.current.replyHeight + 4
         }
 
+        // Voice top spacer when no header
+        let hasHeader = (showSenderName && msg.senderName != nil && !msg.isMine) || msg.reply != nil || isForwarded
+        if content.voice != nil, !hasHeader {
+            h += 4 + ChatLayout.current.bubbleSpacing
+        }
+
         h += contentHeight(for: content, width: innerW)
 
         if !msg.reactions.isEmpty {
