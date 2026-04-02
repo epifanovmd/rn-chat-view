@@ -133,7 +133,8 @@ extension ChatMessage {
             totalVotes: (dict["totalVotes"] as? NSNumber)?.intValue ?? 0,
             selectedOptionIds: dict["selectedOptionIds"] as? [String] ?? [],
             isMultipleChoice: dict["isMultipleChoice"] as? Bool ?? false,
-            isClosed: dict["isClosed"] as? Bool ?? false
+            isClosed: dict["isClosed"] as? Bool ?? false,
+            isAnonymous: dict["isAnonymous"] as? Bool ?? true
         )
     }
 

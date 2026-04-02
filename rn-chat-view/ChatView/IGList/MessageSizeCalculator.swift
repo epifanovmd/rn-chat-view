@@ -129,9 +129,13 @@ enum MessageSizeCalculator {
     // MARK: - Helpers
 
     static func pollHeight(_ poll: PollPayload, width: CGFloat) -> CGFloat {
-        var h: CGFloat = textHeight(poll.question, font: ChatLayout.current.pollQuestionFont, width: width) + 8
-        h += CGFloat(poll.options.count) * (ChatLayout.current.pollBarHeight + ChatLayout.current.pollOptionSpacing)
-        h += ChatLayout.current.pollVotesFont.lineHeight + 4
+        let L = ChatLayout.current
+        let count = poll.options.count
+        var h: CGFloat = textHeight(poll.question, font: L.pollQuestionFont, width: width)
+        h += 2 + L.pollSubtitleFont.lineHeight // subtitle
+        h += L.pollHeaderSpacing
+        h += CGFloat(count) * L.pollBarHeight + CGFloat(max(0, count - 1)) * L.pollOptionSpacing
+        h += 6 + L.pollVotesFont.lineHeight // votes footer
         return h
     }
 
@@ -158,7 +162,7 @@ enum MessageSizeCalculator {
     static func minFooterWidth(for msg: ChatMessage) -> CGFloat {
         var w = textWidth(DateHelper.shared.timeString(from: msg.timestamp), font: ChatLayout.current.timeFont)
         if msg.isMine { w += ChatLayout.current.statusIconSize + ChatLayout.current.footerSpacing }
-        if msg.isEdited { w += textWidth("edited", font: ChatLayout.current.editedFont) + ChatLayout.current.footerSpacing }
+        if msg.isEdited { w += textWidth("изм.", font: ChatLayout.current.editedFont) + ChatLayout.current.footerSpacing }
         return w + ChatLayout.current.footerSpacing * 2
     }
 

@@ -55,7 +55,7 @@ struct ChatLayout {
     /// Интервал между элементами футера
     var footerSpacing: CGFloat = 3
     /// Размер иконки статуса доставки
-    var statusIconSize: CGFloat = 14
+    var statusIconSize: CGFloat = 11
 
     // MARK: - Превью цитаты
 
@@ -138,28 +138,26 @@ struct ChatLayout {
 
     /// Шрифт вопроса опроса
     var pollQuestionFont: UIFont = .systemFont(ofSize: 15, weight: .semibold)
+    /// Шрифт подписи типа опроса
+    var pollSubtitleFont: UIFont = .systemFont(ofSize: 12)
     /// Шрифт текста варианта опроса
-    var pollOptionFont: UIFont = .systemFont(ofSize: 15)
+    var pollOptionFont: UIFont = .systemFont(ofSize: 14, weight: .medium)
+    /// Шрифт процента варианта
+    var pollPercentFont: UIFont = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
     /// Высота полосы варианта опроса
-    var pollBarHeight: CGFloat = 30
+    var pollBarHeight: CGFloat = 32
     /// Радиус скругления полосы варианта
-    var pollBarCornerRadius: CGFloat = 6
-    /// Интервал после вопроса опроса
-    var pollSpacing: CGFloat = 6
+    var pollBarCornerRadius: CGFloat = 12
+    /// Интервал после заголовка опроса
+    var pollHeaderSpacing: CGFloat = 10
     /// Интервал между вариантами опроса
     var pollOptionSpacing: CGFloat = 4
     /// Шрифт счётчика голосов опроса
-    var pollVotesFont: UIFont = .systemFont(ofSize: 13)
-    /// Размер иконки галочки опроса
-    var pollCheckmarkSize: CGFloat = 14
-    /// Левый отступ галочки опроса
-    var pollCheckmarkLeading: CGFloat = 8
-    /// Левый отступ текста варианта опроса
-    var pollLabelLeading: CGFloat = 6
-    /// Правый отступ процентов варианта опроса
-    var pollPercentTrailing: CGFloat = 8
-    /// Прозрачность невыбранной полосы варианта
-    var pollUnselectedAlpha: CGFloat = 0.3
+    var pollVotesFont: UIFont = .systemFont(ofSize: 12)
+    /// Внутренний горизонтальный отступ полоски
+    var pollBarHPad: CGFloat = 12
+    /// Длительность анимации прогресса опроса
+    var pollAnimationDuration: TimeInterval = 0.3
 
     // MARK: - Файл
 

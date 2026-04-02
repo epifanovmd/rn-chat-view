@@ -53,7 +53,7 @@ final class MessageBubbleView: UIView {
         forwardedLabel.font = ChatLayout.current.forwardedFont
         forwardedLabel.numberOfLines = 1
         editedLabel.font = ChatLayout.current.editedFont
-        editedLabel.text = "edited"
+        editedLabel.text = "изм."
         timeLabel.font = ChatLayout.current.timeFont
 
         setupForwardedContainer()
@@ -167,7 +167,7 @@ final class MessageBubbleView: UIView {
             let accentColor = isMine ? theme.outgoingForwardedAccent : theme.incomingForwardedAccent
             forwardedAccent.backgroundColor = accentColor
 
-            forwardedLabel.text = "Forwarded from \(fwd)"
+            forwardedLabel.text = "Переслано от \(fwd)"
             forwardedLabel.textColor = isMine ? theme.outgoingForwardedLabel : theme.incomingForwardedLabel
 
             forwardedStack.arrangedSubviews.forEach { forwardedStack.removeArrangedSubview($0); $0.removeFromSuperview() }

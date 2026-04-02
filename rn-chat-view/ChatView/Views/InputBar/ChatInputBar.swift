@@ -182,7 +182,7 @@ final class ChatInputBar: UIView {
         textView.backgroundColor = .clear
         textViewContainer.addSubview(textView)
 
-        placeholderLabel.text = "Message"
+        placeholderLabel.text = "Сообщение"
         placeholderLabel.font = ChatLayout.current.textViewFont
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         textViewContainer.addSubview(placeholderLabel)
@@ -312,7 +312,7 @@ final class ChatInputBar: UIView {
     // MARK: - Mode Management
 
     func beginReply(info: ReplyInfo, theme: ChatTheme) {
-        let senderName = info.senderName ?? "Message"
+        let senderName = info.senderName ?? "Сообщение"
         let text = info.text ?? (info.hasImage ? "📷 Photo" : "…")
         mode = .reply(messageId: info.replyToId, senderName: senderName, text: text, hasImage: info.hasImage)
 
@@ -332,7 +332,7 @@ final class ChatInputBar: UIView {
         let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
         replyIconView.image = UIImage(systemName: "pencil", withConfiguration: config)
         replyIconView.tintColor = theme.replyPanelAccent
-        replySenderLabel.text = "Edit Message"
+        replySenderLabel.text = "Редактирование"
         replyTextLabel.text = text
 
         textView.text = text

@@ -157,8 +157,10 @@ struct ChatTheme {
     var pollBarFilled: UIColor
     /// Цвет фона/пустой полосы варианта опроса
     var pollBarEmpty: UIColor
-    /// Цвет галочки выбранного варианта опроса
-    var pollSelectedCheck: UIColor
+    /// Цвет бордера выбранного варианта
+    var pollSelectedBorder: UIColor
+    /// Цвет подписи типа опроса
+    var pollSubtitleColor: UIColor
 
     // MARK: - Сетка медиа
 
@@ -249,9 +251,10 @@ extension ChatTheme {
         voiceWaveformInactive: UIColor(white: 0.75, alpha: 1),
         voiceRecordingIndicator: .systemRed,
         voiceRecordingStopColor: .systemRed,
-        pollBarFilled: .systemBlue,
-        pollBarEmpty: UIColor(white: 0.9, alpha: 1),
-        pollSelectedCheck: .systemBlue,
+        pollBarFilled: UIColor(red: 0.35, green: 0.65, blue: 0.95, alpha: 1),
+        pollBarEmpty: UIColor(white: 0.0, alpha: 0.05),
+        pollSelectedBorder: .clear,
+        pollSubtitleColor: UIColor(white: 0.0, alpha: 0.4),
         mediaPlaceholderBackground: UIColor(white: 0.9, alpha: 1),
         mediaPlayIconColor: .white,
         mediaPlayShadowColor: .black,
@@ -321,9 +324,10 @@ extension ChatTheme {
         voiceWaveformInactive: UIColor(white: 0.35, alpha: 1),
         voiceRecordingIndicator: .systemRed,
         voiceRecordingStopColor: .systemRed,
-        pollBarFilled: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
-        pollBarEmpty: UIColor(white: 0.2, alpha: 1),
-        pollSelectedCheck: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        pollBarFilled: UIColor(red: 0.35, green: 0.6, blue: 0.9, alpha: 1),
+        pollBarEmpty: UIColor(white: 1.0, alpha: 0.06),
+        pollSelectedBorder: .clear,
+        pollSubtitleColor: UIColor(white: 1.0, alpha: 0.4),
         mediaPlaceholderBackground: UIColor(white: 0.2, alpha: 1),
         mediaPlayIconColor: .white,
         mediaPlayShadowColor: .black,

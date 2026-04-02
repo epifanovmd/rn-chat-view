@@ -92,6 +92,7 @@ struct PollPayload: Equatable, Hashable {
     let selectedOptionIds: [String]
     let isMultipleChoice: Bool
     let isClosed: Bool
+    let isAnonymous: Bool
 }
 
 struct FilePayload: Equatable, Hashable {

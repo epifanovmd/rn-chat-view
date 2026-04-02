@@ -21,7 +21,7 @@ enum ChatDemoData {
             // 1. Plain text (incoming)
             ChatMessage(
                 id: "1",
-                content: MessageContent(text: "Hey! How's it going?", media: nil, voice: nil, poll: nil, files: nil),
+                content: MessageContent(text: "Привет! Как дела?", media: nil, voice: nil, poll: nil, files: nil),
                 timestamp: cal.date(byAdding: .hour, value: -25, to: now)!,
                 senderName: otherUser,
                 isMine: false,
@@ -37,7 +37,7 @@ enum ChatDemoData {
             // 2. Plain text (outgoing, read)
             ChatMessage(
                 id: "2",
-                content: MessageContent(text: "Hi Alice! All good, working on the chat component 🚀", media: nil, voice: nil, poll: nil, files: nil),
+                content: MessageContent(text: "Привет, Алиса! Всё отлично, работаю над компонентом чата 🚀", media: nil, voice: nil, poll: nil, files: nil),
                 timestamp: cal.date(byAdding: .hour, value: -24, to: now)!,
                 senderName: nil,
                 isMine: true,
@@ -53,13 +53,13 @@ enum ChatDemoData {
             // 3. Reply message (incoming)
             ChatMessage(
                 id: "3",
-                content: MessageContent(text: "Sounds great! Can you share the design?", media: nil, voice: nil, poll: nil, files: nil),
+                content: MessageContent(text: "Звучит здорово! Можешь показать дизайн?", media: nil, voice: nil, poll: nil, files: nil),
                 timestamp: cal.date(byAdding: .hour, value: -23, to: now)!,
                 senderName: otherUser,
                 isMine: false,
                 groupDate: yesterday,
                 status: .read,
-                reply: ReplyInfo(replyToId: "2", senderName: "You", text: "Hi Alice! All good, working on the chat component 🚀", hasImage: false),
+                reply: ReplyInfo(replyToId: "2", senderName: "Вы", text: "Привет, Алиса! Всё отлично, работаю над компонентом чата 🚀", hasImage: false),
                 forwardedFrom: nil,
                 reactions: [],
                 isEdited: false,
@@ -70,7 +70,7 @@ enum ChatDemoData {
             ChatMessage(
                 id: "4",
                 content: MessageContent(
-                    text: "Here's the mockup",
+                    text: "Вот макет",
                     media: [
                         .image(ImageItem(
                             url: "https://picsum.photos/id/1/400/300",
@@ -225,7 +225,7 @@ enum ChatDemoData {
             ChatMessage(
                 id: "7",
                 content: MessageContent(
-                    text: "Here are the project files",
+                    text: "Вот файлы проекта",
                     media: nil, voice: nil, poll: nil,
                     files: [
                         FilePayload(url: "https://example.com/report.pdf", name: "Q4_Report_2025.pdf", size: 2_540_000, mimeType: "application/pdf"),
@@ -245,23 +245,24 @@ enum ChatDemoData {
                 actions: defaultActions
             ),
 
-            // 8. Poll message (outgoing)
+            // 8. Poll message (outgoing, single choice)
             ChatMessage(
                 id: "8",
                 content: MessageContent(
                     text: nil, media: nil, voice: nil,
                     poll: PollPayload(
                         id: "poll-1",
-                        question: "When should we have the team meeting?",
+                        question: "Когда проведём командную встречу?",
                         options: [
-                            PollOption(id: "opt-1", text: "Monday 10 AM", votes: 3, percentage: 0.5),
-                            PollOption(id: "opt-2", text: "Tuesday 2 PM", votes: 2, percentage: 0.33),
-                            PollOption(id: "opt-3", text: "Wednesday 11 AM", votes: 1, percentage: 0.17),
+                            PollOption(id: "opt-1", text: "Понедельник 10:00", votes: 3, percentage: 0.5),
+                            PollOption(id: "opt-2", text: "Вторник 14:00", votes: 2, percentage: 0.33),
+                            PollOption(id: "opt-3", text: "Среда 11:00", votes: 1, percentage: 0.17),
                         ],
                         totalVotes: 6,
                         selectedOptionIds: ["opt-1"],
                         isMultipleChoice: false,
-                        isClosed: false
+                        isClosed: false,
+                        isAnonymous: false
                     ),
                     files: nil
                 ),
@@ -277,10 +278,77 @@ enum ChatDemoData {
                 actions: defaultActions
             ),
 
+            // 8b. Poll message (incoming, multiple choice)
+            ChatMessage(
+                id: "8b",
+                content: MessageContent(
+                    text: nil, media: nil, voice: nil,
+                    poll: PollPayload(
+                        id: "poll-2",
+                        question: "Какие технологии используем в новом проекте?",
+                        options: [
+                            PollOption(id: "tech-1", text: "Swift + UIKit", votes: 5, percentage: 0.36),
+                            PollOption(id: "tech-2", text: "SwiftUI", votes: 4, percentage: 0.29),
+                            PollOption(id: "tech-3", text: "React Native", votes: 3, percentage: 0.21),
+                            PollOption(id: "tech-4", text: "Flutter", votes: 2, percentage: 0.14),
+                        ],
+                        totalVotes: 14,
+                        selectedOptionIds: ["tech-1", "tech-2"],
+                        isMultipleChoice: true,
+                        isClosed: false,
+                        isAnonymous: true
+                    ),
+                    files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -1, to: now)!.addingTimeInterval(-1800),
+                senderName: otherUser,
+                isMine: false,
+                groupDate: today,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 8c. Closed poll (outgoing)
+            ChatMessage(
+                id: "8c",
+                content: MessageContent(
+                    text: nil, media: nil, voice: nil,
+                    poll: PollPayload(
+                        id: "poll-3",
+                        question: "Где проведём корпоратив?",
+                        options: [
+                            PollOption(id: "loc-1", text: "Ресторан", votes: 8, percentage: 0.53),
+                            PollOption(id: "loc-2", text: "Загородный дом", votes: 5, percentage: 0.33),
+                            PollOption(id: "loc-3", text: "Боулинг", votes: 2, percentage: 0.14),
+                        ],
+                        totalVotes: 15,
+                        selectedOptionIds: ["loc-1"],
+                        isMultipleChoice: false,
+                        isClosed: true,
+                        isAnonymous: false
+                    ),
+                    files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -1, to: now)!.addingTimeInterval(-900),
+                senderName: nil,
+                isMine: true,
+                groupDate: today,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
             // 9. Forwarded message (incoming)
             ChatMessage(
                 id: "9",
-                content: MessageContent(text: "The deployment is scheduled for Friday at 6 PM UTC. Please make sure all PRs are merged by Thursday EOD.", media: nil, voice: nil, poll: nil, files: nil),
+                content: MessageContent(text: "Деплой запланирован на пятницу в 18:00 UTC. Убедитесь, что все PR смержены до конца четверга.", media: nil, voice: nil, poll: nil, files: nil),
                 timestamp: cal.date(byAdding: .hour, value: -1, to: now)!,
                 senderName: otherUser,
                 isMine: false,
@@ -296,7 +364,7 @@ enum ChatDemoData {
             // 10. Edited message (outgoing, sent)
             ChatMessage(
                 id: "10",
-                content: MessageContent(text: "Got it, I'll finish my PR today", media: nil, voice: nil, poll: nil, files: nil),
+                content: MessageContent(text: "Понял, закончу свой PR сегодня", media: nil, voice: nil, poll: nil, files: nil),
                 timestamp: cal.date(byAdding: .minute, value: -30, to: now)!,
                 senderName: nil,
                 isMine: true,
@@ -313,7 +381,7 @@ enum ChatDemoData {
             ChatMessage(
                 id: "11",
                 content: MessageContent(
-                    text: "By the way, I wanted to mention that the new API endpoint for user preferences is ready for testing. The documentation has been updated in Confluence. You can find the Swagger specs at /api/v2/preferences. Let me know if you have any questions or run into issues!",
+                    text: "Кстати, хотела сказать, что новый API-эндпоинт для пользовательских настроек готов к тестированию. Документация обновлена в Confluence. Swagger-спеки по адресу /api/v2/preferences. Напиши, если будут вопросы!",
                     media: nil, voice: nil, poll: nil, files: nil
                 ),
                 timestamp: cal.date(byAdding: .minute, value: -10, to: now)!,
@@ -334,13 +402,13 @@ enum ChatDemoData {
             // 12. Sending message (outgoing, sending status)
             ChatMessage(
                 id: "12",
-                content: MessageContent(text: "Thanks, will check it out right now!", media: nil, voice: nil, poll: nil, files: nil),
+                content: MessageContent(text: "Спасибо, сейчас посмотрю!", media: nil, voice: nil, poll: nil, files: nil),
                 timestamp: now,
                 senderName: nil,
                 isMine: true,
                 groupDate: today,
                 status: .sending,
-                reply: ReplyInfo(replyToId: "11", senderName: otherUser, text: "By the way, I wanted to mention that the new API endpoint...", hasImage: false),
+                reply: ReplyInfo(replyToId: "11", senderName: otherUser, text: "Кстати, хотела сказать, что новый API-эндпоинт...", hasImage: false),
                 forwardedFrom: nil,
                 reactions: [],
                 isEdited: false,
@@ -350,10 +418,10 @@ enum ChatDemoData {
     }
 
     private static let defaultActions: [MessageAction] = [
-        MessageAction(id: "reply", title: "Reply", systemImage: "arrowshape.turn.up.left", isDestructive: false),
-        MessageAction(id: "copy", title: "Copy", systemImage: "doc.on.doc", isDestructive: false),
-        MessageAction(id: "forward", title: "Forward", systemImage: "arrowshape.turn.up.right", isDestructive: false),
-        MessageAction(id: "delete", title: "Delete", systemImage: "trash", isDestructive: true),
+        MessageAction(id: "reply", title: "Ответить", systemImage: "arrowshape.turn.up.left", isDestructive: false),
+        MessageAction(id: "copy", title: "Копировать", systemImage: "doc.on.doc", isDestructive: false),
+        MessageAction(id: "forward", title: "Переслать", systemImage: "arrowshape.turn.up.right", isDestructive: false),
+        MessageAction(id: "delete", title: "Удалить", systemImage: "trash", isDestructive: true),
     ]
 }
 
@@ -363,6 +431,7 @@ private final class DebugPanelView: UIView {
 
     var onThemeChanged: ((ChatTheme) -> Void)?
     var onSenderNameChanged: ((Bool) -> Void)?
+    var onRandomizePolls: (() -> Void)?
 
     private let themeToggle: UISegmentedControl = {
         let control = UISegmentedControl(items: ["Light", "Dark"])
@@ -396,6 +465,14 @@ private final class DebugPanelView: UIView {
         return label
     }()
 
+    private let randomizePollsButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("🎲 Polls", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+
     private let separator: UIView = {
         let view = UIView()
         view.backgroundColor = .separator
@@ -418,10 +495,12 @@ private final class DebugPanelView: UIView {
         addSubview(themeToggle)
         addSubview(senderNameLabel)
         addSubview(senderNameToggle)
+        addSubview(randomizePollsButton)
         addSubview(separator)
 
         themeToggle.addTarget(self, action: #selector(themeToggleChanged), for: .valueChanged)
         senderNameToggle.addTarget(self, action: #selector(senderNameToggleChanged), for: .valueChanged)
+        randomizePollsButton.addTarget(self, action: #selector(randomizePollsTapped), for: .touchUpInside)
 
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
@@ -435,6 +514,9 @@ private final class DebugPanelView: UIView {
 
             senderNameToggle.leadingAnchor.constraint(equalTo: senderNameLabel.trailingAnchor, constant: 8),
             senderNameToggle.centerYAnchor.constraint(equalTo: themeToggle.centerYAnchor),
+
+            randomizePollsButton.leadingAnchor.constraint(equalTo: senderNameToggle.trailingAnchor, constant: 12),
+            randomizePollsButton.centerYAnchor.constraint(equalTo: themeToggle.centerYAnchor),
 
             themeToggle.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
 
@@ -452,6 +534,10 @@ private final class DebugPanelView: UIView {
 
     @objc private func senderNameToggleChanged() {
         onSenderNameChanged?(senderNameToggle.isOn)
+    }
+
+    @objc private func randomizePollsTapped() {
+        onRandomizePolls?()
     }
 }
 
@@ -508,6 +594,10 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             guard let self else { return }
             self.chatVC.showsSenderName = show
         }
+
+        debugPanel.onRandomizePolls = { [weak self] in
+            self?.randomizePolls()
+        }
     }
 
     // MARK: - Alert Helper
@@ -537,7 +627,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         if actionId == "reply", let msg = chatVC.message(forID: messageId) {
             chatVC.beginReply(info: ReplyInfo(
                 replyToId: messageId,
-                senderName: msg.senderName ?? "You",
+                senderName: msg.senderName ?? "Вы",
                 text: msg.content.text,
                 hasImage: msg.content.media?.isEmpty == false
             ))
@@ -601,11 +691,114 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     }
 
     func chatDidTapPollOption(messageId: String, pollId: String, optionId: String) {
-        showAlert("Poll Option", "poll: \(pollId)\noption: \(optionId)")
+        togglePollVote(messageId: messageId, optionId: optionId)
     }
 
     func chatDidTapPollDetail(messageId: String, pollId: String) {
         showAlert("Poll Detail", "poll: \(pollId)")
+    }
+
+    private func togglePollVote(messageId: String, optionId: String) {
+        var msgs = chatVC.messages
+        guard let idx = msgs.firstIndex(where: { $0.id == messageId }),
+              let poll = msgs[idx].content.poll,
+              !poll.isClosed else { return }
+
+        var selectedIds = poll.selectedOptionIds
+
+        if poll.isMultipleChoice {
+            if selectedIds.contains(optionId) {
+                selectedIds.removeAll { $0 == optionId }
+            } else {
+                selectedIds.append(optionId)
+            }
+        } else {
+            if selectedIds.contains(optionId) {
+                selectedIds.removeAll()
+            } else {
+                selectedIds = [optionId]
+            }
+        }
+
+        let updatedPoll = recalculatePoll(poll, selectedIds: selectedIds)
+        let msg = msgs[idx]
+        msgs[idx] = ChatMessage(
+            id: msg.id,
+            content: MessageContent(text: msg.content.text, media: msg.content.media, voice: msg.content.voice, poll: updatedPoll, files: msg.content.files),
+            timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
+            groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
+            forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
+            isEdited: msg.isEdited, actions: msg.actions
+        )
+        chatVC.updateMessages(msgs)
+    }
+
+    private func recalculatePoll(_ poll: PollPayload, selectedIds: [String]) -> PollPayload {
+        // Simulate: toggle changes vote count by 1
+        var options = poll.options
+        var totalVotes = 0
+
+        for i in 0..<options.count {
+            let opt = options[i]
+            let wasSelected = poll.selectedOptionIds.contains(opt.id)
+            let isNowSelected = selectedIds.contains(opt.id)
+            var votes = opt.votes
+
+            if !wasSelected && isNowSelected { votes += 1 }
+            if wasSelected && !isNowSelected { votes = max(0, votes - 1) }
+
+            options[i] = PollOption(id: opt.id, text: opt.text, votes: votes, percentage: 0)
+            totalVotes += votes
+        }
+
+        // Recalculate percentages
+        for i in 0..<options.count {
+            let pct: CGFloat = totalVotes > 0 ? CGFloat(options[i].votes) / CGFloat(totalVotes) : 0
+            options[i] = PollOption(id: options[i].id, text: options[i].text, votes: options[i].votes, percentage: pct)
+        }
+
+        return PollPayload(
+            id: poll.id, question: poll.question, options: options,
+            totalVotes: totalVotes, selectedOptionIds: selectedIds,
+            isMultipleChoice: poll.isMultipleChoice, isClosed: poll.isClosed, isAnonymous: poll.isAnonymous
+        )
+    }
+
+    private func randomizePolls() {
+        var msgs = chatVC.messages
+        for i in 0..<msgs.count {
+            guard let poll = msgs[i].content.poll, !poll.isClosed else { continue }
+
+            var options: [PollOption] = []
+            var totalVotes = 0
+            for opt in poll.options {
+                let votes = Int.random(in: 0...20)
+                options.append(PollOption(id: opt.id, text: opt.text, votes: votes, percentage: 0))
+                totalVotes += votes
+            }
+            for j in 0..<options.count {
+                let pct: CGFloat = totalVotes > 0 ? CGFloat(options[j].votes) / CGFloat(totalVotes) : 0
+                options[j] = PollOption(id: options[j].id, text: options[j].text, votes: options[j].votes, percentage: pct)
+            }
+
+            let randomSelected = options.filter { _ in Bool.random() }.map(\.id)
+            let updated = PollPayload(
+                id: poll.id, question: poll.question, options: options,
+                totalVotes: totalVotes, selectedOptionIds: randomSelected,
+                isMultipleChoice: poll.isMultipleChoice, isClosed: poll.isClosed, isAnonymous: poll.isAnonymous
+            )
+
+            let msg = msgs[i]
+            msgs[i] = ChatMessage(
+                id: msg.id,
+                content: MessageContent(text: msg.content.text, media: msg.content.media, voice: msg.content.voice, poll: updated, files: msg.content.files),
+                timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
+                groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
+                forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
+                isEdited: msg.isEdited, actions: msg.actions
+            )
+        }
+        chatVC.updateMessages(msgs)
     }
 
     func chatDidSendMessage(text: String, replyToId: String?) {

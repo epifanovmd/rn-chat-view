@@ -193,7 +193,7 @@ final class ChatViewController: UIViewController {
         emptyContainer.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(emptyContainer)
 
-        emptyLabel.text = NSLocalizedString("chat.empty", value: "No messages yet.\nBe the first!", comment: "")
+        emptyLabel.text = NSLocalizedString("chat.empty", value: "Сообщений пока нет.\nНапишите первым!", comment: "")
         emptyLabel.font = ChatLayout.current.emptyStateFont
         emptyLabel.textAlignment = .center
         emptyLabel.numberOfLines = 0
