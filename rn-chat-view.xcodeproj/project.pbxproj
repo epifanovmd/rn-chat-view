@@ -7,18 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1A9477BD2F7F05B9001D82F5 /* IGListDiffKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1A9477BC2F7F05B9001D82F5 /* IGListDiffKit */; };
-		1A9477BF2F7F05B9001D82F5 /* IGListKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1A9477BE2F7F05B9001D82F5 /* IGListKit */; };
-		1A9477C12F7F05B9001D82F5 /* IGListSwiftKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1A9477C02F7F05B9001D82F5 /* IGListSwiftKit */; };
+		3304458C20ED807CD5199F2B /* Pods_rn_chat_view.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		1A9477342F7F041B001D82F5 /* rn-chat-view.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "rn-chat-view.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_rn_chat_view.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3584ECF55590B7C027A9842 /* Pods-rn-chat-view.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-rn-chat-view.debug.xcconfig"; path = "Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view.debug.xcconfig"; sourceTree = "<group>"; };
+		DECBEC6C39920C6BEA089AC4 /* Pods-rn-chat-view.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-rn-chat-view.release.xcconfig"; path = "Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1A9477362F7F041B001D82F5 /* rn-chat-view */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = "rn-chat-view";
 			sourceTree = "<group>";
 		};
@@ -29,9 +32,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1A9477BD2F7F05B9001D82F5 /* IGListDiffKit in Frameworks */,
-				1A9477BF2F7F05B9001D82F5 /* IGListKit in Frameworks */,
-				1A9477C12F7F05B9001D82F5 /* IGListSwiftKit in Frameworks */,
+				3304458C20ED807CD5199F2B /* Pods_rn_chat_view.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -43,6 +44,8 @@
 			children = (
 				1A9477362F7F041B001D82F5 /* rn-chat-view */,
 				1A9477352F7F041B001D82F5 /* Products */,
+				1BFB2DF7D90AFAEC689DBE53 /* Pods */,
+				F152A6BE314B6DF33D4CE5A5 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -54,6 +57,23 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		1BFB2DF7D90AFAEC689DBE53 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				D3584ECF55590B7C027A9842 /* Pods-rn-chat-view.debug.xcconfig */,
+				DECBEC6C39920C6BEA089AC4 /* Pods-rn-chat-view.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		F152A6BE314B6DF33D4CE5A5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -61,9 +81,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1A94773F2F7F041D001D82F5 /* Build configuration list for PBXNativeTarget "rn-chat-view" */;
 			buildPhases = (
+				11317227047E989CEC5ACFAF /* [CP] Check Pods Manifest.lock */,
 				1A9477302F7F041B001D82F5 /* Sources */,
 				1A9477312F7F041B001D82F5 /* Frameworks */,
 				1A9477322F7F041B001D82F5 /* Resources */,
+				D46E2CCD46863AC4043A7F86 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -73,11 +95,6 @@
 				1A9477362F7F041B001D82F5 /* rn-chat-view */,
 			);
 			name = "rn-chat-view";
-			packageProductDependencies = (
-				1A9477BC2F7F05B9001D82F5 /* IGListDiffKit */,
-				1A9477BE2F7F05B9001D82F5 /* IGListKit */,
-				1A9477C02F7F05B9001D82F5 /* IGListSwiftKit */,
-			);
 			productName = "rn-chat-view";
 			productReference = 1A9477342F7F041B001D82F5 /* rn-chat-view.app */;
 			productType = "com.apple.product-type.application";
@@ -106,9 +123,6 @@
 			);
 			mainGroup = 1A94772B2F7F041B001D82F5;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-				1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */,
-			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A9477352F7F041B001D82F5 /* Products */;
 			projectDirPath = "";
@@ -128,6 +142,48 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		11317227047E989CEC5ACFAF /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-rn-chat-view-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		D46E2CCD46863AC4043A7F86 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		1A9477302F7F041B001D82F5 /* Sources */ = {
@@ -263,6 +319,7 @@
 		};
 		1A9477402F7F041D001D82F5 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = D3584ECF55590B7C027A9842 /* Pods-rn-chat-view.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -295,6 +352,7 @@
 		};
 		1A9477412F7F041D001D82F5 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = DECBEC6C39920C6BEA089AC4 /* Pods-rn-chat-view.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -347,35 +405,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/instagram/IGListKit";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.2.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		1A9477BC2F7F05B9001D82F5 /* IGListDiffKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */;
-			productName = IGListDiffKit;
-		};
-		1A9477BE2F7F05B9001D82F5 /* IGListKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */;
-			productName = IGListKit;
-		};
-		1A9477C02F7F05B9001D82F5 /* IGListSwiftKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */;
-			productName = IGListSwiftKit;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1A94772C2F7F041B001D82F5 /* Project object */;
 }
