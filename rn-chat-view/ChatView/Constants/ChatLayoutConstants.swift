@@ -164,17 +164,21 @@ struct ChatLayout {
     // MARK: - Файл
 
     /// Размер иконки файла
-    var fileIconSize: CGFloat = 40
+    var fileIconSize: CGFloat = 32
     /// Размер SF Symbol иконки файла
-    var fileIconPointSize: CGFloat = 22
+    var fileIconPointSize: CGFloat = 16
     /// Шрифт имени файла
-    var fileNameFont: UIFont = .systemFont(ofSize: 15, weight: .medium)
+    var fileNameFont: UIFont = .systemFont(ofSize: 13, weight: .medium)
     /// Шрифт размера файла
-    var fileSizeFont: UIFont = .systemFont(ofSize: 13)
+    var fileSizeFont: UIFont = .systemFont(ofSize: 11)
     /// Интервал между строками файлов
     var fileRowSpacing: CGFloat = 2
     /// Интервал между иконкой и текстом в строке файла
-    var fileContentSpacing: CGFloat = 8
+    var fileContentSpacing: CGFloat = 6
+    /// Внутренний отступ карточки файла
+    var filePadding: CGFloat = 6
+    /// Радиус скругления карточки файла
+    var fileCornerRadius: CGFloat = 8
 
     // MARK: - Только эмодзи
 

@@ -15,34 +15,41 @@ final class FileContentView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        let L = ChatLayout.current
+
+        layer.cornerRadius = L.fileCornerRadius
+        layer.masksToBounds = true
+
+        let config = UIImage.SymbolConfiguration(pointSize: L.fileIconPointSize, weight: .regular)
         iconView.image = UIImage(systemName: "doc.fill", withConfiguration: config)
         iconView.contentMode = .center
         iconView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(iconView)
 
-        nameLabel.font = ChatLayout.current.fileNameFont
+        nameLabel.font = L.fileNameFont
         nameLabel.numberOfLines = 1
         nameLabel.lineBreakMode = .byTruncatingMiddle
         nameLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(nameLabel)
 
-        sizeLabel.font = ChatLayout.current.fileSizeFont
+        sizeLabel.font = L.fileSizeFont
         sizeLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(sizeLabel)
 
+        let pad = L.filePadding
+
         NSLayoutConstraint.activate([
-            iconView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: pad),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: ChatLayout.current.fileIconSize),
-            iconView.heightAnchor.constraint(equalToConstant: ChatLayout.current.fileIconSize),
-            nameLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 8),
-            nameLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
-            nameLabel.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            iconView.widthAnchor.constraint(equalToConstant: L.fileIconSize),
+            iconView.heightAnchor.constraint(equalToConstant: L.fileIconSize),
+            nameLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: L.fileContentSpacing),
+            nameLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -pad),
+            nameLabel.topAnchor.constraint(equalTo: topAnchor, constant: pad),
             sizeLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            sizeLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 2),
-            sizeLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
-            heightAnchor.constraint(greaterThanOrEqualToConstant: ChatLayout.current.fileIconSize + 8),
+            sizeLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 1),
+            sizeLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -pad),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: L.fileIconSize + pad * 2),
         ])
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
@@ -50,6 +57,7 @@ final class FileContentView: UIView {
     }
 
     func configure(file: FilePayload, isMine: Bool, theme: ChatTheme) {
+        backgroundColor = isMine ? theme.outgoingFileBackground : theme.incomingFileBackground
         nameLabel.text = file.name
         nameLabel.textColor = isMine ? theme.outgoingText : theme.incomingText
         sizeLabel.text = formatSize(file.size)
@@ -65,7 +73,7 @@ final class FileContentView: UIView {
         case "mp4", "mov", "avi": icon = "film"
         default: icon = "doc.fill"
         }
-        let cfg = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        let cfg = UIImage.SymbolConfiguration(pointSize: ChatLayout.current.fileIconPointSize, weight: .regular)
         iconView.image = UIImage(systemName: icon, withConfiguration: cfg)
     }
 

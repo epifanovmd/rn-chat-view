@@ -28,6 +28,18 @@ enum MessageSizeCalculator {
             senderNameW = textWidth(name, font: ChatLayout.current.senderNameFont) + ChatLayout.current.bubbleHPad * 2
         }
 
+        // Minimum width from reply preview
+        var replyW: CGFloat = 0
+        if let reply = msg.reply {
+            let L = ChatLayout.current
+            let replyInner = L.replyAccentWidth + 8 + 8 // accent + leading pad + trailing pad
+            let senderW = textWidth(reply.senderName ?? "", font: L.replySenderFont)
+            let textW = textWidth(reply.text ?? "…", font: L.replyFont)
+            let replyContentW = max(senderW, textW)
+            let minReplyW = min(replyContentW + replyInner, maxW * 0.7)
+            replyW = minReplyW + L.bubbleHPad * 2
+        }
+
         // Any media → max width
         if content.hasMedia {
             return maxW
@@ -38,10 +50,10 @@ enum MessageSizeCalculator {
             let tw = textWidth(text, font: ChatLayout.current.messageFont)
             let minW = minFooterWidth(for: msg)
             let contentW = max(tw + ChatLayout.current.bubbleHPad * 2, minW + ChatLayout.current.bubbleHPad * 2)
-            return min(max(contentW, senderNameW), maxW)
+            return min(max(contentW, max(senderNameW, replyW)), maxW)
         }
 
-        return max(ChatLayout.current.bubbleMinWidth, senderNameW)
+        return min(max(ChatLayout.current.bubbleMinWidth, max(senderNameW, replyW)), maxW)
     }
 
     // MARK: - Bubble Height
@@ -96,8 +108,9 @@ enum MessageSizeCalculator {
         if let poll = content.poll {
             h += pollHeight(poll, width: width)
         } else if let files = content.files, !files.isEmpty {
-            let fileRowH = ChatLayout.current.fileIconSize + 8
-            h += fileRowH * CGFloat(files.count) + 2 * CGFloat(max(0, files.count - 1))
+            let L = ChatLayout.current
+            let fileRowH = L.fileIconSize + L.filePadding * 2
+            h += fileRowH * CGFloat(files.count) + L.fileRowSpacing * CGFloat(max(0, files.count - 1))
         } else if content.voice != nil {
             h += ChatLayout.current.voicePlaySize
         } else if let media = content.media, !media.isEmpty {

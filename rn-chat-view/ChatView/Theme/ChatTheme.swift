@@ -72,6 +72,13 @@ struct ChatTheme {
     /// Цвет акцентной полоски пересланного во входящем
     var incomingForwardedAccent: UIColor
 
+    // MARK: - Файл
+
+    /// Фон карточки файла в исходящем сообщении
+    var outgoingFileBackground: UIColor
+    /// Фон карточки файла во входящем сообщении
+    var incomingFileBackground: UIColor
+
     // MARK: - Реакции
 
     /// Фон чипа реакции (чужой)
@@ -213,6 +220,8 @@ extension ChatTheme {
         incomingForwardedLabel: .systemBlue,
         outgoingForwardedAccent: UIColor(red: 0.2, green: 0.6, blue: 0.35, alpha: 1),
         incomingForwardedAccent: .systemBlue,
+        outgoingFileBackground: UIColor(red: 0.78, green: 0.93, blue: 0.74, alpha: 1),
+        incomingFileBackground: UIColor(red: 0.93, green: 0.93, blue: 0.95, alpha: 1),
         reactionBackground: UIColor(white: 0.93, alpha: 1),
         reactionMineBackground: UIColor.systemBlue.withAlphaComponent(0.15),
         reactionText: .black,
@@ -283,6 +292,8 @@ extension ChatTheme {
         incomingForwardedLabel: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
         outgoingForwardedAccent: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
         incomingForwardedAccent: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        outgoingFileBackground: UIColor(red: 0.14, green: 0.27, blue: 0.40, alpha: 1),
+        incomingFileBackground: UIColor(red: 0.14, green: 0.18, blue: 0.24, alpha: 1),
         reactionBackground: UIColor(white: 0.2, alpha: 1),
         reactionMineBackground: UIColor.systemBlue.withAlphaComponent(0.25),
         reactionText: .white,

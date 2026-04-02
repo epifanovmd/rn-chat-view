@@ -221,14 +221,16 @@ enum ChatDemoData {
                 actions: defaultActions
             ),
 
-            // 7. File message (incoming)
+            // 7. File message (incoming, multiple files)
             ChatMessage(
                 id: "7",
                 content: MessageContent(
-                    text: "Check out this document",
+                    text: "Here are the project files",
                     media: nil, voice: nil, poll: nil,
                     files: [
                         FilePayload(url: "https://example.com/report.pdf", name: "Q4_Report_2025.pdf", size: 2_540_000, mimeType: "application/pdf"),
+                        FilePayload(url: "https://example.com/design.zip", name: "UI_Design_Assets.zip", size: 15_800_000, mimeType: "application/zip"),
+                        FilePayload(url: "https://example.com/track.mp3", name: "notification_sound.mp3", size: 340_000, mimeType: "audio/mpeg"),
                     ]
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -3, to: now)!,
@@ -508,20 +510,30 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         }
     }
 
+    // MARK: - Alert Helper
+
+    private func showAlert(_ title: String, _ message: String? = nil) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+
     // MARK: - ChatViewControllerDelegate
 
     func chatDidScroll(offset: CGPoint) {}
-    func chatDidReachTop(distance: CGFloat) { print("[Demo] Reached top, distance: \(distance)") }
-    func chatDidReachBottom(distance: CGFloat) { print("[Demo] Reached bottom, distance: \(distance)") }
-    func chatMessagesDidAppear(ids: [String]) { print("[Demo] Visible: \(ids)") }
+    func chatDidReachTop(distance: CGFloat) { showAlert("Reached Top", "distance: \(Int(distance))") }
+    func chatDidReachBottom(distance: CGFloat) {}
+    func chatMessagesDidAppear(ids: [String]) {}
 
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {
-        print("[Demo] Tapped message \(id), attachment: \(String(describing: attachmentIndex))")
+        if let idx = attachmentIndex {
+            showAlert("Tap Message", "id: \(id)\nattachment: \(idx)")
+        } else {
+            showAlert("Tap Message", "id: \(id)")
+        }
     }
 
     func chatDidSelectAction(actionId: String, messageId: String) {
-        print("[Demo] Action \(actionId) on message \(messageId)")
-
         if actionId == "reply", let msg = chatVC.message(forID: messageId) {
             chatVC.beginReply(info: ReplyInfo(
                 replyToId: messageId,
@@ -529,28 +541,71 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
                 text: msg.content.text,
                 hasImage: msg.content.media?.isEmpty == false
             ))
+            return
         }
+        showAlert("Action: \(actionId)", "message: \(messageId)")
     }
 
     func chatDidSelectEmojiReaction(emoji: String, messageId: String) {
-        print("[Demo] Reaction \(emoji) on message \(messageId)")
+        toggleReaction(emoji: emoji, messageId: messageId)
     }
 
     func chatDidTapReaction(messageId: String, emoji: String) {
-        print("[Demo] Tapped reaction \(emoji) on \(messageId)")
+        toggleReaction(emoji: emoji, messageId: messageId)
+    }
+
+    private func toggleReaction(emoji: String, messageId: String) {
+        var msgs = chatVC.messages
+        guard let idx = msgs.firstIndex(where: { $0.id == messageId }) else { return }
+
+        let msg = msgs[idx]
+        var reactions = msg.reactions
+
+        if let rIdx = reactions.firstIndex(where: { $0.emoji == emoji }) {
+            let existing = reactions[rIdx]
+            if existing.isMine {
+                // Remove my reaction
+                if existing.count <= 1 {
+                    reactions.remove(at: rIdx)
+                } else {
+                    reactions[rIdx] = Reaction(emoji: emoji, count: existing.count - 1, isMine: false)
+                }
+            } else {
+                // Add my reaction to existing
+                reactions[rIdx] = Reaction(emoji: emoji, count: existing.count + 1, isMine: true)
+            }
+        } else {
+            // New reaction
+            reactions.append(Reaction(emoji: emoji, count: 1, isMine: true))
+        }
+
+        msgs[idx] = ChatMessage(
+            id: msg.id,
+            content: msg.content,
+            timestamp: msg.timestamp,
+            senderName: msg.senderName,
+            isMine: msg.isMine,
+            groupDate: msg.groupDate,
+            status: msg.status,
+            reply: msg.reply,
+            forwardedFrom: msg.forwardedFrom,
+            reactions: reactions,
+            isEdited: msg.isEdited,
+            actions: msg.actions
+        )
+        chatVC.updateMessages(msgs)
     }
 
     func chatDidTapReplyMessage(id: String) {
-        print("[Demo] Tapped reply to \(id)")
         chatVC.scrollToMessage(id: id, position: "center", animated: true, highlight: true)
     }
 
     func chatDidTapPollOption(messageId: String, pollId: String, optionId: String) {
-        print("[Demo] Poll \(pollId) option \(optionId) tapped")
+        showAlert("Poll Option", "poll: \(pollId)\noption: \(optionId)")
     }
 
     func chatDidTapPollDetail(messageId: String, pollId: String) {
-        print("[Demo] Poll \(pollId) detail tapped")
+        showAlert("Poll Detail", "poll: \(pollId)")
     }
 
     func chatDidSendMessage(text: String, replyToId: String?) {
@@ -582,19 +637,19 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     }
 
     func chatDidEditMessage(text: String, messageId: String) {
-        print("[Demo] Edit message \(messageId): \"\(text)\"")
+        showAlert("Edit Message", "id: \(messageId)\ntext: \(text)")
     }
 
     func chatDidCancelInputAction(type: String) {
-        print("[Demo] Cancel input action: \(type)")
+        showAlert("Cancel", "type: \(type)")
     }
 
     func chatDidTapAttachment() {
-        print("[Demo] Attachment tapped")
+        showAlert("Attachment", "Tap attachment button")
     }
 
     func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval) {
-        print("[Demo] Voice recording: \(fileURL), duration: \(duration)s")
+        showAlert("Voice Recording", "duration: \(String(format: "%.1f", duration))s\nfile: \(fileURL.lastPathComponent)")
     }
 
     func chatDidChangeInputText(_ text: String) {}

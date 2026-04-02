@@ -347,14 +347,20 @@ final class ChatInputBar: UIView {
     func cancelMode() {
         let previousMode = mode
         mode = .normal
-        textView.text = ""
-        placeholderLabel.isHidden = false
-        updateTextViewHeight()
-        updateSendButtonVisibility()
         showReplyPanel(false)
 
-        if case .edit = previousMode {
+        switch previousMode {
+        case .edit:
+            textView.text = ""
+            placeholderLabel.isHidden = false
+            updateTextViewHeight()
+            updateSendButtonVisibility()
             textView.resignFirstResponder()
+        case .reply:
+            // Keep text and keyboard focus
+            break
+        default:
+            break
         }
     }
 
@@ -381,8 +387,20 @@ final class ChatInputBar: UIView {
     // MARK: - Private
 
     private func showReplyPanel(_ show: Bool) {
-        replyPanelHeight.constant = show ? ChatLayout.current.inputReplyPanelHeight : 0
-        UIView.animate(withDuration: 0.2) { self.layoutIfNeeded() }
+        if show {
+            replyPanel.alpha = 0
+            replyPanelHeight.constant = ChatLayout.current.inputReplyPanelHeight
+            UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
+                self.replyPanel.alpha = 1
+                self.superview?.layoutIfNeeded()
+            }
+        } else {
+            replyPanelHeight.constant = 0
+            UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseIn, animations: {
+                self.replyPanel.alpha = 0
+                self.superview?.layoutIfNeeded()
+            })
+        }
     }
 
     private func updateTextViewHeight() {
