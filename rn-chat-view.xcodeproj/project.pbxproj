@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1A9477BD2F7F05B9001D82F5 /* IGListDiffKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1A9477BC2F7F05B9001D82F5 /* IGListDiffKit */; };
+		1A9477BF2F7F05B9001D82F5 /* IGListKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1A9477BE2F7F05B9001D82F5 /* IGListKit */; };
+		1A9477C12F7F05B9001D82F5 /* IGListSwiftKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1A9477C02F7F05B9001D82F5 /* IGListSwiftKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		1A9477342F7F041B001D82F5 /* rn-chat-view.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "rn-chat-view.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +29,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A9477BD2F7F05B9001D82F5 /* IGListDiffKit in Frameworks */,
+				1A9477BF2F7F05B9001D82F5 /* IGListKit in Frameworks */,
+				1A9477C12F7F05B9001D82F5 /* IGListSwiftKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +74,9 @@
 			);
 			name = "rn-chat-view";
 			packageProductDependencies = (
+				1A9477BC2F7F05B9001D82F5 /* IGListDiffKit */,
+				1A9477BE2F7F05B9001D82F5 /* IGListKit */,
+				1A9477C02F7F05B9001D82F5 /* IGListSwiftKit */,
 			);
 			productName = "rn-chat-view";
 			productReference = 1A9477342F7F041B001D82F5 /* rn-chat-view.app */;
@@ -94,6 +106,9 @@
 			);
 			mainGroup = 1A94772B2F7F041B001D82F5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A9477352F7F041B001D82F5 /* Products */;
 			projectDirPath = "";
@@ -332,6 +347,35 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/instagram/IGListKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1A9477BC2F7F05B9001D82F5 /* IGListDiffKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */;
+			productName = IGListDiffKit;
+		};
+		1A9477BE2F7F05B9001D82F5 /* IGListKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */;
+			productName = IGListKit;
+		};
+		1A9477C02F7F05B9001D82F5 /* IGListSwiftKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A9477BB2F7F05B9001D82F5 /* XCRemoteSwiftPackageReference "IGListKit" */;
+			productName = IGListSwiftKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1A94772C2F7F041B001D82F5 /* Project object */;
 }

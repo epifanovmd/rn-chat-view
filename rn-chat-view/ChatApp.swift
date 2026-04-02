@@ -8,10 +8,11 @@
 import SwiftUI
 
 @main
-struct rn_chat_viewApp: App {
+struct ChatApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ChatDemoView()
+                .ignoresSafeArea()
         }
     }
 }
