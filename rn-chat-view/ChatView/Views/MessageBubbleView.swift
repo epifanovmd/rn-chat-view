@@ -45,6 +45,7 @@ final class MessageBubbleView: UIView {
 
         stack.axis = .vertical
         stack.spacing = ChatLayout.current.bubbleSpacing
+        stack.alignment = .fill
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
@@ -215,7 +216,8 @@ final class MessageBubbleView: UIView {
 
         // Reactions
         if !message.reactions.isEmpty {
-            reactionsView.configure(reactions: message.reactions, theme: theme)
+            let maxReactionWidth = bubbleWidth - ChatLayout.current.bubbleHPad * 2
+            reactionsView.configure(reactions: message.reactions, theme: theme, maxWidth: maxReactionWidth)
             reactionsView.onReactionTap = { [weak self] emoji in self?.onReactionTap?(emoji) }
             stack.addArrangedSubview(reactionsView)
         }

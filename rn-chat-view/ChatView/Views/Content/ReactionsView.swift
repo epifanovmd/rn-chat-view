@@ -4,6 +4,7 @@ final class ReactionsView: UIView {
     var onReactionTap: ((String) -> Void)?
 
     private var chipViews: [UIView] = []
+    private var currentMaxWidth: CGFloat = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -11,50 +12,72 @@ final class ReactionsView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(reactions: [Reaction], theme: ChatTheme) {
+    func configure(reactions: [Reaction], theme: ChatTheme, maxWidth: CGFloat) {
         chipViews.forEach { $0.removeFromSuperview() }
         chipViews.removeAll()
+        currentMaxWidth = maxWidth
 
+        let spacing = ChatLayout.current.reactionChipSpacing
         var x: CGFloat = 0
+        var y: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        
         for reaction in reactions {
             let chip = makeChip(reaction: reaction, theme: theme)
-            chip.frame.origin = CGPoint(x: x, y: 0)
+            let chipWidth = chip.bounds.width
+            
+            // Перенос на новую строку
+            if x + chipWidth > maxWidth && x > 0 {
+                x = 0
+                y += lineHeight + spacing
+                lineHeight = 0
+            }
+            
+            chip.frame = CGRect(x: x, y: y, width: chipWidth, height: ChatLayout.current.reactionChipHeight)
             addSubview(chip)
             chipViews.append(chip)
-            x += chip.bounds.width + ChatLayout.current.reactionChipSpacing
+            
+            x += chipWidth + spacing
+            lineHeight = max(lineHeight, ChatLayout.current.reactionChipHeight)
         }
-
-        let totalW = max(0, x - ChatLayout.current.reactionChipSpacing)
+        
+        let totalHeight = y + lineHeight
+        frame.size = CGSize(width: maxWidth, height: totalHeight)
         invalidateIntrinsicContentSize()
-        frame.size = CGSize(width: totalW, height: ChatLayout.current.reactionChipHeight)
     }
 
     override var intrinsicContentSize: CGSize {
-        let w = chipViews.reduce(CGFloat(0)) { $0 + $1.bounds.width + ChatLayout.current.reactionChipSpacing }
-        return CGSize(width: max(0, w - ChatLayout.current.reactionChipSpacing), height: ChatLayout.current.reactionChipHeight)
+        return frame.size
     }
 
     private func makeChip(reaction: Reaction, theme: ChatTheme) -> UIView {
         let container = UIView()
-        container.layer.cornerRadius = ChatLayout.current.reactionChipHeight / 2
+        let L = ChatLayout.current
+        container.layer.cornerRadius = L.reactionChipHeight / 2
 
         if reaction.isMine {
             container.backgroundColor = theme.reactionMineBackground
-            container.layer.borderWidth = ChatLayout.current.reactionBorderWidth
+            container.layer.borderWidth = L.reactionBorderWidth
             container.layer.borderColor = theme.reactionMineBorder.cgColor
         } else {
             container.backgroundColor = theme.reactionBackground
         }
 
         let label = UILabel()
-        label.font = ChatLayout.current.reactionFont
+        label.font = L.reactionFont
         label.text = "\(reaction.emoji) \(reaction.count)"
         label.textColor = theme.reactionText
         label.sizeToFit()
 
-        label.frame.origin = CGPoint(x: 8, y: (ChatLayout.current.reactionChipHeight - label.bounds.height) / 2)
+        let chipWidth = label.bounds.width + 16
+        label.frame = CGRect(
+            x: 8,
+            y: (L.reactionChipHeight - label.bounds.height) / 2,
+            width: label.bounds.width,
+            height: label.bounds.height
+        )
         container.addSubview(label)
-        container.frame.size = CGSize(width: label.bounds.width + 16, height: ChatLayout.current.reactionChipHeight)
+        container.frame.size = CGSize(width: chipWidth, height: L.reactionChipHeight)
 
         let emoji = reaction.emoji
         let tap = UITapGestureRecognizer(target: self, action: #selector(chipTapped(_:)))

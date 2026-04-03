@@ -15,24 +15,29 @@ enum MessageSizeCalculator {
     static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, showSenderName: Bool = false) -> CGFloat {
         let maxW = containerWidth * ChatLayout.current.bubbleMaxWidthRatio
         let content = msg.content
+        let L = ChatLayout.current
 
         if !content.hasMedia, let count = EmojiHelper.emojiOnlyCount(content.text) {
             let font = emojiFont(for: count)
             let tw = textWidth(content.text!, font: font)
-            return min(tw + ChatLayout.current.bubbleHPad * 2, maxW)
+            var w = min(tw + L.bubbleHPad * 2, maxW)
+            // Учитываем реакции для эмодзи
+            if !msg.reactions.isEmpty {
+                w = max(w, reactionWidth(for: msg.reactions) + L.bubbleHPad * 2)
+            }
+            return min(w, maxW)
         }
 
         // Minimum width from sender name
         var senderNameW: CGFloat = 0
         if showSenderName, let name = msg.senderName, !msg.isMine {
-            senderNameW = textWidth(name, font: ChatLayout.current.senderNameFont) + ChatLayout.current.bubbleHPad * 2
+            senderNameW = textWidth(name, font: L.senderNameFont) + L.bubbleHPad * 2
         }
 
         // Minimum width from reply preview
         var replyW: CGFloat = 0
         if let reply = msg.reply {
-            let L = ChatLayout.current
-            let replyInner = L.replyAccentWidth + 8 + 8 // accent + leading pad + trailing pad
+            let replyInner = L.replyAccentWidth + 8 + 8
             let senderW = textWidth(reply.senderName ?? "", font: L.replySenderFont)
             let textW = textWidth(reply.text ?? "…", font: L.replyFont)
             let replyContentW = max(senderW, textW)
@@ -40,69 +45,110 @@ enum MessageSizeCalculator {
             replyW = minReplyW + L.bubbleHPad * 2
         }
 
-        // Any media → max width
+        // Any media → учитываем реакции
         if content.hasMedia {
-            return maxW
+            var w = maxW
+            if !msg.reactions.isEmpty {
+                w = max(w, reactionWidth(for: msg.reactions) + L.bubbleHPad * 2)
+            }
+            return min(w, maxW)
         }
 
         // Text-only
         if let text = content.text {
-            let tw = textWidth(text, font: ChatLayout.current.messageFont)
+            let tw = textWidth(text, font: L.messageFont)
             let minW = minFooterWidth(for: msg)
-            let contentW = max(tw + ChatLayout.current.bubbleHPad * 2, minW + ChatLayout.current.bubbleHPad * 2)
-            return min(max(contentW, max(senderNameW, replyW)), maxW)
+            var contentW = max(tw + L.bubbleHPad * 2, minW + L.bubbleHPad * 2)
+            
+            // Учитываем ширину реакций
+            if !msg.reactions.isEmpty {
+                let reactionW = reactionWidth(for: msg.reactions) + L.bubbleHPad * 2
+                contentW = max(contentW, reactionW)
+            }
+            
+            let baseW = min(max(contentW, max(senderNameW, replyW)), maxW)
+            
+            // Если реакции не влезают, всё равно ограничиваем maxW
+            return baseW
         }
 
-        return min(max(ChatLayout.current.bubbleMinWidth, max(senderNameW, replyW)), maxW)
+        return min(max(L.bubbleMinWidth, max(senderNameW, replyW)), maxW)
     }
 
     // MARK: - Bubble Height
 
     static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, resolvedReply: ReplyDisplayInfo?, showSenderName: Bool = false) -> CGFloat {
         let content = msg.content
+        let L = ChatLayout.current
 
         if !content.hasMedia, let count = EmojiHelper.emojiOnlyCount(content.text) {
-            let L = ChatLayout.current
             let font = emojiFont(for: count)
             var h = textHeight(content.text!, font: font, width: bw - L.bubbleHPad * 2) + 8
+            
             if !msg.reactions.isEmpty {
-                h += L.reactionChipHeight + 4
+                // Вычисляем, сколько строк нужно для реакций
+                let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2)
+                h += CGFloat(reactionLines) * (L.reactionChipHeight + 4)
             }
+            
             h += L.footerHeight + L.bubbleBottomPad
             return h
         }
 
         let isForwarded = msg.forwardedFrom != nil
         let forwardedInset = isForwarded
-            ? ChatLayout.current.forwardedAccentWidth + ChatLayout.current.forwardedContentInset
+            ? L.forwardedAccentWidth + L.forwardedContentInset
             : 0
-        let innerW = bw - ChatLayout.current.bubbleHPad * 2 - forwardedInset
-        var h: CGFloat = ChatLayout.current.bubbleVPad
+        let innerW = bw - L.bubbleHPad * 2 - forwardedInset
+        var h: CGFloat = L.bubbleVPad
 
         if showSenderName, msg.senderName != nil, !msg.isMine {
-            h += ChatLayout.current.senderNameFont.lineHeight + 2
+            h += L.senderNameFont.lineHeight + 2
         }
         if isForwarded {
-            h += ChatLayout.current.forwardedFont.lineHeight + 2
+            h += L.forwardedFont.lineHeight + 2
         }
         if msg.reply != nil {
-            h += ChatLayout.current.replyHeight + 4
+            h += L.replyHeight + 4
         }
 
-        // Voice top spacer when no header
         let hasHeader = (showSenderName && msg.senderName != nil && !msg.isMine) || msg.reply != nil || isForwarded
         if content.voice != nil, !hasHeader {
-            h += 4 + ChatLayout.current.bubbleSpacing
+            h += 4 + L.bubbleSpacing
         }
 
         h += contentHeight(for: content, width: innerW)
 
         if !msg.reactions.isEmpty {
-            h += ChatLayout.current.reactionChipHeight + 4
+            let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2)
+            h += CGFloat(reactionLines) * (L.reactionChipHeight + 4)
         }
 
-        h += ChatLayout.current.footerHeight + ChatLayout.current.bubbleBottomPad
+        h += L.footerHeight + L.bubbleBottomPad
         return h
+    }
+
+    // MARK: - Helper для подсчёта строк реакций
+
+    static func reactionLinesCount(for reactions: [Reaction], maxWidth: CGFloat) -> Int {
+        guard !reactions.isEmpty else { return 0 }
+        let L = ChatLayout.current
+        var currentLineWidth: CGFloat = 0
+        var lines = 1
+        
+        for reaction in reactions {
+            let text = "\(reaction.emoji) \(reaction.count)"
+            let chipWidth = textWidth(text, font: L.reactionFont) + 16
+            
+            if currentLineWidth + chipWidth + (currentLineWidth > 0 ? L.reactionChipSpacing : 0) > maxWidth {
+                lines += 1
+                currentLineWidth = chipWidth
+            } else {
+                currentLineWidth += chipWidth + (currentLineWidth > 0 ? L.reactionChipSpacing : 0)
+            }
+        }
+        
+        return lines
     }
 
     // MARK: - Content Height
@@ -130,6 +176,20 @@ enum MessageSizeCalculator {
         }
 
         return max(h, 0)
+    }
+    
+    // MARK: - Reaction Width
+
+    static func reactionWidth(for reactions: [Reaction]) -> CGFloat {
+        guard !reactions.isEmpty else { return 0 }
+        let L = ChatLayout.current
+        var total: CGFloat = 0
+        for reaction in reactions {
+            let text = "\(reaction.emoji) \(reaction.count)"
+            let w = textWidth(text, font: L.reactionFont) + 16 // 16 = padding left + right
+            total += w + L.reactionChipSpacing
+        }
+        return total - L.reactionChipSpacing // remove last spacing
     }
 
     // MARK: - Helpers
