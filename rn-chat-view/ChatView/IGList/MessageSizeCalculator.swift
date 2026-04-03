@@ -62,8 +62,14 @@ enum MessageSizeCalculator {
         let content = msg.content
 
         if !content.hasMedia, let count = EmojiHelper.emojiOnlyCount(content.text) {
+            let L = ChatLayout.current
             let font = emojiFont(for: count)
-            return textHeight(content.text!, font: font, width: bw - ChatLayout.current.bubbleHPad * 2) + 8
+            var h = textHeight(content.text!, font: font, width: bw - L.bubbleHPad * 2) + 8
+            if !msg.reactions.isEmpty {
+                h += L.reactionChipHeight + 4
+            }
+            h += L.footerHeight + L.bubbleBottomPad
+            return h
         }
 
         let isForwarded = msg.forwardedFrom != nil
