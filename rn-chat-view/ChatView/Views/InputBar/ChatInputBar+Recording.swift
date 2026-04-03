@@ -146,7 +146,7 @@ extension ChatInputBar {
                 self.recordingRow.isHidden = true
                 self.textView.isHidden = false
                 self.rightButton.removeTarget(self, action: #selector(self.lockedSendTapped), for: .touchUpInside)
-                self.updateRightButton()
+                self.resetRightButtonToMic()
                 self.bounceTrashThenRestore()
                 self.delegate?.inputBarDidCancelRecording()
             } else {
@@ -250,7 +250,7 @@ extension ChatInputBar {
 
         // Restore right button
         rightButton.removeTarget(self, action: #selector(lockedSendTapped), for: .touchUpInside)
-        updateRightButton()
+        resetRightButtonToMic()
 
         // Show left button — simultaneously with input shrinking
         if trashAnimation {

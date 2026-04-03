@@ -63,6 +63,11 @@ final class ChatInputBar: UIView {
     let placeholderLabel = UILabel()
     var textViewHeightConstraint: NSLayoutConstraint!
 
+    // MARK: - Internal Send Button (inside mainContainer)
+
+    let internalSendButton = UIButton(type: .system)
+    private var hasText = false
+
     // MARK: - Recording Row
 
     let recordingRow = UIView()
@@ -191,6 +196,7 @@ final class ChatInputBar: UIView {
         setupReplyPanel()
         setupTextView()
         setupRecordingRow()
+        setupInternalSendButton()
 
         mainStack.addArrangedSubview(replyPanel)
         mainStack.addArrangedSubview(textView)
@@ -335,6 +341,30 @@ final class ChatInputBar: UIView {
         ])
     }
 
+    // MARK: - Internal Send Button
+
+    private func setupInternalSendButton() {
+        let L = ChatLayout.current
+        let pad: CGFloat = 4
+        let size = L.textViewMinHeight - pad * 2
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize - 2, weight: .semibold)
+        internalSendButton.setImage(UIImage(systemName: "arrow.up", withConfiguration: cfg), for: .normal)
+        internalSendButton.tintColor = .white
+        internalSendButton.layer.cornerRadius = size / 2
+        internalSendButton.translatesAutoresizingMaskIntoConstraints = false
+        internalSendButton.addTarget(self, action: #selector(sendTapped), for: .touchUpInside)
+        internalSendButton.alpha = 0
+        internalSendButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
+        mainContainer.addSubview(internalSendButton)
+
+        NSLayoutConstraint.activate([
+            internalSendButton.widthAnchor.constraint(equalToConstant: size),
+            internalSendButton.heightAnchor.constraint(equalToConstant: size),
+            internalSendButton.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor, constant: -pad),
+            internalSendButton.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor, constant: -pad),
+        ])
+    }
+
     // MARK: - Floating Views
 
     private func setupFloatingViews() {
@@ -419,6 +449,8 @@ final class ChatInputBar: UIView {
         recordTimerLabel.textColor = theme.inputBarText
         slideArrowLabel.textColor = theme.inputBarPlaceholder
         slideTextLabel.textColor = theme.inputBarPlaceholder
+
+        internalSendButton.backgroundColor = theme.voiceRecordingMicBackground
 
         lockContainer.backgroundColor = theme.voiceRecordingLockBackground
         lockChevron.tintColor = theme.voiceRecordingLockIcon
@@ -510,22 +542,55 @@ final class ChatInputBar: UIView {
     }
 
     func updateRightButton() {
-        let L = ChatLayout.current
-        let hasText = !(textView.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: hasText ? .semibold : .medium)
-        let icon = hasText ? "arrow.up.circle.fill" : "mic.fill"
-        rightButton.setImage(UIImage(systemName: icon, withConfiguration: cfg), for: .normal)
-
-        rightButton.gestureRecognizers?.forEach { rightButton.removeGestureRecognizer($0) }
-        rightButton.removeTarget(nil, action: nil, for: .touchUpInside)
+        let newHasText = !(textView.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard newHasText != hasText else { return }
+        hasText = newHasText
 
         if hasText {
-            rightButton.addTarget(self, action: #selector(sendTapped), for: .touchUpInside)
+            // Mic animates out, internal send appears
+            UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
+                self.rightButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
+                self.rightButton.alpha = 0
+                self.rightButton.isHidden = true
+                self.inputStack.layoutIfNeeded()
+            }
+            UIView.animate(withDuration: 0.25, delay: 0.05, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
+                self.internalSendButton.alpha = 1
+                self.internalSendButton.transform = .identity
+            }
         } else {
-            let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleRecordGesture(_:)))
-            lp.minimumPressDuration = L.recordMinPressDuration
-            rightButton.addGestureRecognizer(lp)
+            // Internal send hides, mic animates in
+            UIView.animate(withDuration: 0.15) {
+                self.internalSendButton.alpha = 0
+                self.internalSendButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
+            }
+            UIView.animate(withDuration: 0.25, delay: 0.05, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8) {
+                self.rightButton.isHidden = false
+                self.rightButton.transform = .identity
+                self.rightButton.alpha = 1
+                self.inputStack.layoutIfNeeded()
+            }
         }
+    }
+
+    /// Force-reset rightButton to mic without animation (used after recording)
+    func resetRightButtonToMic() {
+        let L = ChatLayout.current
+        hasText = false
+        internalSendButton.alpha = 0
+        internalSendButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
+
+        rightButton.isHidden = false
+        rightButton.transform = .identity
+        rightButton.alpha = 1
+
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
+        rightButton.setImage(UIImage(systemName: "mic.fill", withConfiguration: cfg), for: .normal)
+        rightButton.gestureRecognizers?.forEach { rightButton.removeGestureRecognizer($0) }
+        rightButton.removeTarget(nil, action: nil, for: .touchUpInside)
+        let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleRecordGesture(_:)))
+        lp.minimumPressDuration = L.recordMinPressDuration
+        rightButton.addGestureRecognizer(lp)
     }
 
     func restoreLeftButtonToClip() {
@@ -565,6 +630,7 @@ final class ChatInputBar: UIView {
         textView.text = ""
         placeholderLabel.isHidden = false
         updateTextViewHeight()
+        hasText = true // force state so updateRightButton sees the change
         updateRightButton()
         if mode != .normal { cancelMode() }
     }
