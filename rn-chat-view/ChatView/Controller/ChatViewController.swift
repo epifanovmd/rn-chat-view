@@ -191,6 +191,7 @@ final class ChatViewController: UIViewController {
     private func setupAdapter() {
         let updater = ListAdapterUpdater()
         updater.delegate = self
+        updater.allowsBackgroundDiffing = true
         adapter = ListAdapter(updater: updater, viewController: self)
         adapter.collectionView = collectionView
         adapter.dataSource = self
