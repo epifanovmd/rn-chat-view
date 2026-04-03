@@ -14,21 +14,19 @@ extension ChatViewController: UIScrollViewDelegate {
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        if offset < topThreshold && hasMore && !isLoading && !isLoadingTop && !waitingForNewMessages && !isInitialScrollProtected {
-            waitingForNewMessages = true
+        if offset < topThreshold
+            && hasMore && !isLoadingTop && !didTriggerTopThisGesture
+            && !isInitialScrollProtected {
+            didTriggerTopThisGesture = true
             delegate?.chatDidReachTop(distance: offset)
-            DispatchQueue.main.asyncAfter(deadline: .now() + ChatLayout.current.paginationDebounceInterval) { [weak self] in
-                self?.waitingForNewMessages = false
-            }
         }
 
-        if contentH - offset - frameH < bottomThreshold && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !waitingForNewerMessages && !isInitialScrollProtected {
-            waitingForNewerMessages = true
+        if contentH - offset - frameH < bottomThreshold
+            && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !didTriggerBottomThisGesture
+            && !isInitialScrollProtected {
+            didTriggerBottomThisGesture = true
             isLoadingNewerActive = true
             delegate?.chatDidReachBottom(distance: contentH - offset - frameH)
-            DispatchQueue.main.asyncAfter(deadline: .now() + ChatLayout.current.paginationDebounceInterval) { [weak self] in
-                self?.waitingForNewerMessages = false
-            }
         }
 
         updateFABVisibility(animated: true)
@@ -38,6 +36,8 @@ extension ChatViewController: UIScrollViewDelegate {
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         isUserDragging = true
+        didTriggerTopThisGesture = isLoadingTop
+        didTriggerBottomThisGesture = isLoadingBottom
     }
 
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
