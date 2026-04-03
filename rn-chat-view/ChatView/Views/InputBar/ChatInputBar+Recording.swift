@@ -21,7 +21,7 @@ extension ChatInputBar {
         recordingState = .recording
         gestureStartPoint = point
         lastRecordedDuration = 0
-        hapticLight.impactOccurred()
+        haptic(.light)
 
         // Reset recording row
         recordTimerLabel.text = "0:00,00"
@@ -38,7 +38,7 @@ extension ChatInputBar {
         textView.isHidden = true
         recordingRow.isHidden = false
 
-        // Animate left button out + input expands simultaneously
+        // Animate left button out + input expands
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
             self.leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
             self.leftButton.alpha = 0
@@ -46,19 +46,17 @@ extension ChatInputBar {
             self.inputStack.layoutIfNeeded()
         }
 
-        // Floating mic at right button center
+        // Lift entire inputStack above lock container
+        inputStack.layer.zPosition = 1000
+
+        // Style rightButton as draggable mic (blue filled)
+        rightButton.backgroundColor = theme.voiceRecordingMicBackground
+        rightButton.tintColor = .white
+        rightButton.layer.borderWidth = 0
+
+        // Record origin for drag calculations
         let center = rightButton.superview!.convert(rightButton.center, to: self)
         micOriginCenter = center
-        floatingMicButton.center = center
-        floatingMicButton.isHidden = false
-        floatingMicButton.alpha = 1
-        floatingMicButton.transform = CGAffineTransform(scaleX: 0.5, y: 0.5)
-        let micCfg = UIImage.SymbolConfiguration(pointSize: L.recordFloatingMicIconSize, weight: .medium)
-        floatingMicIcon.image = UIImage(systemName: "mic.fill", withConfiguration: micCfg)
-
-        UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8) {
-            self.floatingMicButton.transform = .identity
-        }
 
         // Lock container
         lockContainer.alpha = 0
@@ -83,19 +81,23 @@ extension ChatInputBar {
         let dy = point.y - gestureStartPoint.y
 
         if abs(dx) > abs(dy) && dx < 0 {
+            // Cancel direction (left)
             let progress = min(1, abs(dx) / L.recordCancelThreshold)
-            floatingMicButton.center = CGPoint(x: micOriginCenter.x + min(0, dx) * 0.8, y: micOriginCenter.y)
+            let tx = min(0, dx) * 0.8
+            rightButton.transform = CGAffineTransform(translationX: tx, y: 0)
+                .scaledBy(x: 1 - progress * 0.3, y: 1 - progress * 0.3)
             slideHintContainer.alpha = 1 - progress
-            floatingMicButton.transform = CGAffineTransform(scaleX: 1 - progress * 0.3, y: 1 - progress * 0.3)
             if progress >= 1 { performCancel(); return }
         } else if dy < 0 {
+            // Lock direction (up)
             let progress = min(1, abs(dy) / L.recordLockThreshold)
-            floatingMicButton.center = CGPoint(x: micOriginCenter.x, y: micOriginCenter.y + min(0, dy) * 0.8)
+            let ty = min(0, dy) * 0.8
+            rightButton.transform = CGAffineTransform(translationX: 0, y: ty)
             lockContainer.transform = CGAffineTransform(scaleX: 1 + progress * 0.2, y: 1 + progress * 0.2)
             if progress >= 1 { performLock(); return }
         } else {
-            floatingMicButton.center = micOriginCenter
-            floatingMicButton.transform = .identity
+            // Return to origin
+            rightButton.transform = .identity
             slideHintContainer.alpha = 1
             lockContainer.transform = .identity
         }
@@ -106,9 +108,16 @@ extension ChatInputBar {
     private func handleRelease() {
         recordingState = .idle
         stopSlideHintAnimation()
-        dismissFloating()
-        restoreInputBar(trashAnimation: false) {
-            self.delegate?.inputBarDidStopRecording()
+
+        // Snap rightButton back, then restore
+        UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, animations: {
+            self.rightButton.transform = .identity
+            self.lockContainer.alpha = 0
+        }) { _ in
+            self.restoreMicButton()
+            self.restoreInputBar(trashAnimation: false) {
+                self.delegate?.inputBarDidStopRecording()
+            }
         }
         delegate?.inputBarRecordingStateChanged(isRecording: false)
     }
@@ -123,12 +132,17 @@ extension ChatInputBar {
     func performCancel() {
         let wasLocked = recordingState == .locked
         recordingState = .idle
-        hapticHeavy.impactOccurred()
+
+        // 1. Stop recording first
+        delegate?.inputBarDidCancelRecording()
+        delegate?.inputBarRecordingStateChanged(isRecording: false)
+
+        // 2. Haptic after recording stopped
+        haptic(.heavy)
+
+        // 3. Animate
         recordDot.layer.removeAllAnimations()
         stopSlideHintAnimation()
-        stopSendButtonPulse()
-
-        if !wasLocked { dismissFloating() }
 
         UIView.animate(withDuration: 0.15) {
             self.recordDot.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
@@ -136,27 +150,26 @@ extension ChatInputBar {
             self.slideHintContainer.alpha = 0
             self.recordTimerLabel.alpha = 0
             if !wasLocked {
-                self.floatingMicButton.alpha = 0
                 self.lockContainer.alpha = 0
             }
         } completion: { _ in
             if wasLocked {
-                // Left button already visible as trash — bounce then crossfade to clip
                 self.stopSendButtonPulse()
                 self.recordingRow.isHidden = true
                 self.textView.isHidden = false
                 self.rightButton.removeTarget(self, action: #selector(self.lockedSendTapped), for: .touchUpInside)
+                self.restoreMicButton()
                 self.resetRightButtonToMic()
-                self.bounceTrashThenRestore()
-                self.delegate?.inputBarDidCancelRecording()
+                self.restoreLeftButtonToClip()
             } else {
-                self.restoreInputBar(trashAnimation: true) {
-                    self.delegate?.inputBarDidCancelRecording()
+                UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, animations: {
+                    self.rightButton.transform = .identity
+                }) { _ in
+                    self.restoreMicButton()
+                    self.restoreInputBar(trashAnimation: true) {}
                 }
             }
         }
-
-        delegate?.inputBarRecordingStateChanged(isRecording: false)
     }
 
     // MARK: - Lock
@@ -164,52 +177,42 @@ extension ChatInputBar {
     private func performLock() {
         let L = ChatLayout.current
         recordingState = .locked
-        hapticMedium.impactOccurred()
         stopSlideHintAnimation()
 
-        // Hide floating mic + lock
-        UIView.animate(withDuration: 0.25) {
-            self.floatingMicButton.alpha = 0
-            self.floatingMicButton.transform = CGAffineTransform(scaleX: 0.3, y: 0.3)
+        // Snap rightButton back to origin and switch to send style + pulse
+        UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
+            self.rightButton.transform = .identity
             self.lockContainer.alpha = 0
-        } completion: { _ in
-            self.floatingMicButton.isHidden = true
-            self.floatingMicButton.transform = .identity
         }
 
-        // Show left button as red trash — simultaneously with input shrinking
+        // Change icon to send arrow
+        let sendCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .semibold)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            UIView.transition(with: self.rightButton, duration: 0.15, options: .transitionCrossDissolve) {
+                self.rightButton.setImage(UIImage(systemName: "arrow.up", withConfiguration: sendCfg), for: .normal)
+            }
+            self.startSendButtonPulse()
+        }
+
+        // Show left button as red trash
         let trashCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
         leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: trashCfg), for: .normal)
         leftButton.tintColor = theme.voiceRecordingCancelColor
         leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
         leftButton.alpha = 0
 
-        // Trash appears at normal size
-        leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
-        leftButton.alpha = 0
-        UIView.animate(withDuration: 0.25, delay: 0.1, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, animations: {
+        UIView.animate(withDuration: 0.25, delay: 0.1, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8) {
             self.leftButton.isHidden = false
             self.leftButton.transform = .identity
             self.leftButton.alpha = 1
             self.inputStack.layoutIfNeeded()
-        })
-
-        // Right button → filled send style + pulse
-        let sendCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .semibold)
-        UIView.transition(with: rightButton, duration: 0.2, options: .transitionCrossDissolve) {
-            self.rightButton.setImage(UIImage(systemName: "arrow.up", withConfiguration: sendCfg), for: .normal)
-            self.rightButton.backgroundColor = self.theme.voiceRecordingMicBackground
-            self.rightButton.tintColor = .white
-            self.rightButton.layer.borderWidth = 0
         }
-        startSendButtonPulse()
 
         rightButton.gestureRecognizers?.forEach { rightButton.removeGestureRecognizer($0) }
         rightButton.addTarget(self, action: #selector(lockedSendTapped), for: .touchUpInside)
     }
 
     private func startSendButtonPulse() {
-        // Enlarge button and pulse around enlarged size
         rightButton.transform = CGAffineTransform(scaleX: 1.15, y: 1.15)
         let pulse = CABasicAnimation(keyPath: "transform.scale")
         pulse.fromValue = 1.15
@@ -224,16 +227,13 @@ extension ChatInputBar {
     private func stopSendButtonPulse() {
         rightButton.layer.removeAnimation(forKey: "pulse")
         rightButton.transform = .identity
-        rightButton.backgroundColor = theme.inputBarTextViewBackground
-        rightButton.tintColor = theme.inputBarTint
-        rightButton.layer.borderWidth = ChatLayout.current.inputBorderWidth
     }
 
     @objc private func lockedSendTapped() {
         guard recordingState == .locked else { return }
         recordingState = .idle
-        hapticLight.impactOccurred()
         stopSendButtonPulse()
+        restoreMicButton()
         restoreInputBar(trashAnimation: false) {
             self.delegate?.inputBarDidStopRecording()
         }
@@ -253,14 +253,18 @@ extension ChatInputBar {
         resetRightButtonToMic()
 
         // Show left button — simultaneously with input shrinking
+        leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
+        leftButton.alpha = 0
+
         if trashAnimation {
-            // Trash appears normally, then restoreLeftButtonToClip shrinks before swapping
             let trashCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
             leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: trashCfg), for: .normal)
             leftButton.tintColor = theme.voiceRecordingCancelColor
-            leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
-            leftButton.alpha = 0
+        } else {
+            restoreLeftButtonToClip()
+        }
 
+        if trashAnimation {
             UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, animations: {
                 self.leftButton.isHidden = false
                 self.leftButton.transform = .identity
@@ -273,10 +277,6 @@ extension ChatInputBar {
                 completion()
             }
         } else {
-            restoreLeftButtonToClip()
-            leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
-            leftButton.alpha = 0
-
             UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, animations: {
                 self.leftButton.isHidden = false
                 self.leftButton.transform = .identity
@@ -286,6 +286,20 @@ extension ChatInputBar {
                 completion()
             }
         }
+    }
+
+    // MARK: - Mic Button Helpers
+
+    /// Restore rightButton visual style to normal (from blue draggable state)
+    private func restoreMicButton() {
+        inputStack.layer.zPosition = 0
+        rightButton.backgroundColor = theme.inputBarTextViewBackground
+        rightButton.tintColor = theme.inputBarTint
+        rightButton.layer.borderWidth = ChatLayout.current.inputBorderWidth
+    }
+
+    private func bounceTrashThenRestore() {
+        restoreLeftButtonToClip()
     }
 
     // MARK: - Single Pulse
@@ -300,21 +314,6 @@ extension ChatInputBar {
                 completion?()
             }
         }
-    }
-
-    private func bounceTrashThenRestore() {
-        restoreLeftButtonToClip()
-    }
-
-    // MARK: - Floating Helpers
-
-    private func dismissFloating() {
-        floatingMicButton.layer.removeAllAnimations()
-        floatingMicButton.isHidden = true
-        floatingMicButton.transform = .identity
-        floatingMicButton.alpha = 1
-        lockContainer.alpha = 0
-        lockChevron.alpha = 1
     }
 
     // MARK: - Animations

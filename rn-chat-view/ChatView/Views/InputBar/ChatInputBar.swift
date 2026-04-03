@@ -1,3 +1,4 @@
+import AudioToolbox
 import UIKit
 
 // MARK: - Delegate
@@ -77,10 +78,8 @@ final class ChatInputBar: UIView {
     let slideArrowLabel = UILabel()
     let slideTextLabel = UILabel()
 
-    // MARK: - Floating Views
+    // MARK: - Recording Floating Views
 
-    let floatingMicButton = UIView()
-    let floatingMicIcon = UIImageView()
     let lockContainer = UIView()
     let lockChevron = UIImageView()
     let lockButtonIcon = UIImageView()
@@ -92,9 +91,15 @@ final class ChatInputBar: UIView {
     var gestureStartPoint: CGPoint = .zero
     var lastRecordedDuration: TimeInterval = 0
     var theme: ChatTheme = .light
-    let hapticLight = UIImpactFeedbackGenerator(style: .light)
-    let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
-    let hapticHeavy = UIImpactFeedbackGenerator(style: .heavy)
+    /// Haptic via system sounds — works reliably during active audio sessions
+    func haptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        switch style {
+        case .light:  AudioServicesPlaySystemSound(1519)
+        case .medium: AudioServicesPlaySystemSound(1520)
+        case .heavy:  AudioServicesPlaySystemSound(1521)
+        @unknown default: AudioServicesPlaySystemSound(1520)
+        }
+    }
 
     // MARK: - Init
 
@@ -309,7 +314,7 @@ final class ChatInputBar: UIView {
         slideHintContainer.translatesAutoresizingMaskIntoConstraints = false
         recordingRow.addSubview(slideHintContainer)
 
-        slideArrowLabel.text = "‹‹‹"
+        slideArrowLabel.text = "‹"
         slideArrowLabel.font = L.recordSlideArrowFont
         slideArrowLabel.translatesAutoresizingMaskIntoConstraints = false
         slideHintContainer.addSubview(slideArrowLabel)
@@ -365,12 +370,12 @@ final class ChatInputBar: UIView {
         ])
     }
 
-    // MARK: - Floating Views
+    // MARK: - Recording Floating Views
 
     private func setupFloatingViews() {
         let L = ChatLayout.current
 
-        // Lock container (added first — below floating mic in z-order)
+        // Lock container
         lockContainer.layer.cornerRadius = L.recordLockContainerSize / 2
         lockContainer.clipsToBounds = true
         lockContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -398,27 +403,6 @@ final class ChatInputBar: UIView {
             lockChevron.topAnchor.constraint(equalTo: lockContainer.topAnchor, constant: L.recordLockChevronTopPad),
             lockButtonIcon.centerXAnchor.constraint(equalTo: lockContainer.centerXAnchor),
             lockButtonIcon.centerYAnchor.constraint(equalTo: lockContainer.centerYAnchor, constant: L.recordLockIconCenterOffset),
-        ])
-
-        // Floating mic (added last — on top of everything)
-        floatingMicButton.layer.cornerRadius = L.recordFloatingMicSize / 2
-        floatingMicButton.translatesAutoresizingMaskIntoConstraints = false
-        floatingMicButton.isHidden = true
-        floatingMicButton.isUserInteractionEnabled = false
-        addSubview(floatingMicButton)
-
-        let micCfg = UIImage.SymbolConfiguration(pointSize: L.recordFloatingMicIconSize, weight: .medium)
-        floatingMicIcon.image = UIImage(systemName: "mic.fill", withConfiguration: micCfg)
-        floatingMicIcon.tintColor = .white
-        floatingMicIcon.contentMode = .scaleAspectFit
-        floatingMicIcon.translatesAutoresizingMaskIntoConstraints = false
-        floatingMicButton.addSubview(floatingMicIcon)
-
-        NSLayoutConstraint.activate([
-            floatingMicButton.widthAnchor.constraint(equalToConstant: L.recordFloatingMicSize),
-            floatingMicButton.heightAnchor.constraint(equalToConstant: L.recordFloatingMicSize),
-            floatingMicIcon.centerXAnchor.constraint(equalTo: floatingMicButton.centerXAnchor),
-            floatingMicIcon.centerYAnchor.constraint(equalTo: floatingMicButton.centerYAnchor),
         ])
     }
 
@@ -455,7 +439,6 @@ final class ChatInputBar: UIView {
         lockContainer.backgroundColor = theme.voiceRecordingLockBackground
         lockChevron.tintColor = theme.voiceRecordingLockIcon
         lockButtonIcon.tintColor = theme.voiceRecordingLockIcon
-        floatingMicButton.backgroundColor = theme.voiceRecordingMicBackground
     }
 
     // MARK: - Mode Management
@@ -595,7 +578,7 @@ final class ChatInputBar: UIView {
 
     func restoreLeftButtonToClip() {
         let cfg = UIImage.SymbolConfiguration(pointSize: ChatLayout.current.inputIconSize, weight: .medium)
-        // Shrink trash → swap icon → scale back
+        // Shrink trash → haptic → swap icon → scale back
         UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseIn, animations: {
             self.leftButton.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
         }) { _ in
