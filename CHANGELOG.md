@@ -24,6 +24,14 @@
   - FAB **не** сбрасывает счётчик при скрытии — только видимость сообщений
   - Нажатие FAB: `chatDidTapFAB()` (хост управляет)
 
+### Voice Recording
+
+- **`chatDidCompleteVoiceRecording(fileURL:duration:waveform:)`** — добавлен параметр `waveform: [Float]`
+  - Массив нормализованных уровней громкости (0…1), собранных во время записи с частотой 15–30 fps
+  - `VoiceRecorder` собирает сэмплы автоматически через `AVAudioRecorder.averagePower`
+  - Хост получает готовый waveform и может использовать его напрямую в `VoicePayload`
+- **`VoiceRecorderDelegate.voiceRecorderDidStop(fileURL:duration:waveform:)`** — аналогично добавлен `waveform`
+
 ### Models
 
 - **`PollPayload`** — добавлено поле `isAnonymous: Bool`

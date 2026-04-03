@@ -28,6 +28,6 @@ protocol ChatViewControllerDelegate: AnyObject {
     func chatDidEditMessage(text: String, messageId: String)
     func chatDidCancelInputAction(type: String)
     func chatDidTapAttachment()
-    func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval)
+    func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval, waveform: [Float])
     func chatDidChangeInputText(_ text: String)
 }

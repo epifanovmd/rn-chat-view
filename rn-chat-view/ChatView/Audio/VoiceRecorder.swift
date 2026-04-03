@@ -5,7 +5,7 @@ import UIKit
 
 protocol VoiceRecorderDelegate: AnyObject {
     func voiceRecorderDidStart()
-    func voiceRecorderDidStop(fileURL: URL, duration: TimeInterval)
+    func voiceRecorderDidStop(fileURL: URL, duration: TimeInterval, waveform: [Float])
     func voiceRecorderDidCancel()
     func voiceRecorderDidFail(error: Error)
     func voiceRecorderDidUpdateDuration(_ duration: TimeInterval)
@@ -20,6 +20,7 @@ final class VoiceRecorder: NSObject {
     private var recorder: AVAudioRecorder?
     private var displayLink: CADisplayLink?
     private var startTime: CFTimeInterval = 0
+    private var waveformSamples: [Float] = []
     private(set) var isRecording = false
 
     func startRecording() {
@@ -37,11 +38,13 @@ final class VoiceRecorder: NSObject {
         guard isRecording, let recorder else { return }
         let url = recorder.url
         let duration = recorder.currentTime
+        let waveform = waveformSamples
         recorder.stop()
         isRecording = false
+        waveformSamples.removeAll()
         stopDisplayLink()
         deactivateSession()
-        delegate?.voiceRecorderDidStop(fileURL: url, duration: duration)
+        delegate?.voiceRecorderDidStop(fileURL: url, duration: duration, waveform: waveform)
     }
 
     func cancelRecording() {
@@ -49,6 +52,7 @@ final class VoiceRecorder: NSObject {
         recorder.stop()
         recorder.deleteRecording()
         isRecording = false
+        waveformSamples.removeAll()
         stopDisplayLink()
         deactivateSession()
         delegate?.voiceRecorderDidCancel()
@@ -90,6 +94,7 @@ final class VoiceRecorder: NSObject {
             recorder?.record()
 
             isRecording = true
+            waveformSamples.removeAll()
             startTime = CACurrentMediaTime()
             startDisplayLink()
             delegate?.voiceRecorderDidStart()
@@ -113,6 +118,7 @@ final class VoiceRecorder: NSObject {
         guard let recorder, isRecording else { return }
         recorder.updateMeters()
         let level = max(0, 1 + recorder.averagePower(forChannel: 0) / 50)
+        waveformSamples.append(level)
         delegate?.voiceRecorderDidUpdateDuration(recorder.currentTime)
         delegate?.voiceRecorderDidUpdateLevel(level)
     }

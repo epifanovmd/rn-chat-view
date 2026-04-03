@@ -50,10 +50,10 @@ extension ChatViewController: InputBarDelegate {
 extension ChatViewController: VoiceRecorderDelegate {
     func voiceRecorderDidStart() { inputBar.showRecordingUI(duration: 0) }
 
-    func voiceRecorderDidStop(fileURL: URL, duration: TimeInterval) {
+    func voiceRecorderDidStop(fileURL: URL, duration: TimeInterval, waveform: [Float]) {
         inputBar.hideRecordingUI()
         pendingScrollToBottom = true
-        delegate?.chatDidCompleteVoiceRecording(fileURL: fileURL, duration: duration)
+        delegate?.chatDidCompleteVoiceRecording(fileURL: fileURL, duration: duration, waveform: waveform)
     }
 
     func voiceRecorderDidCancel() { inputBar.hideRecordingUI() }

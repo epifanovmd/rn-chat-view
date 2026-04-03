@@ -489,9 +489,8 @@ final class LiveChatDemoViewController: UIViewController, ChatViewControllerDele
     func chatDidCancelInputAction(type: String) {}
     func chatDidTapAttachment() {}
 
-    func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval) {
+    func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval, waveform: [Float]) {
         let now = Date()
-        let waveform = (0..<20).map { _ in Float.random(in: 0.1...1.0) }
         let msg = ChatMessage(
             id: "\(nextId)",
             content: MessageContent(text: nil, media: nil, voice: VoicePayload(
