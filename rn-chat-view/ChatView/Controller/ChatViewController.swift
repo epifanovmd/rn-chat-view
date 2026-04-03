@@ -135,6 +135,7 @@ final class ChatViewController: UIViewController {
         setupFloatingDate()
         applyTheme()
         voiceRecorder.delegate = self
+        warmUpKeyboard()
     }
 
     override func viewDidLayoutSubviews() {
@@ -262,6 +263,16 @@ final class ChatViewController: UIViewController {
             inputBarKeyboardConstraint = c
             KeyboardListener.shared.add(delegate: self)
         }
+    }
+
+    // MARK: - Keyboard Warm-Up
+
+    private func warmUpKeyboard() {
+        let field = UITextField(frame: .zero)
+        view.addSubview(field)
+        field.becomeFirstResponder()
+        field.resignFirstResponder()
+        field.removeFromSuperview()
     }
 
     // MARK: - Setup FAB
