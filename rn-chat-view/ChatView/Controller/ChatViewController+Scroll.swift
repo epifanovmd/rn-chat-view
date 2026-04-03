@@ -5,7 +5,7 @@ import UIKit
 extension ChatViewController: UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let now = CACurrentMediaTime()
-        if now - lastScrollEventTime >= scrollThrottleInterval {
+        if now - lastScrollEventTime >= ChatLayout.current.scrollThrottleInterval {
             lastScrollEventTime = now
             delegate?.chatDidScroll(offset: scrollView.contentOffset)
         }
@@ -14,24 +14,23 @@ extension ChatViewController: UIScrollViewDelegate {
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        if offset < topThreshold && hasMore && !isLoading && !waitingForNewMessages && !isInitialScrollProtected {
+        if offset < topThreshold && hasMore && !isLoading && !isLoadingTop && !waitingForNewMessages && !isInitialScrollProtected {
             waitingForNewMessages = true
             delegate?.chatDidReachTop(distance: offset)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + ChatLayout.current.paginationDebounceInterval) { [weak self] in
                 self?.waitingForNewMessages = false
             }
         }
 
-        if contentH - offset - frameH < bottomThreshold && hasNewer && !isLoadingNewerActive && !waitingForNewerMessages && !isInitialScrollProtected {
+        if contentH - offset - frameH < bottomThreshold && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !waitingForNewerMessages && !isInitialScrollProtected {
             waitingForNewerMessages = true
             isLoadingNewerActive = true
             delegate?.chatDidReachBottom(distance: contentH - offset - frameH)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + ChatLayout.current.paginationDebounceInterval) { [weak self] in
                 self?.waitingForNewerMessages = false
             }
         }
 
-        lastContentOffsetY = offset
         updateFABVisibility(animated: true)
         updateVisibleMessages()
         updateFloatingDate()

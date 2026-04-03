@@ -44,10 +44,9 @@ final class ChatViewController: UIViewController {
     // MARK: - Data
 
     private(set) var messages: [ChatMessage] = []
-    var messageIndex: [String: ChatMessage] = [:]
-    var listItems: [ListDiffable] = []
-    /// Кеш индексов DateSeparatorListItem в listItems — обновляется в rebuildListItems()
-    var cachedDateSeparators: [(index: Int, item: DateSeparatorListItem)] = []
+    private(set) var messageIndex: [String: ChatMessage] = [:]
+    private(set) var listItems: [ListDiffable] = []
+    private(set) var cachedDateSeparators: [(index: Int, item: DateSeparatorListItem)] = []
 
     // MARK: - IGListKit
 
@@ -88,16 +87,13 @@ final class ChatViewController: UIViewController {
 
     // MARK: - Scroll State
 
-    var fabVisible = false
+    var isFabVisible = false
     var isProgrammaticScroll = false
     var lastScrollEventTime: CFTimeInterval = 0
-    var scrollThrottleInterval: CFTimeInterval { ChatLayout.current.scrollThrottleInterval }
     var visibleMessageIDs: Set<String> = []
     var pendingVisibleIDs: Set<String> = []
     var visibilityDebounceTask: DispatchWorkItem?
-    var visibilityDebounceInterval: TimeInterval { ChatLayout.current.visibilityDebounceInterval }
     var pendingHighlightId: String?
-    var lastContentOffsetY: CGFloat = 0
     var isUserDragging = false
     var waitingForNewMessages = false
     var waitingForNewerMessages = false
@@ -143,6 +139,14 @@ final class ChatViewController: UIViewController {
     override func viewSafeAreaInsetsDidChange() {
         super.viewSafeAreaInsetsDidChange()
         updateCollectionInsets()
+    }
+
+    deinit {
+        floatingDateHideTask?.cancel()
+        visibilityDebounceTask?.cancel()
+        if let token = kbHideObserver { NotificationCenter.default.removeObserver(token) }
+        if let token = kbShowObserver { NotificationCenter.default.removeObserver(token) }
+        KeyboardListener.shared.remove(delegate: self)
     }
 
     // MARK: - Setup Collection View
@@ -425,20 +429,22 @@ final class ChatViewController: UIViewController {
     }
 
     private func showFloatingDate() {
+        let L = ChatLayout.current
         floatingDateHideTask?.cancel()
         if floatingDatePill.alpha < 1 {
-            UIView.animate(withDuration: 0.15) { self.floatingDatePill.alpha = 1 }
+            UIView.animate(withDuration: L.floatingDateShowDuration) { self.floatingDatePill.alpha = 1 }
         }
         let task = DispatchWorkItem { [weak self] in
-            UIView.animate(withDuration: 0.3) { self?.floatingDatePill.alpha = 0 }
+            guard let self else { return }
+            UIView.animate(withDuration: L.floatingDateHideDuration) { self.floatingDatePill.alpha = 0 }
         }
         floatingDateHideTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: task)
+        DispatchQueue.main.asyncAfter(deadline: .now() + L.floatingDateHideDelay, execute: task)
     }
 
     private func hideFloatingDate() {
         floatingDateHideTask?.cancel()
-        UIView.animate(withDuration: 0.2) {
+        UIView.animate(withDuration: ChatLayout.current.floatingDateHideDuration) {
             self.floatingDatePill.alpha = 0
             self.floatingDatePill.transform = .identity
         }
@@ -696,8 +702,8 @@ final class ChatViewController: UIViewController {
 
     func updateFABVisibility(animated: Bool) {
         let shouldShow = !isNearBottom() && !messages.isEmpty
-        guard shouldShow != fabVisible else { return }
-        fabVisible = shouldShow
+        guard shouldShow != isFabVisible else { return }
+        isFabVisible = shouldShow
         let alpha: CGFloat = shouldShow ? 1 : 0
         fabButton.isUserInteractionEnabled = shouldShow
         if animated {
@@ -713,7 +719,7 @@ final class ChatViewController: UIViewController {
     }
 
     func updateFABBadge() {
-        fabBadge.isHidden = unreadCount <= 0
+        fabBadge.isHidden = unreadCount == 0
         guard unreadCount > 0 else { return }
         fabBadge.text = unreadCount > 99 ? "99+" : "\(unreadCount)"
     }

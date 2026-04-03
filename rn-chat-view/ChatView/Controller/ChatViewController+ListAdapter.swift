@@ -37,7 +37,7 @@ extension ChatViewController: MessageSectionDelegate {
     func resolveReply(for info: ReplyInfo) -> ReplyDisplayInfo? {
         guard let original = messageIndex[info.replyToId] else { return nil }
         return ReplyDisplayInfo(
-            senderName: original.senderName ?? "Unknown",
+            senderName: original.senderName ?? "Неизвестный",
             text: original.content.text ?? "",
             hasImage: original.content.media != nil
         )
@@ -80,7 +80,8 @@ extension ChatViewController {
     func updateVisibleMessages() {
         guard !messages.isEmpty else { return }
         var ids: Set<String> = []
-        for cell in collectionView.visibleCells {
+        let cells = Array(collectionView.visibleCells)
+        for cell in cells {
             guard let indexPath = collectionView.indexPath(for: cell),
                   indexPath.section < listItems.count,
                   let msgItem = listItems[indexPath.section] as? MessageListItem,
@@ -108,6 +109,6 @@ extension ChatViewController {
             self.delegate?.chatMessagesDidAppear(ids: batch)
         }
         visibilityDebounceTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + visibilityDebounceInterval, execute: task)
+        DispatchQueue.main.asyncAfter(deadline: .now() + ChatLayout.current.visibilityDebounceInterval, execute: task)
     }
 }
