@@ -50,7 +50,7 @@ final class PollContentView: UIView {
         footerStack.alignment = .center
         footerStack.translatesAutoresizingMaskIntoConstraints = false
         footerStack.addArrangedSubview(votesLabel)
-        footerStack.addArrangedSubview(UIView()) // spacer
+        footerStack.addArrangedSubview(UIView())
         footerStack.addArrangedSubview(resultsLabel)
         addSubview(footerStack)
 
@@ -85,24 +85,13 @@ final class PollContentView: UIView {
         subtitleLabel.text = parts.joined(separator: " · ")
         subtitleLabel.textColor = theme.pollSubtitleColor
 
-        let existingRows = optionsStack.arrangedSubviews.compactMap { $0 as? PollOptionRow }
-        let canAnimate = existingRows.count == poll.options.count
-
-        if canAnimate {
-            for (i, option) in poll.options.enumerated() {
-                let isSelected = poll.selectedOptionIds.contains(option.id)
-                existingRows[i].configure(option: option, isSelected: isSelected, isMine: isMine, theme: theme, animated: true)
-                existingRows[i].onTap = poll.isClosed ? nil : { [weak self] in self?.onOptionTap?(option.id) }
-            }
-        } else {
-            optionsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-            for option in poll.options {
-                let row = PollOptionRow()
-                let isSelected = poll.selectedOptionIds.contains(option.id)
-                row.configure(option: option, isSelected: isSelected, isMine: isMine, theme: theme)
-                row.onTap = poll.isClosed ? nil : { [weak self] in self?.onOptionTap?(option.id) }
-                optionsStack.addArrangedSubview(row)
-            }
+        optionsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        for option in poll.options {
+            let row = PollOptionRow()
+            let isSelected = poll.selectedOptionIds.contains(option.id)
+            row.configure(option: option, isSelected: isSelected, isMine: isMine, theme: theme)
+            row.onTap = poll.isClosed ? nil : { [weak self] in self?.onOptionTap?(option.id) }
+            optionsStack.addArrangedSubview(row)
         }
 
         votesLabel.text = "\(poll.totalVotes) голосов"
@@ -176,7 +165,7 @@ private final class PollOptionRow: UIView {
         addGestureRecognizer(tap)
     }
 
-    func configure(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme, animated: Bool = false) {
+    func configure(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme) {
         let L = ChatLayout.current
 
         label.text = option.text
@@ -194,19 +183,12 @@ private final class PollOptionRow: UIView {
             percentLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
         }
 
-        let pctValue = Int(option.percentage * 100)
-        percentLabel.text = "\(pctValue)%"
+        percentLabel.text = "\(Int(option.percentage * 100))%"
 
         fillWidthConstraint?.isActive = false
         let pct = max(0.02, option.percentage)
         fillWidthConstraint = barFill.widthAnchor.constraint(equalTo: barBg.widthAnchor, multiplier: pct)
         fillWidthConstraint?.isActive = true
-
-        if animated {
-            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseOut) {
-                self.barBg.layoutIfNeeded()
-            }
-        }
     }
 
     @objc private func tapped() { onTap?() }
