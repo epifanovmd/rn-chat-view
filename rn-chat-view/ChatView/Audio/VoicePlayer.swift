@@ -52,11 +52,6 @@ final class AudioCache {
         cacheDir = dir
     }
 
-    func removeAll() {
-        try? fileManager.removeItem(at: cacheDir)
-        try? fileManager.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-    }
-
     func localURL(for remoteURL: String) -> URL? {
         let file = cacheDir.appendingPathComponent(remoteURL.sha256FileName)
         return fileManager.fileExists(atPath: file.path) ? file : nil
@@ -178,6 +173,11 @@ final class VoicePlayer {
     func stop() {
         cleanup()
         state = .idle
+    }
+
+    func pauseIfPlaying() {
+        guard case .playing = state else { return }
+        pause()
     }
 
     func seek(to progress: Float) {

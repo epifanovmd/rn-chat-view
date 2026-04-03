@@ -125,7 +125,7 @@ final class PaginationDemoViewController: UIViewController, ChatViewControllerDe
         chatVC.isLoadingTop = true
         let loadFrom = oldestIndex - pageSize
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now()) { [weak self] in
             guard let self else { return }
             let older = MessageGenerator.generate(
                 count: self.pageSize,

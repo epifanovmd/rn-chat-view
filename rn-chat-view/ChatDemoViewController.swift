@@ -98,19 +98,115 @@ enum ChatDemoData {
 
             // --- Today ---
 
-            // 5. Multi-image message (incoming)
+            // 5a. Single video (incoming)
             ChatMessage(
-                id: "5",
+                id: "5a",
                 content: MessageContent(
                     text: nil,
                     media: [
-                        .image(ImageItem(url: "https://picsum.photos/id/10/400/300", width: 400, height: 300, thumbnailUrl: "https://picsum.photos/id/10/200/150")),
-                        .image(ImageItem(url: "https://picsum.photos/id/20/300/400", width: 300, height: 400, thumbnailUrl: "https://picsum.photos/id/20/150/200")),
-                        .image(ImageItem(url: "https://picsum.photos/id/30/400/400", width: 400, height: 400, thumbnailUrl: "https://picsum.photos/id/30/200/200")),
+                        .video(VideoItem(url: "https://example.com/video1.mp4", thumbnailUrl: "https://picsum.photos/id/60/400/300", width: 400, height: 300, duration: 45)),
                     ],
                     voice: nil, poll: nil, files: nil
                 ),
-                timestamp: cal.date(byAdding: .hour, value: -5, to: now)!,
+                timestamp: cal.date(byAdding: .hour, value: -6, to: now)!,
+                senderName: otherUser,
+                isMine: false,
+                groupDate: today,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 5b. Two images (outgoing, with text)
+            ChatMessage(
+                id: "5b",
+                content: MessageContent(
+                    text: "Смотри какие виды!",
+                    media: [
+                        .image(ImageItem(url: "https://picsum.photos/id/10/400/300", width: 400, height: 300, thumbnailUrl: "https://picsum.photos/id/10/200/150")),
+                        .image(ImageItem(url: "https://picsum.photos/id/20/300/400", width: 300, height: 400, thumbnailUrl: "https://picsum.photos/id/20/150/200")),
+                    ],
+                    voice: nil, poll: nil, files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-2400),
+                senderName: nil,
+                isMine: true,
+                groupDate: today,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 5c. Mixed: 2 images + 1 video (incoming)
+            ChatMessage(
+                id: "5c",
+                content: MessageContent(
+                    text: nil,
+                    media: [
+                        .image(ImageItem(url: "https://picsum.photos/id/30/400/400", width: 400, height: 400, thumbnailUrl: "https://picsum.photos/id/30/200/200")),
+                        .video(VideoItem(url: "https://example.com/video2.mp4", thumbnailUrl: "https://picsum.photos/id/40/400/300", width: 400, height: 300, duration: 12)),
+                        .image(ImageItem(url: "https://picsum.photos/id/50/300/400", width: 300, height: 400, thumbnailUrl: "https://picsum.photos/id/50/150/200")),
+                    ],
+                    voice: nil, poll: nil, files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-1800),
+                senderName: otherUser,
+                isMine: false,
+                groupDate: today,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [Reaction(emoji: "😍", count: 1, isMine: true)],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 5d. Four images (outgoing)
+            ChatMessage(
+                id: "5d",
+                content: MessageContent(
+                    text: nil,
+                    media: [
+                        .image(ImageItem(url: "https://picsum.photos/id/100/400/300", width: 400, height: 300, thumbnailUrl: "https://picsum.photos/id/100/200/150")),
+                        .image(ImageItem(url: "https://picsum.photos/id/110/300/300", width: 300, height: 300, thumbnailUrl: "https://picsum.photos/id/110/150/150")),
+                        .image(ImageItem(url: "https://picsum.photos/id/120/400/250", width: 400, height: 250, thumbnailUrl: "https://picsum.photos/id/120/200/125")),
+                        .image(ImageItem(url: "https://picsum.photos/id/130/350/400", width: 350, height: 400, thumbnailUrl: "https://picsum.photos/id/130/175/200")),
+                    ],
+                    voice: nil, poll: nil, files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-1200),
+                senderName: nil,
+                isMine: true,
+                groupDate: today,
+                status: .delivered,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 5e. Five+ mixed: 3 images + 2 videos (incoming, with +N overlay)
+            ChatMessage(
+                id: "5e",
+                content: MessageContent(
+                    text: "Фото и видео с поездки 🏔",
+                    media: [
+                        .image(ImageItem(url: "https://picsum.photos/id/140/400/300", width: 400, height: 300, thumbnailUrl: "https://picsum.photos/id/140/200/150")),
+                        .video(VideoItem(url: "https://example.com/video3.mp4", thumbnailUrl: "https://picsum.photos/id/150/400/300", width: 400, height: 300, duration: 128)),
+                        .image(ImageItem(url: "https://picsum.photos/id/160/300/400", width: 300, height: 400, thumbnailUrl: "https://picsum.photos/id/160/150/200")),
+                        .image(ImageItem(url: "https://picsum.photos/id/170/400/400", width: 400, height: 400, thumbnailUrl: "https://picsum.photos/id/170/200/200")),
+                        .video(VideoItem(url: "https://example.com/video4.mp4", thumbnailUrl: "https://picsum.photos/id/180/400/250", width: 400, height: 250, duration: 67)),
+                    ],
+                    voice: nil, poll: nil, files: nil
+                ),
+                timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-600),
                 senderName: otherUser,
                 isMine: false,
                 groupDate: today,

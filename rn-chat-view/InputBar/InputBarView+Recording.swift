@@ -150,6 +150,11 @@ extension InputBarView {
         recordingState = .locked
         recordingRow.stopSlideAnimation()
 
+        // Hide cancel hint
+        UIView.animate(withDuration: 0.15) {
+            self.recordingRow.slideContainer.alpha = 0
+        }
+
         // Snap mic back
         UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
             self.rightButton.transform = .identity

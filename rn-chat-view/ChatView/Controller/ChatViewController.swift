@@ -316,8 +316,8 @@ final class ChatViewController: UIViewController {
             fabButton.bottomAnchor.constraint(equalTo: inputBar.bottomAnchor, constant: -bottomOffset),
             fabArrow.centerXAnchor.constraint(equalTo: fabButton.centerXAnchor),
             fabArrow.centerYAnchor.constraint(equalTo: fabButton.centerYAnchor),
-            fabBadge.centerXAnchor.constraint(equalTo: fabButton.leadingAnchor),
-            fabBadge.centerYAnchor.constraint(equalTo: fabButton.topAnchor),
+            fabBadge.centerXAnchor.constraint(equalTo: fabButton.leadingAnchor, constant: 4),
+            fabBadge.centerYAnchor.constraint(equalTo: fabButton.topAnchor, constant: 4),
             fabBadge.heightAnchor.constraint(equalToConstant: ChatLayout.current.fabBadgeHeight),
             fabBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: ChatLayout.current.fabBadgeMinWidth),
         ])

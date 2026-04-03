@@ -1,3 +1,4 @@
+import CommonCrypto
 import UIKit
 
 final class ImageCache {
@@ -10,27 +11,41 @@ final class ImageCache {
         return cache
     }()
 
-    private let urlCache: URLCache = {
-        URLCache(memoryCapacity: 20 * 1024 * 1024, diskCapacity: 100 * 1024 * 1024)
-    }()
-
+    private let cacheDir: URL
+    private let fileManager = FileManager.default
     private var inFlight: [String: [(UIImage?) -> Void]] = [:]
     private let lock = NSLock()
 
     private init() {
+        let dir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("ImageCache", isDirectory: true)
+        try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+        cacheDir = dir
+
         NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification,
                                                object: nil, queue: nil) { [weak self] _ in
             self?.memoryCache.removeAllObjects()
         }
     }
 
+    // MARK: - Memory
+
     func image(forKey key: String) -> UIImage? {
-        memoryCache.object(forKey: key as NSString)
+        if let img = memoryCache.object(forKey: key as NSString) { return img }
+        // Try disk
+        let file = cacheDir.appendingPathComponent(key.sha256ImageName)
+        guard let data = try? Data(contentsOf: file), let img = UIImage(data: data) else { return nil }
+        memoryCache.setObject(img, forKey: key as NSString)
+        return img
     }
 
-    func store(_ image: UIImage, forKey key: String) {
-        memoryCache.setObject(image, forKey: key as NSString, cost: image.pngData()?.count ?? 0)
+    private func store(_ image: UIImage, data: Data, forKey key: String) {
+        memoryCache.setObject(image, forKey: key as NSString)
+        let file = cacheDir.appendingPathComponent(key.sha256ImageName)
+        try? data.write(to: file, options: .atomic)
     }
+
+    // MARK: - Load
 
     @discardableResult
     func load(url: String, completion: @escaping (UIImage?) -> Void) -> URLSessionDataTask? {
@@ -53,22 +68,12 @@ final class ImageCache {
             return nil
         }
 
-        let request = URLRequest(url: requestURL, cachePolicy: .returnCacheDataElseLoad)
-        if let cached = urlCache.cachedResponse(for: request),
-           let image = UIImage(data: cached.data) {
-            store(image, forKey: url)
-            deliver(url: url, image: image)
-            return nil
-        }
-
-        let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
-            guard let self, let data, let response, let image = UIImage(data: data) else {
+        let task = URLSession.shared.dataTask(with: requestURL) { [weak self] data, _, _ in
+            guard let self, let data, let image = UIImage(data: data) else {
                 self?.deliver(url: url, image: nil)
                 return
             }
-            let cached = CachedURLResponse(response: response, data: data)
-            self.urlCache.storeCachedResponse(cached, for: request)
-            self.store(image, forKey: url)
+            self.store(image, data: data, forKey: url)
             self.deliver(url: url, image: image)
         }
         task.resume()
@@ -82,6 +87,19 @@ final class ImageCache {
         DispatchQueue.main.async {
             handlers.forEach { $0(image) }
         }
+    }
+}
+
+// MARK: - SHA256 filename
+
+private extension String {
+    var sha256ImageName: String {
+        let data = Data(utf8)
+        var hash = [UInt8](repeating: 0, count: 32)
+        data.withUnsafeBytes { buf in
+            _ = CC_SHA256(buf.baseAddress, CC_LONG(data.count), &hash)
+        }
+        return hash.map { String(format: "%02x", $0) }.joined()
     }
 }
 

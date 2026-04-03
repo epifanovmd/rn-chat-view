@@ -11,9 +11,6 @@ import SwiftUI
 struct ChatApp: App {
     init() {
         UIApplication.shared.isIdleTimerDisabled = true
-        #if DEBUG
-        AudioCache.shared.removeAll()
-        #endif
     }
 
     var body: some Scene {
@@ -37,7 +34,10 @@ struct DemoTabView: UIViewControllerRepresentable {
         let paginationDemo = PaginationDemoViewController()
         paginationDemo.tabBarItem = UITabBarItem(title: "Пагинация", image: UIImage(systemName: "arrow.up.arrow.down"), tag: 1)
 
-        tab.viewControllers = [chatDemo, paginationDemo]
+        let liveDemo = LiveChatDemoViewController()
+        liveDemo.tabBarItem = UITabBarItem(title: "Живой чат", image: UIImage(systemName: "bolt.fill"), tag: 2)
+
+        tab.viewControllers = [chatDemo, paginationDemo, liveDemo]
         return tab
     }
 

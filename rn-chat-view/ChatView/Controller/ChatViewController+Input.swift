@@ -20,7 +20,10 @@ extension ChatViewController: InputBarDelegate {
         delegate?.chatDidTapAttachment()
     }
 
-    func inputBarDidStartRecording() { voiceRecorder.startRecording() }
+    func inputBarDidStartRecording() {
+        VoicePlayer.shared.pauseIfPlaying()
+        voiceRecorder.startRecording()
+    }
     func inputBarDidStopRecording() { voiceRecorder.stopRecording() }
     func inputBarDidCancelRecording() { voiceRecorder.cancelRecording() }
 

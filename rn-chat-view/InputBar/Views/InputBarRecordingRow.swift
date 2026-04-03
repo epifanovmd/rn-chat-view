@@ -6,7 +6,7 @@ final class InputBarRecordingRow: UIView {
     let dot = UIView()
     let timerLabel = UILabel()
     let slideContainer = UIView()
-    let slideArrow = UILabel()
+    let slideArrow = UIImageView()
     let slideText = UILabel()
 
     // MARK: - Init
@@ -36,8 +36,9 @@ final class InputBarRecordingRow: UIView {
         slideContainer.translatesAutoresizingMaskIntoConstraints = false
         addSubview(slideContainer)
 
-        slideArrow.text = "‹"
-        slideArrow.font = L.recordSlideArrowFont
+        let arrowCfg = UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+        slideArrow.image = UIImage(systemName: "chevron.left", withConfiguration: arrowCfg)
+        slideArrow.contentMode = .scaleAspectFit
         slideArrow.translatesAutoresizingMaskIntoConstraints = false
         slideContainer.addSubview(slideArrow)
 
@@ -62,7 +63,10 @@ final class InputBarRecordingRow: UIView {
 
             slideArrow.leadingAnchor.constraint(equalTo: slideContainer.leadingAnchor),
             slideArrow.centerYAnchor.constraint(equalTo: slideContainer.centerYAnchor),
-            slideText.leadingAnchor.constraint(equalTo: slideArrow.trailingAnchor, constant: 4),
+            slideArrow.widthAnchor.constraint(equalToConstant: 14),
+            slideArrow.heightAnchor.constraint(equalToConstant: 14),
+
+            slideText.leadingAnchor.constraint(equalTo: slideArrow.trailingAnchor, constant: 3),
             slideText.trailingAnchor.constraint(equalTo: slideContainer.trailingAnchor),
             slideText.centerYAnchor.constraint(equalTo: slideContainer.centerYAnchor),
         ])
@@ -73,7 +77,7 @@ final class InputBarRecordingRow: UIView {
     func applyTheme(_ theme: InputBarTheme) {
         dot.backgroundColor = theme.recordingDot
         timerLabel.textColor = theme.text
-        slideArrow.textColor = theme.placeholder
+        slideArrow.tintColor = theme.placeholder
         slideText.textColor = theme.placeholder
     }
 
@@ -100,7 +104,7 @@ final class InputBarRecordingRow: UIView {
     }
 
     func startSlideAnimation() {
-        animateSlide(toX: -12)
+        animateSlide(toX: -8)
     }
 
     func stopSlideAnimation() {
@@ -123,8 +127,8 @@ final class InputBarRecordingRow: UIView {
         UIView.animate(withDuration: 1.0, delay: 0, options: .curveEaseInOut, animations: {
             self.slideContainer.transform = CGAffineTransform(translationX: toX, y: 0)
         }) { [weak self] _ in
-            guard let self, self.slideContainer.layer.animation(forKey: "position") != nil || self.slideContainer.transform != .identity else { return }
-            self.animateSlide(toX: toX > 0 ? -12 : 12)
+            guard let self, self.slideContainer.alpha > 0 else { return }
+            self.animateSlide(toX: toX > 0 ? -8 : 8)
         }
     }
 }
