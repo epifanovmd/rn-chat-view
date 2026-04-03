@@ -14,16 +14,14 @@ extension ChatViewController: UIScrollViewDelegate {
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        if offset < topThreshold
-            && hasMore && !isLoadingTop && !didTriggerTopThisGesture
-            && !isInitialScrollProtected {
+        let inTopZone = offset < topThreshold
+        if inTopZone && hasMore && !isLoadingTop && !didTriggerTopThisGesture && !isInitialScrollProtected {
             didTriggerTopThisGesture = true
             delegate?.chatDidReachTop(distance: offset)
         }
 
-        if contentH - offset - frameH < bottomThreshold
-            && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !didTriggerBottomThisGesture
-            && !isInitialScrollProtected {
+        let inBottomZone = contentH - offset - frameH < bottomThreshold
+        if inBottomZone && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !didTriggerBottomThisGesture && !isInitialScrollProtected {
             didTriggerBottomThisGesture = true
             isLoadingNewerActive = true
             delegate?.chatDidReachBottom(distance: contentH - offset - frameH)
@@ -32,12 +30,13 @@ extension ChatViewController: UIScrollViewDelegate {
         updateFABVisibility(animated: true)
         updateVisibleMessages()
         updateFloatingDate()
+        if isLoadingTop { hideFirstDateSeparator(true) }
     }
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         isUserDragging = true
-        didTriggerTopThisGesture = isLoadingTop
-        didTriggerBottomThisGesture = isLoadingBottom
+        if !isLoadingTop { didTriggerTopThisGesture = false }
+        if !isLoadingBottom { didTriggerBottomThisGesture = false }
     }
 
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {

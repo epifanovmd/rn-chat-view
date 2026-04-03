@@ -8,11 +8,13 @@ final class ChatCollectionView: UICollectionView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+
         if needsPrependCompensation {
-            needsPrependCompensation = false
             let delta = contentSize.height - prePrependContentHeight
             if delta > 0 {
-                contentOffset = CGPoint(x: 0, y: prePrependContentOffset + delta)
+                needsPrependCompensation = false
+                let targetY = max(-contentInset.top, prePrependContentOffset + delta)
+                contentOffset = CGPoint(x: 0, y: targetY)
             }
         }
     }

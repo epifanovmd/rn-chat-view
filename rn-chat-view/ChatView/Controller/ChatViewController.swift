@@ -13,8 +13,18 @@ final class ChatViewController: UIViewController {
     var topThreshold: CGFloat = 200
     var bottomThreshold: CGFloat = 200
     var isLoading = false { didSet { updateEmptyState() } }
-    var isLoadingTop = false
-    var isLoadingBottom = false
+    var isLoadingTop = false {
+        didSet { if oldValue != isLoadingTop, isViewLoaded { updateTopLoadingOverlay() } }
+    }
+    var isLoadingBottom = false {
+        didSet { if oldValue != isLoadingBottom, isViewLoaded { scheduleBottomLoadingRebuild() } }
+    }
+    private var pendingLoadingRebuild: DispatchWorkItem?
+    private lazy var topLoadingSpinner: UIActivityIndicatorView = {
+        let s = UIActivityIndicatorView(style: .medium)
+        s.hidesWhenStopped = true
+        return s
+    }()
     var scrollToBottomThreshold: CGFloat = 150 { didSet { updateFABVisibility(animated: false) } }
     var showsSenderName = false { didSet { if oldValue != showsSenderName, isViewLoaded { reloadWithCrossfade() } } }
     var showsFloatingDate = true
@@ -104,8 +114,6 @@ final class ChatViewController: UIViewController {
     // MARK: - Scroll Compensation
 
     var savedOffsetForAppend: CGPoint?
-    private var prependContentHeight: CGFloat = 0
-    private var prependContentOffset: CGFloat = 0
 
     // MARK: - Keyboard Freeze (контекстное меню)
 
@@ -144,6 +152,7 @@ final class ChatViewController: UIViewController {
     deinit {
         floatingDateHideTask?.cancel()
         visibilityDebounceTask?.cancel()
+        pendingLoadingRebuild?.cancel()
         if let token = kbHideObserver { NotificationCenter.default.removeObserver(token) }
         if let token = kbShowObserver { NotificationCenter.default.removeObserver(token) }
         KeyboardListener.shared.remove(delegate: self)
@@ -468,6 +477,43 @@ final class ChatViewController: UIViewController {
         reloadWithCrossfade()
     }
 
+    private func updateTopLoadingOverlay() {
+        if isLoadingTop {
+            if topLoadingSpinner.superview == nil {
+                topLoadingSpinner.translatesAutoresizingMaskIntoConstraints = false
+                collectionView.addSubview(topLoadingSpinner)
+                NSLayoutConstraint.activate([
+                    topLoadingSpinner.centerXAnchor.constraint(equalTo: collectionView.frameLayoutGuide.centerXAnchor),
+                    topLoadingSpinner.topAnchor.constraint(equalTo: collectionView.topAnchor, constant: 12),
+                ])
+            }
+            topLoadingSpinner.startAnimating()
+            hideFirstDateSeparator(true)
+        } else {
+            topLoadingSpinner.stopAnimating()
+            hideFirstDateSeparator(false)
+        }
+    }
+
+    func hideFirstDateSeparator(_ hidden: Bool) {
+        guard let first = cachedDateSeparators.first else { return }
+        let ip = IndexPath(item: 0, section: first.index)
+        if let cell = collectionView.cellForItem(at: ip) as? DateSeparatorCell {
+            cell.contentView.alpha = hidden ? 0 : 1
+        }
+    }
+
+    private func scheduleBottomLoadingRebuild() {
+        pendingLoadingRebuild?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.rebuildListItems()
+            self.adapter.performUpdates(animated: false)
+        }
+        pendingLoadingRebuild = work
+        DispatchQueue.main.async(execute: work)
+    }
+
     private func reloadWithCrossfade() {
         UIView.transition(with: collectionView, duration: 0.25, options: .transitionCrossDissolve) {
             self.adapter.reloadData(completion: nil)
@@ -477,14 +523,13 @@ final class ChatViewController: UIViewController {
     // MARK: - Update Messages
 
     func updateMessages(_ newMessages: [ChatMessage]) {
+        pendingLoadingRebuild?.cancel()
+        pendingLoadingRebuild = nil
         let wasAtBottom = isNearBottom()
         let wasEmpty = messages.isEmpty
         let oldFirstId = messages.first?.id
         let oldLastId = messages.last?.id
         let oldCount = messages.count
-
-        // Capture prepend anchor BEFORE rebuild (old listItems + old layout)
-        capturePrependAnchor()
 
         messages = newMessages
         messageIndex = Dictionary(newMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
@@ -512,15 +557,9 @@ final class ChatViewController: UIViewController {
 
     // MARK: - Update Handlers
 
-    private func capturePrependAnchor() {
-        guard isViewLoaded else { return }
-        prependContentHeight = collectionView.contentSize.height
-        prependContentOffset = collectionView.contentOffset.y
-    }
-
     private func handlePrepend(oldFirstId: String?, count: Int) {
-        collectionView.prePrependContentHeight = prependContentHeight
-        collectionView.prePrependContentOffset = prependContentOffset
+        collectionView.prePrependContentHeight = collectionView.contentSize.height
+        collectionView.prePrependContentOffset = collectionView.contentOffset.y
         collectionView.needsPrependCompensation = true
 
         adapter.performUpdates(animated: false) { [weak self] _ in
@@ -603,10 +642,6 @@ final class ChatViewController: UIViewController {
     private func rebuildListItems() {
         var items: [ListDiffable] = []
         var dateSeps: [(index: Int, item: DateSeparatorListItem)] = []
-
-        if isLoadingTop {
-            items.append(LoadingListItem(position: .top))
-        }
 
         var currentGroup: String?
         for msg in messages {
