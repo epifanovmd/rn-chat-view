@@ -53,10 +53,10 @@ final class DateHelper {
         let cal = Calendar.current
 
         if cal.isDateInToday(date) {
-            return NSLocalizedString("chat.today", value: "Today", comment: "")
+            return NSLocalizedString("chat.today", value: "Сегодня", comment: "")
         }
         if cal.isDateInYesterday(date) {
-            return NSLocalizedString("chat.yesterday", value: "Yesterday", comment: "")
+            return NSLocalizedString("chat.yesterday", value: "Вчера", comment: "")
         }
         if let weekAgo = cal.date(byAdding: .day, value: -6, to: cal.startOfDay(for: Date())),
            date >= weekAgo {
