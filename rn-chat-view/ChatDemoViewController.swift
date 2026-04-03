@@ -711,6 +711,12 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     func chatDidScroll(offset: CGPoint) {}
     func chatDidReachTop(distance: CGFloat) { showAlert("Reached Top", "distance: \(Int(distance))") }
     func chatDidReachBottom(distance: CGFloat) {}
+
+    func chatDidTapFAB() {
+        chatVC.clearUnread()
+        chatVC.scrollToBottom(animated: true)
+    }
+
     func chatMessagesDidAppear(ids: [String]) {}
 
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {

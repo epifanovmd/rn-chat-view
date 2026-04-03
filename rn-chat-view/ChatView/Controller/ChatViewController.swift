@@ -28,8 +28,19 @@ final class ChatViewController: UIViewController {
     var scrollToBottomThreshold: CGFloat = 150 { didSet { updateFABVisibility(animated: false) } }
     var showsSenderName = false { didSet { if oldValue != showsSenderName, isViewLoaded { reloadWithCrossfade() } } }
     var showsFloatingDate = true
-    var unreadCount = 0 { didSet { updateFABBadge() } }
+    private(set) var isExternalUnreadManagement = false
+    var unreadCount: Int = 0 {
+        didSet { updateFABBadge() }
+    }
     var unreadMessageIDs: Set<String> = []
+
+    /// Устанавливает unreadCount снаружи и переключает FAB в режим внешнего управления.
+    /// После вызова внутренняя логика (trackNewUnread, clearUnread при скрытии FAB,
+    /// автоматический scrollToBottom при нажатии) отключается.
+    func setUnreadCount(_ count: Int) {
+        isExternalUnreadManagement = true
+        unreadCount = count
+    }
 
     var emojiReactionsList: [String] = [] {
         didSet { contextMenuEmojis = emojiReactionsList.map { ContextMenuEmoji(emoji: $0) } }
@@ -619,6 +630,7 @@ final class ChatViewController: UIViewController {
     }
 
     private func trackNewUnread(newMessages: [ChatMessage], oldCount: Int) {
+        guard !isExternalUnreadManagement else { return }
         let delta = newMessages.count - oldCount
         guard delta > 0 else { return }
         let newIDs = newMessages.suffix(delta).filter { !$0.isMine }.map { $0.id }
@@ -750,7 +762,6 @@ final class ChatViewController: UIViewController {
             fabButton.alpha = alpha
             fabBadge.alpha = alpha
         }
-        if !shouldShow { clearUnread() }
     }
 
     func updateFABBadge() {
@@ -807,8 +818,7 @@ final class ChatViewController: UIViewController {
 
     @objc func dismissKeyboard() { view.endEditing(true) }
     @objc func fabTapped() {
-        clearUnread()
-        scrollToBottom(animated: true)
+        delegate?.chatDidTapFAB()
     }
 }
 

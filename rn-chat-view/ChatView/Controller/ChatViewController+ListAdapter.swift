@@ -93,11 +93,13 @@ extension ChatViewController {
         guard !newIDs.isEmpty else { return }
         visibleMessageIDs = ids
 
-        // Декремент счётчика непрочитанных
-        let readUnread = newIDs.intersection(unreadMessageIDs)
-        if !readUnread.isEmpty {
-            unreadMessageIDs.subtract(readUnread)
-            unreadCount = unreadMessageIDs.count
+        // Декремент счётчика непрочитанных (только внутренний режим)
+        if !isExternalUnreadManagement {
+            let readUnread = newIDs.intersection(unreadMessageIDs)
+            if !readUnread.isEmpty {
+                unreadMessageIDs.subtract(readUnread)
+                unreadCount = unreadMessageIDs.count
+            }
         }
 
         pendingVisibleIDs.formUnion(newIDs)

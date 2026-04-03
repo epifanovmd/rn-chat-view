@@ -166,6 +166,11 @@ final class PaginationDemoViewController: UIViewController, ChatViewControllerDe
         }
     }
 
+    func chatDidTapFAB() {
+        chatVC.clearUnread()
+        chatVC.scrollToBottom(animated: true)
+    }
+
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {}
     func chatDidSelectAction(actionId: String, messageId: String) {}
     func chatDidSelectEmojiReaction(emoji: String, messageId: String) {}

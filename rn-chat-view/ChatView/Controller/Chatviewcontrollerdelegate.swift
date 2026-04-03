@@ -6,6 +6,9 @@ protocol ChatViewControllerDelegate: AnyObject {
     func chatDidReachTop(distance: CGFloat)
     func chatDidReachBottom(distance: CGFloat)
 
+    // MARK: - FAB
+    func chatDidTapFAB()
+
     // MARK: - Visibility
     func chatMessagesDidAppear(ids: [String])
 

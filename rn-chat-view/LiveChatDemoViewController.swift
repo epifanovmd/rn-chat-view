@@ -408,6 +408,12 @@ final class LiveChatDemoViewController: UIViewController, ChatViewControllerDele
     }
 
     func chatDidReachBottom(distance: CGFloat) {}
+
+    func chatDidTapFAB() {
+        chatVC.clearUnread()
+        chatVC.scrollToBottom(animated: true)
+    }
+
     func chatMessagesDidAppear(ids: [String]) {}
 
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {}
