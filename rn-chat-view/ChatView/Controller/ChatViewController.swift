@@ -753,19 +753,21 @@ final class ChatViewController: UIViewController {
         isFabVisible = shouldShow
         let alpha: CGFloat = shouldShow ? 1 : 0
         fabButton.isUserInteractionEnabled = shouldShow
+        updateFABBadge()
+        let badgeAlpha: CGFloat = (shouldShow && unreadCount > 0) ? 1 : 0
         if animated {
             UIView.animate(withDuration: 0.25) {
                 self.fabButton.alpha = alpha
-                self.fabBadge.alpha = alpha
+                self.fabBadge.alpha = badgeAlpha
             }
         } else {
             fabButton.alpha = alpha
-            fabBadge.alpha = alpha
+            fabBadge.alpha = badgeAlpha
         }
     }
 
     func updateFABBadge() {
-        fabBadge.isHidden = unreadCount == 0
+        fabBadge.isHidden = unreadCount == 0 || !isFabVisible
         guard unreadCount > 0 else { return }
         fabBadge.text = unreadCount > 99 ? "99+" : "\(unreadCount)"
     }
