@@ -2,7 +2,7 @@ import UIKit
 
 // MARK: - Recording Gesture & State
 
-extension ChatInputBar {
+extension InputBarView {
 
     @objc func handleRecordGesture(_ g: UILongPressGestureRecognizer) {
         let loc = g.location(in: self)
@@ -17,28 +17,19 @@ extension ChatInputBar {
     // MARK: - Start
 
     private func startRecording(at point: CGPoint) {
-        let L = ChatLayout.current
+        let L = InputBarLayout.current
         recordingState = .recording
         gestureStartPoint = point
         lastRecordedDuration = 0
         haptic(.light)
 
-        // Reset recording row
-        recordTimerLabel.text = "0:00,00"
-        recordTimerLabel.alpha = 1
-        recordDot.alpha = 1
-        recordDot.transform = .identity
-        slideHintContainer.alpha = 1
-        slideHintContainer.transform = .identity
-        slideArrowLabel.text = "‹‹‹"
-        slideArrowLabel.textColor = theme.inputBarPlaceholder
-        slideTextLabel.textColor = theme.inputBarPlaceholder
-
-        // Switch content
+        // Reset & show recording row
+        recordingRow.reset()
+        recordingRow.applyTheme(currentTheme)
         textView.isHidden = true
         recordingRow.isHidden = false
 
-        // Animate left button out + input expands
+        // Animate left button out
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
             self.leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
             self.leftButton.alpha = 0
@@ -46,29 +37,22 @@ extension ChatInputBar {
             self.inputStack.layoutIfNeeded()
         }
 
-        // Lift entire inputStack above lock container
+        // Lift inputStack above lock view
         inputStack.layer.zPosition = 1000
 
-        // Style rightButton as draggable mic (blue filled)
-        rightButton.backgroundColor = theme.voiceRecordingMicBackground
+        // Style rightButton as draggable mic
+        rightButton.backgroundColor = currentTheme.recordingMicFill
         rightButton.tintColor = .white
         rightButton.layer.borderWidth = 0
 
-        // Record origin for drag calculations
-        let center = rightButton.superview!.convert(rightButton.center, to: self)
-        micOriginCenter = center
+        // Record origin
+        micOriginCenter = rightButton.superview!.convert(rightButton.center, to: self)
 
-        // Lock container
-        lockContainer.alpha = 0
-        lockContainer.transform = CGAffineTransform(translationX: 0, y: 20)
-        lockChevron.alpha = 1
-        UIView.animate(withDuration: 0.3, delay: 0.1, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
-            self.lockContainer.alpha = 1
-            self.lockContainer.transform = .identity
-        }
+        // Show lock
+        lockView.animateIn()
 
-        startDotBlink()
-        startSlideHintAnimation()
+        recordingRow.startDotBlink()
+        recordingRow.startSlideAnimation()
         delegate?.inputBarDidStartRecording()
         delegate?.inputBarRecordingStateChanged(isRecording: true)
     }
@@ -76,30 +60,27 @@ extension ChatInputBar {
     // MARK: - Drag
 
     private func handleDrag(at point: CGPoint) {
-        let L = ChatLayout.current
+        let L = InputBarLayout.current
         let dx = point.x - gestureStartPoint.x
         let dy = point.y - gestureStartPoint.y
 
         if abs(dx) > abs(dy) && dx < 0 {
-            // Cancel direction (left)
             let progress = min(1, abs(dx) / L.recordCancelThreshold)
             let tx = min(0, dx) * 0.8
             rightButton.transform = CGAffineTransform(translationX: tx, y: 0)
                 .scaledBy(x: 1 - progress * 0.3, y: 1 - progress * 0.3)
-            slideHintContainer.alpha = 1 - progress
+            recordingRow.slideContainer.alpha = 1 - progress
             if progress >= 1 { performCancel(); return }
         } else if dy < 0 {
-            // Lock direction (up)
             let progress = min(1, abs(dy) / L.recordLockThreshold)
             let ty = min(0, dy) * 0.8
             rightButton.transform = CGAffineTransform(translationX: 0, y: ty)
-            lockContainer.transform = CGAffineTransform(scaleX: 1 + progress * 0.2, y: 1 + progress * 0.2)
+            lockView.transform = CGAffineTransform(scaleX: 1 + progress * 0.2, y: 1 + progress * 0.2)
             if progress >= 1 { performLock(); return }
         } else {
-            // Return to origin
             rightButton.transform = .identity
-            slideHintContainer.alpha = 1
-            lockContainer.transform = .identity
+            recordingRow.slideContainer.alpha = 1
+            lockView.transform = .identity
         }
     }
 
@@ -107,14 +88,13 @@ extension ChatInputBar {
 
     private func handleRelease() {
         recordingState = .idle
-        stopSlideHintAnimation()
+        recordingRow.stopSlideAnimation()
 
-        // Snap rightButton back, then restore
         UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, animations: {
             self.rightButton.transform = .identity
-            self.lockContainer.alpha = 0
+            self.lockView.alpha = 0
         }) { _ in
-            self.restoreMicButton()
+            self.restoreMicStyle()
             self.restoreInputBar(trashAnimation: false) {
                 self.delegate?.inputBarDidStopRecording()
             }
@@ -133,60 +113,51 @@ extension ChatInputBar {
         let wasLocked = recordingState == .locked
         recordingState = .idle
 
-        // 1. Stop recording first
         delegate?.inputBarDidCancelRecording()
         delegate?.inputBarRecordingStateChanged(isRecording: false)
 
-        // 2. Haptic after recording stopped
         haptic(.heavy)
 
-        // 3. Animate
-        recordDot.layer.removeAllAnimations()
-        stopSlideHintAnimation()
+        recordingRow.stopDotBlink()
+        recordingRow.stopSlideAnimation()
 
-        UIView.animate(withDuration: 0.15) {
-            self.recordDot.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
-            self.recordDot.alpha = 0
-            self.slideHintContainer.alpha = 0
-            self.recordTimerLabel.alpha = 0
-            if !wasLocked {
-                self.lockContainer.alpha = 0
-            }
-        } completion: { _ in
+        recordingRow.fadeOut(hideLock: !wasLocked) { [self] in
             if wasLocked {
-                self.stopSendButtonPulse()
-                self.recordingRow.isHidden = true
-                self.textView.isHidden = false
-                self.rightButton.removeTarget(self, action: #selector(self.lockedSendTapped), for: .touchUpInside)
-                self.restoreMicButton()
-                self.resetRightButtonToMic()
-                self.restoreLeftButtonToClip()
+                stopSendButtonPulse()
+                recordingRow.isHidden = true
+                textView.isHidden = false
+                rightButton.removeTarget(self, action: #selector(lockedSendTapped), for: .touchUpInside)
+                restoreMicStyle()
+                resetRightButtonToMic()
+                restoreLeftButtonToClip()
             } else {
                 UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, animations: {
                     self.rightButton.transform = .identity
                 }) { _ in
-                    self.restoreMicButton()
+                    self.restoreMicStyle()
                     self.restoreInputBar(trashAnimation: true) {}
                 }
             }
         }
+
+        if !wasLocked { lockView.animateOut() }
     }
 
     // MARK: - Lock
 
     private func performLock() {
-        let L = ChatLayout.current
+        let L = InputBarLayout.current
         recordingState = .locked
-        stopSlideHintAnimation()
+        recordingRow.stopSlideAnimation()
 
-        // Snap rightButton back to origin and switch to send style + pulse
+        // Snap mic back
         UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
             self.rightButton.transform = .identity
-            self.lockContainer.alpha = 0
+            self.lockView.alpha = 0
         }
 
-        // Change icon to send arrow
-        let sendCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .semibold)
+        // Change icon to send + pulse
+        let sendCfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .semibold)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             UIView.transition(with: self.rightButton, duration: 0.15, options: .transitionCrossDissolve) {
                 self.rightButton.setImage(UIImage(systemName: "arrow.up", withConfiguration: sendCfg), for: .normal)
@@ -195,9 +166,9 @@ extension ChatInputBar {
         }
 
         // Show left button as red trash
-        let trashCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
+        let trashCfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .medium)
         leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: trashCfg), for: .normal)
-        leftButton.tintColor = theme.voiceRecordingCancelColor
+        leftButton.tintColor = currentTheme.recordingCancel
         leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
         leftButton.alpha = 0
 
@@ -212,12 +183,15 @@ extension ChatInputBar {
         rightButton.addTarget(self, action: #selector(lockedSendTapped), for: .touchUpInside)
     }
 
+    // MARK: - Pulse
+
     private func startSendButtonPulse() {
-        rightButton.transform = CGAffineTransform(scaleX: 1.15, y: 1.15)
+        let L = InputBarLayout.current
+        rightButton.transform = CGAffineTransform(scaleX: L.pulseBaseScale, y: L.pulseBaseScale)
         let pulse = CABasicAnimation(keyPath: "transform.scale")
-        pulse.fromValue = 1.15
-        pulse.toValue = 1.28
-        pulse.duration = 0.6
+        pulse.fromValue = L.pulseBaseScale
+        pulse.toValue = L.pulseMaxScale
+        pulse.duration = L.pulseDuration
         pulse.autoreverses = true
         pulse.repeatCount = .infinity
         pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
@@ -233,33 +207,31 @@ extension ChatInputBar {
         guard recordingState == .locked else { return }
         recordingState = .idle
         stopSendButtonPulse()
-        restoreMicButton()
+        restoreMicStyle()
         restoreInputBar(trashAnimation: false) {
             self.delegate?.inputBarDidStopRecording()
         }
         delegate?.inputBarRecordingStateChanged(isRecording: false)
     }
 
-    // MARK: - Restore Input Bar
+    // MARK: - Restore
 
     func restoreInputBar(trashAnimation: Bool, completion: @escaping () -> Void) {
-        let L = ChatLayout.current
-        recordDot.layer.removeAllAnimations()
+        let L = InputBarLayout.current
+        recordingRow.stopDotBlink()
         recordingRow.isHidden = true
         textView.isHidden = false
 
-        // Restore right button
         rightButton.removeTarget(self, action: #selector(lockedSendTapped), for: .touchUpInside)
         resetRightButtonToMic()
 
-        // Show left button — simultaneously with input shrinking
         leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
         leftButton.alpha = 0
 
         if trashAnimation {
-            let trashCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
+            let trashCfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .medium)
             leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: trashCfg), for: .normal)
-            leftButton.tintColor = theme.voiceRecordingCancelColor
+            leftButton.tintColor = currentTheme.recordingCancel
         } else {
             restoreLeftButtonToClip()
         }
@@ -288,59 +260,10 @@ extension ChatInputBar {
         }
     }
 
-    // MARK: - Mic Button Helpers
-
-    /// Restore rightButton visual style to normal (from blue draggable state)
-    private func restoreMicButton() {
+    private func restoreMicStyle() {
         inputStack.layer.zPosition = 0
-        rightButton.backgroundColor = theme.inputBarTextViewBackground
-        rightButton.tintColor = theme.inputBarTint
-        rightButton.layer.borderWidth = ChatLayout.current.inputBorderWidth
-    }
-
-    private func bounceTrashThenRestore() {
-        restoreLeftButtonToClip()
-    }
-
-    // MARK: - Single Pulse
-
-    func singlePulse(_ view: UIView, completion: (() -> Void)? = nil) {
-        UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseOut, animations: {
-            view.transform = CGAffineTransform(scaleX: 1.18, y: 1.18)
-        }) { _ in
-            UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 0.3, animations: {
-                view.transform = .identity
-            }) { _ in
-                completion?()
-            }
-        }
-    }
-
-    // MARK: - Animations
-
-    private func startDotBlink() {
-        recordDot.alpha = 1
-        UIView.animate(withDuration: 0.5, delay: 0, options: [.repeat, .autoreverse]) {
-            self.recordDot.alpha = ChatLayout.current.recordDotMinAlpha
-        }
-    }
-
-    private func startSlideHintAnimation() {
-        animateSlideHint(toX: -12)
-    }
-
-    private func animateSlideHint(toX: CGFloat) {
-        guard recordingState == .recording else { return }
-        UIView.animate(withDuration: 1.0, delay: 0, options: .curveEaseInOut, animations: {
-            self.slideHintContainer.transform = CGAffineTransform(translationX: toX, y: 0)
-        }) { _ in
-            guard self.recordingState == .recording else { return }
-            self.animateSlideHint(toX: toX > 0 ? -12 : 12)
-        }
-    }
-
-    private func stopSlideHintAnimation() {
-        slideHintContainer.layer.removeAllAnimations()
-        slideHintContainer.transform = .identity
+        rightButton.backgroundColor = currentTheme.background
+        rightButton.tintColor = currentTheme.tint
+        rightButton.layer.borderWidth = InputBarLayout.current.borderWidth
     }
 }

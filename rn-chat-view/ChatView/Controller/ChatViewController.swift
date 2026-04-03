@@ -65,7 +65,7 @@ final class ChatViewController: UIViewController {
 
     // MARK: - UI Components
 
-    var inputBar: ChatInputBar!
+    var inputBar: InputBarView!
     private let emptyContainer = UIView()
     private let emptyLabel = UILabel()
     private let centerSpinner = UIActivityIndicatorView(style: .large)
@@ -237,7 +237,7 @@ final class ChatViewController: UIViewController {
         inputBarBackground.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(inputBarBackground)
 
-        inputBar = ChatInputBar()
+        inputBar = InputBarView()
         inputBar.delegate = self
         inputBar.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(inputBar)
@@ -277,10 +277,10 @@ final class ChatViewController: UIViewController {
     // MARK: - Setup FAB
 
     private func setupFAB() {
-        let size = ChatLayout.current.inputButtonSize
+        let size = InputBarLayout.current.buttonSize
         fabButton.translatesAutoresizingMaskIntoConstraints = false
         fabButton.layer.cornerRadius = size / 2
-        fabButton.layer.borderWidth = ChatLayout.current.inputBorderWidth
+        fabButton.layer.borderWidth = InputBarLayout.current.borderWidth
         fabButton.alpha = 0
         fabButton.isUserInteractionEnabled = false
         fabButton.addTarget(self, action: #selector(fabTapped), for: .touchUpInside)
@@ -306,8 +306,9 @@ final class ChatViewController: UIViewController {
         view.addSubview(fabBadge)
 
         // Align FAB above right button — anchor to inputBar.bottom offset by padding+buttonHeight+margin
-        let hPad = ChatLayout.current.inputBarHPad
-        let bottomOffset = ChatLayout.current.inputBarVPad + size + ChatLayout.current.fabMargin
+        let IB = InputBarLayout.current
+        let hPad = IB.barHPad
+        let bottomOffset = IB.barVPad + size + ChatLayout.current.fabMargin
         NSLayoutConstraint.activate([
             fabButton.widthAnchor.constraint(equalToConstant: size),
             fabButton.heightAnchor.constraint(equalToConstant: size),
@@ -458,12 +459,13 @@ final class ChatViewController: UIViewController {
         guard isViewLoaded else { return }
         collectionView.backgroundColor = .clear
         emptyLabel.textColor = theme.emptyStateText
-        fabButton.backgroundColor = theme.inputBarTextViewBackground
-        fabButton.layer.borderColor = theme.inputBarBorder.cgColor
+        let ibTheme = InputBarTheme.from(theme)
+        fabButton.backgroundColor = ibTheme.background
+        fabButton.layer.borderColor = ibTheme.border.cgColor
         fabArrow.tintColor = theme.fabArrowColor
         fabBadge.backgroundColor = theme.fabBadgeBackground
         fabBadge.textColor = theme.fabBadgeTextColor
-        inputBar.applyTheme(theme)
+        inputBar.applyTheme(.from(theme))
         inputBarBackground.backgroundColor = .clear
         floatingDatePill.backgroundColor = theme.dateSeparatorBackground
         floatingDateLabel.textColor = theme.dateSeparatorText
@@ -710,8 +712,13 @@ final class ChatViewController: UIViewController {
 
     // MARK: - Input Mode
 
-    func beginReply(info: ReplyInfo) { inputBar.beginReply(info: info, theme: theme) }
-    func beginEdit(messageId: String, text: String) { inputBar.beginEdit(messageId: messageId, text: text, theme: theme) }
+    func beginReply(info: ReplyInfo) {
+        inputBar.beginReply(info: InputBarReplyInfo(
+            messageId: info.replyToId, senderName: info.senderName,
+            text: info.text, hasImage: info.hasImage
+        ))
+    }
+    func beginEdit(messageId: String, text: String) { inputBar.beginEdit(messageId: messageId, text: text) }
     func clearInputMode() { inputBar.cancelMode() }
 
     // MARK: - Helpers

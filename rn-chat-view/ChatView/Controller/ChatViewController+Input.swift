@@ -2,7 +2,7 @@ import UIKit
 
 // MARK: - ChatInputBarDelegate
 
-extension ChatViewController: ChatInputBarDelegate {
+extension ChatViewController: InputBarDelegate {
     func inputBarDidSend(text: String, replyToId: String?) {
         pendingScrollToBottom = true
         delegate?.chatDidSendMessage(text: text, replyToId: replyToId)
