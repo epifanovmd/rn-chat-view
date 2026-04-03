@@ -105,8 +105,6 @@ final class ChatViewController: UIViewController {
     var visibilityDebounceTask: DispatchWorkItem?
     var pendingHighlightId: String?
     var isUserDragging = false
-    var didTriggerTopThisGesture = false
-    var didTriggerBottomThisGesture = false
     var lastKnownMessageCount = 0
     var pendingScrollToBottom = false
     var isLoadingNewerActive = false

@@ -14,15 +14,11 @@ extension ChatViewController: UIScrollViewDelegate {
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        let inTopZone = offset < topThreshold
-        if inTopZone && hasMore && !isLoadingTop && !didTriggerTopThisGesture && !isInitialScrollProtected {
-            didTriggerTopThisGesture = true
+        if offset < topThreshold && hasMore && !isLoadingTop && !isInitialScrollProtected {
             delegate?.chatDidReachTop(distance: offset)
         }
 
-        let inBottomZone = contentH - offset - frameH < bottomThreshold
-        if inBottomZone && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !didTriggerBottomThisGesture && !isInitialScrollProtected {
-            didTriggerBottomThisGesture = true
+        if contentH - offset - frameH < bottomThreshold && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !isInitialScrollProtected {
             isLoadingNewerActive = true
             delegate?.chatDidReachBottom(distance: contentH - offset - frameH)
         }
@@ -35,8 +31,6 @@ extension ChatViewController: UIScrollViewDelegate {
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         isUserDragging = true
-        if !isLoadingTop { didTriggerTopThisGesture = false }
-        if !isLoadingBottom { didTriggerBottomThisGesture = false }
     }
 
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
