@@ -34,7 +34,7 @@ struct ChatLayout {
     // MARK: - Шрифты контента
 
     /// Шрифт текста сообщения
-    var messageFont: UIFont = .systemFont(ofSize: 16)
+    var messageFont: UIFont = .systemFont(ofSize: 15)
     /// Шрифт имени отправителя
     var senderNameFont: UIFont = .systemFont(ofSize: 13, weight: .semibold)
     /// Шрифт метки времени
@@ -214,13 +214,13 @@ struct ChatLayout {
     /// Вертикальный отступ панели ввода
     var inputBarVPad: CGFloat = 8
     /// Горизонтальный отступ панели ввода
-    var inputBarHPad: CGFloat = 8
+    var inputBarHPad: CGFloat = 12
     /// Минимальная высота поля ввода текста
-    var textViewMinHeight: CGFloat = 36
+    var textViewMinHeight: CGFloat = 40
     /// Максимальная высота поля ввода до прокрутки
     var textViewMaxHeight: CGFloat = 120
     /// Радиус скругления поля ввода текста
-    var textViewCornerRadius: CGFloat = 18
+    var textViewCornerRadius: CGFloat = 20
     /// Шрифт поля ввода текста
     var textViewFont: UIFont = .systemFont(ofSize: 16)
     /// Внутренние отступы поля ввода текста
@@ -228,19 +228,45 @@ struct ChatLayout {
     /// Высота панели ответа/редактирования
     var inputReplyPanelHeight: CGFloat = 48
     /// Размер кнопки вложения/отправки
-    var inputButtonSize: CGFloat = 36
+    var inputButtonSize: CGFloat = 40
     /// Высота верхней разделительной линии
     var inputSeparatorHeight: CGFloat = 0.5
     /// Интервал между элементами панели ввода
     var inputStackSpacing: CGFloat = 6
     /// Ширина рамки поля ввода
     var inputBorderWidth: CGFloat = 0.5
-    /// Размер иконки ответа в панели
-    var inputReplyIconSize: CGFloat = 16
+    /// Размер иконки в кнопках ввода (скрепка, mic, send)
+    var inputIconSize: CGFloat = 16
+    /// Размер иконки ответа в панели ответа
+    var inputReplyIconSize: CGFloat = 10
     /// Размер кнопки отмены ответа
-    var inputReplyCancelSize: CGFloat = 28
+    var inputReplyCancelSize: CGFloat = 20
+    /// Размер иконки крестика отмены ответа
+    var inputReplyCancelIconSize: CGFloat = 10
     /// Внутренний интервал панели ответа
     var inputReplySpacing: CGFloat = 8
+    /// Шрифт стрелки отмены записи
+    var recordSlideArrowFont: UIFont = .systemFont(ofSize: 22, weight: .bold)
+    /// Размер иконки плавающего микрофона
+    var recordFloatingMicIconSize: CGFloat = 18
+    /// Размер иконки шеврона замка
+    var recordLockChevronSize: CGFloat = 10
+    /// Размер иконки замка
+    var recordLockButtonIconSize: CGFloat = 14
+    /// Отступ замка от кнопки
+    var recordLockBottomMargin: CGFloat = 8
+    /// Отступ шеврона от верха замка
+    var recordLockChevronTopPad: CGFloat = 6
+    /// Смещение иконки замка от центра вниз
+    var recordLockIconCenterOffset: CGFloat = 5
+    /// Отступ записывающей точки от левого края
+    var recordDotLeading: CGFloat = 12
+    /// Отступ таймера от точки
+    var recordTimerLeading: CGFloat = 8
+    /// Смещение подсказки отмены от центра
+    var recordSlideHintOffset: CGFloat = 20
+    /// Отступ placeholder от левого края textView
+    var inputPlaceholderLeading: CGFloat = 13
 
     // MARK: - FAB (кнопка скролла вниз)
 
@@ -288,6 +314,22 @@ struct ChatLayout {
     var recordStopSize: CGFloat = 36
     /// Минимальная прозрачность точки при мигании
     var recordDotMinAlpha: CGFloat = 0.2
+    /// Размер плавающей кнопки микрофона при записи
+    var recordFloatingMicSize: CGFloat = 48
+    /// Порог перетаскивания влево для отмены записи
+    var recordCancelThreshold: CGFloat = 100
+    /// Порог перетаскивания вверх для блокировки записи
+    var recordLockThreshold: CGFloat = 70
+    /// Размер иконки замка
+    var recordLockIconSize: CGFloat = 24
+    /// Размер контейнера замка
+    var recordLockContainerSize: CGFloat = 44
+    /// Размер иконки корзины при отмене
+    var recordTrashIconSize: CGFloat = 24
+    /// Минимальная длительность нажатия для начала записи
+    var recordMinPressDuration: TimeInterval = 0.15
+    /// Размер пульсирующего кольца в режиме блокировки
+    var recordPulseRingSize: CGFloat = 56
 
     // MARK: - Анимации
 

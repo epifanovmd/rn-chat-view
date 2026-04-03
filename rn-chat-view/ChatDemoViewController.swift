@@ -1,3 +1,4 @@
+import AVFoundation
 import UIKit
 import SwiftUI
 
@@ -843,7 +844,71 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     }
 
     func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval) {
-        showAlert("Voice Recording", "duration: \(String(format: "%.1f", duration))s\nfile: \(fileURL.lastPathComponent)")
+        var msgs = chatVC.messages
+        let today = DateHelper.shared.groupKey(from: Date())
+
+        // Generate waveform from audio file (or synthetic fallback)
+        let waveform = Self.extractWaveform(from: fileURL, samples: 20)
+
+        let voiceMsg = ChatMessage(
+            id: UUID().uuidString,
+            content: MessageContent(
+                text: nil, media: nil,
+                voice: VoicePayload(
+                    url: fileURL.absoluteString,
+                    duration: duration,
+                    waveform: waveform
+                ),
+                poll: nil, files: nil
+            ),
+            timestamp: Date(),
+            senderName: nil,
+            isMine: true,
+            groupDate: today,
+            status: .sending,
+            reply: nil,
+            forwardedFrom: nil,
+            reactions: [],
+            isEdited: false,
+            actions: []
+        )
+        msgs.append(voiceMsg)
+        chatVC.updateMessages(msgs)
+    }
+
+    private static func extractWaveform(from url: URL, samples count: Int) -> [Float] {
+        guard let file = try? AVAudioFile(forReading: url) else {
+            return (0..<count).map { _ in Float.random(in: 0.1...1.0) }
+        }
+        let frameCount = AVAudioFrameCount(file.length)
+        guard frameCount > 0,
+              let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: frameCount) else {
+            return (0..<count).map { _ in Float.random(in: 0.1...1.0) }
+        }
+        do { try file.read(into: buffer) } catch {
+            return (0..<count).map { _ in Float.random(in: 0.1...1.0) }
+        }
+        guard let channelData = buffer.floatChannelData?[0] else {
+            return (0..<count).map { _ in Float.random(in: 0.1...1.0) }
+        }
+        let totalFrames = Int(buffer.frameLength)
+        let chunkSize = max(1, totalFrames / count)
+        var result: [Float] = []
+        for i in 0..<count {
+            let start = i * chunkSize
+            let end = min(start + chunkSize, totalFrames)
+            var maxVal: Float = 0
+            for j in start..<end {
+                maxVal = max(maxVal, abs(channelData[j]))
+            }
+            result.append(maxVal)
+        }
+        // Normalize to 0...1
+        let peak = result.max() ?? 1
+        if peak > 0 {
+            result = result.map { min(1.0, $0 / peak) }
+        }
+        return result
     }
 
     func chatDidChangeInputText(_ text: String) {}

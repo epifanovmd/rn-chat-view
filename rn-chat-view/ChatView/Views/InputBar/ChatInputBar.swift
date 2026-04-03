@@ -11,6 +11,11 @@ protocol ChatInputBarDelegate: AnyObject {
     func inputBarDidStopRecording()
     func inputBarDidCancelRecording()
     func inputBarDidChangeText(_ text: String)
+    func inputBarRecordingStateChanged(isRecording: Bool)
+}
+
+extension ChatInputBarDelegate {
+    func inputBarRecordingStateChanged(isRecording: Bool) {}
 }
 
 // MARK: - Input Mode
@@ -21,84 +26,182 @@ enum InputBarMode: Equatable {
     case edit(messageId: String, text: String)
 }
 
+// MARK: - Recording State
+
+enum RecordingState {
+    case idle, recording, locked
+}
+
 // MARK: - ChatInputBar
 
 final class ChatInputBar: UIView {
     weak var delegate: ChatInputBarDelegate?
-
     private(set) var mode: InputBarMode = .normal
 
-    // MARK: - Subviews
+    // MARK: - Layout
 
-    private let separator = UIView()
-    private let containerStack = UIStackView()
-    private let replyPanel = UIView()
-    private let replyAccentBar = UIView()
-    private let replyIconView = UIImageView()
-    private let replySenderLabel = UILabel()
-    private let replyTextLabel = UILabel()
-    private let replyCancelButton = UIButton(type: .system)
-    private let inputStack = UIStackView()
-    private let attachButton = UIButton(type: .system)
-    private let textViewContainer = UIView()
+    let inputStack = UIStackView()
+    let leftButton = UIButton(type: .system)
+    let mainContainer = UIView()
+    let mainStack = UIStackView()
+    let rightButton = UIButton(type: .system)
+
+    // MARK: - Reply Panel
+
+    let replyPanel = UIView()
+    var replyPanelHeight: NSLayoutConstraint!
+    let replyAccentBar = UIView()
+    let replyIconView = UIImageView()
+    let replySenderLabel = UILabel()
+    let replyTextLabel = UILabel()
+    let replyCancelButton = UIButton(type: .system)
+    let replySeparator = UIView()
+
+    // MARK: - Text Area
+
     let textView = UITextView()
-    private let placeholderLabel = UILabel()
-    private let sendButton = UIButton(type: .system)
-    private let recordButton = UIButton(type: .system)
+    let placeholderLabel = UILabel()
+    var textViewHeightConstraint: NSLayoutConstraint!
 
-    // Recording overlay
-    private let recordingOverlay = UIView()
-    private let recordDot = UIView()
-    private let recordTimerLabel = UILabel()
-    private let recordCancelLabel = UILabel()
-    private let recordStopButton = UIButton(type: .system)
+    // MARK: - Recording Row
 
-    private var textViewHeightConstraint: NSLayoutConstraint!
-    private var replyPanelHeight: NSLayoutConstraint!
-    private var theme: ChatTheme = .light
-    private var isRecording = false
+    let recordingRow = UIView()
+    let recordDot = UIView()
+    let recordTimerLabel = UILabel()
+    let slideHintContainer = UIView()
+    let slideArrowLabel = UILabel()
+    let slideTextLabel = UILabel()
+
+    // MARK: - Floating Views
+
+    let floatingMicButton = UIView()
+    let floatingMicIcon = UIImageView()
+    let lockContainer = UIView()
+    let lockChevron = UIImageView()
+    let lockButtonIcon = UIImageView()
+
+    // MARK: - State
+
+    var recordingState: RecordingState = .idle
+    var micOriginCenter: CGPoint = .zero
+    var gestureStartPoint: CGPoint = .zero
+    var lastRecordedDuration: TimeInterval = 0
+    var theme: ChatTheme = .light
+    let hapticLight = UIImpactFeedbackGenerator(style: .light)
+    let hapticMedium = UIImpactFeedbackGenerator(style: .medium)
+    let hapticHeavy = UIImpactFeedbackGenerator(style: .heavy)
 
     // MARK: - Init
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setup()
+        setupLayout()
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Setup
+    // MARK: - Layout
 
-    private func setup() {
+    private func setupLayout() {
         backgroundColor = .clear
+        let L = ChatLayout.current
 
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(separator)
-
-        containerStack.axis = .vertical
-        containerStack.spacing = 0
-        containerStack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(containerStack)
-
-        setupReplyPanel()
-        setupInputRow()
-        setupRecordingOverlay()
+        inputStack.axis = .horizontal
+        inputStack.alignment = .bottom
+        inputStack.spacing = L.inputStackSpacing
+        inputStack.translatesAutoresizingMaskIntoConstraints = false
+        inputStack.layoutMargins = UIEdgeInsets(top: L.inputBarVPad, left: L.inputBarHPad,
+                                                 bottom: L.inputBarVPad, right: L.inputBarHPad)
+        inputStack.isLayoutMarginsRelativeArrangement = true
+        addSubview(inputStack)
 
         NSLayoutConstraint.activate([
-            separator.topAnchor.constraint(equalTo: topAnchor),
-            separator.leadingAnchor.constraint(equalTo: leadingAnchor),
-            separator.trailingAnchor.constraint(equalTo: trailingAnchor),
-            separator.heightAnchor.constraint(equalToConstant: 0.5),
-            containerStack.topAnchor.constraint(equalTo: separator.bottomAnchor),
-            containerStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            containerStack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            containerStack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            inputStack.topAnchor.constraint(equalTo: topAnchor),
+            inputStack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            inputStack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            inputStack.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
+
+        setupLeftButton()
+        setupMainContainer()
+        setupRightButton()
+
+        inputStack.addArrangedSubview(leftButton)
+        inputStack.addArrangedSubview(mainContainer)
+        inputStack.addArrangedSubview(rightButton)
+
+        setupFloatingViews()
+    }
+
+    // MARK: - Left Button
+
+    private func setupLeftButton() {
+        let L = ChatLayout.current
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
+        leftButton.setImage(UIImage(systemName: "paperclip", withConfiguration: cfg), for: .normal)
+        leftButton.addTarget(self, action: #selector(leftButtonTapped), for: .touchUpInside)
+        leftButton.translatesAutoresizingMaskIntoConstraints = false
+        leftButton.layer.cornerRadius = L.inputButtonSize / 2
+        leftButton.layer.borderWidth = L.inputBorderWidth
+        NSLayoutConstraint.activate([
+            leftButton.widthAnchor.constraint(equalToConstant: L.inputButtonSize),
+            leftButton.heightAnchor.constraint(equalToConstant: L.inputButtonSize),
+        ])
+    }
+
+    // MARK: - Right Button
+
+    private func setupRightButton() {
+        let L = ChatLayout.current
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
+        rightButton.setImage(UIImage(systemName: "mic.fill", withConfiguration: cfg), for: .normal)
+        rightButton.translatesAutoresizingMaskIntoConstraints = false
+        rightButton.layer.cornerRadius = L.inputButtonSize / 2
+        rightButton.layer.borderWidth = L.inputBorderWidth
+        NSLayoutConstraint.activate([
+            rightButton.widthAnchor.constraint(equalToConstant: L.inputButtonSize),
+            rightButton.heightAnchor.constraint(equalToConstant: L.inputButtonSize),
+        ])
+
+        let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleRecordGesture(_:)))
+        lp.minimumPressDuration = L.recordMinPressDuration
+        rightButton.addGestureRecognizer(lp)
+    }
+
+    // MARK: - Main Container
+
+    private func setupMainContainer() {
+        let L = ChatLayout.current
+        mainContainer.layer.cornerRadius = L.textViewCornerRadius
+        mainContainer.layer.borderWidth = L.inputBorderWidth
+        mainContainer.clipsToBounds = true
+        mainContainer.translatesAutoresizingMaskIntoConstraints = false
+
+        mainStack.axis = .vertical
+        mainStack.translatesAutoresizingMaskIntoConstraints = false
+        mainContainer.addSubview(mainStack)
+
+        NSLayoutConstraint.activate([
+            mainStack.topAnchor.constraint(equalTo: mainContainer.topAnchor),
+            mainStack.leadingAnchor.constraint(equalTo: mainContainer.leadingAnchor),
+            mainStack.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor),
+            mainStack.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor),
+        ])
+
+        setupReplyPanel()
+        setupTextView()
+        setupRecordingRow()
+
+        mainStack.addArrangedSubview(replyPanel)
+        mainStack.addArrangedSubview(textView)
+        mainStack.addArrangedSubview(recordingRow)
+        recordingRow.isHidden = true
     }
 
     // MARK: - Reply Panel
 
     private func setupReplyPanel() {
+        let L = ChatLayout.current
         replyPanel.translatesAutoresizingMaskIntoConstraints = false
         replyPanelHeight = replyPanel.heightAnchor.constraint(equalToConstant: 0)
         replyPanelHeight.isActive = true
@@ -107,176 +210,185 @@ final class ChatInputBar: UIView {
         replyAccentBar.translatesAutoresizingMaskIntoConstraints = false
         replyPanel.addSubview(replyAccentBar)
 
-        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
         replyIconView.translatesAutoresizingMaskIntoConstraints = false
         replyPanel.addSubview(replyIconView)
 
-        replySenderLabel.font = ChatLayout.current.replySenderFont
+        replySenderLabel.font = L.replySenderFont
         replySenderLabel.numberOfLines = 1
         replySenderLabel.translatesAutoresizingMaskIntoConstraints = false
         replyPanel.addSubview(replySenderLabel)
 
-        replyTextLabel.font = ChatLayout.current.replyFont
+        replyTextLabel.font = L.replyFont
         replyTextLabel.numberOfLines = 1
         replyTextLabel.lineBreakMode = .byTruncatingTail
         replyTextLabel.translatesAutoresizingMaskIntoConstraints = false
         replyPanel.addSubview(replyTextLabel)
 
-        replyCancelButton.setImage(UIImage(systemName: "xmark", withConfiguration: config), for: .normal)
+        let closeCfg = UIImage.SymbolConfiguration(pointSize: L.inputReplyCancelIconSize, weight: .semibold)
+        replyCancelButton.setImage(UIImage(systemName: "xmark", withConfiguration: closeCfg), for: .normal)
         replyCancelButton.addTarget(self, action: #selector(cancelModeTapped), for: .touchUpInside)
         replyCancelButton.translatesAutoresizingMaskIntoConstraints = false
         replyPanel.addSubview(replyCancelButton)
 
+        replySeparator.translatesAutoresizingMaskIntoConstraints = false
+        replyPanel.addSubview(replySeparator)
+
+        let sp = L.inputReplySpacing
         NSLayoutConstraint.activate([
-            replyAccentBar.leadingAnchor.constraint(equalTo: replyPanel.leadingAnchor, constant: 12),
-            replyAccentBar.topAnchor.constraint(equalTo: replyPanel.topAnchor, constant: 8),
-            replyAccentBar.bottomAnchor.constraint(equalTo: replyPanel.bottomAnchor, constant: -8),
-            replyAccentBar.widthAnchor.constraint(equalToConstant: 2.5),
-            replyIconView.leadingAnchor.constraint(equalTo: replyAccentBar.trailingAnchor, constant: 8),
-            replyIconView.centerYAnchor.constraint(equalTo: replyPanel.centerYAnchor),
-            replyIconView.widthAnchor.constraint(equalToConstant: 16),
-            replySenderLabel.leadingAnchor.constraint(equalTo: replyIconView.trailingAnchor, constant: 6),
-            replySenderLabel.topAnchor.constraint(equalTo: replyPanel.topAnchor, constant: 6),
-            replySenderLabel.trailingAnchor.constraint(lessThanOrEqualTo: replyCancelButton.leadingAnchor, constant: -8),
+            replyAccentBar.leadingAnchor.constraint(equalTo: replyPanel.leadingAnchor, constant: sp + 2),
+            replyAccentBar.topAnchor.constraint(equalTo: replyPanel.topAnchor, constant: sp - 2),
+            replyAccentBar.bottomAnchor.constraint(equalTo: replySeparator.topAnchor, constant: -(sp - 4)),
+            replyAccentBar.widthAnchor.constraint(equalToConstant: L.replyAccentWidth),
+            replyIconView.leadingAnchor.constraint(equalTo: replyAccentBar.trailingAnchor, constant: sp - 2),
+            replyIconView.centerYAnchor.constraint(equalTo: replyPanel.centerYAnchor, constant: -1),
+            replyIconView.widthAnchor.constraint(equalToConstant: L.inputReplyIconSize + 2),
+            replySenderLabel.leadingAnchor.constraint(equalTo: replyIconView.trailingAnchor, constant: sp / 2),
+            replySenderLabel.topAnchor.constraint(equalTo: replyPanel.topAnchor, constant: sp - 3),
+            replySenderLabel.trailingAnchor.constraint(lessThanOrEqualTo: replyCancelButton.leadingAnchor, constant: -sp / 2),
             replyTextLabel.leadingAnchor.constraint(equalTo: replySenderLabel.leadingAnchor),
             replyTextLabel.topAnchor.constraint(equalTo: replySenderLabel.bottomAnchor, constant: 1),
-            replyTextLabel.trailingAnchor.constraint(lessThanOrEqualTo: replyCancelButton.leadingAnchor, constant: -8),
-            replyCancelButton.trailingAnchor.constraint(equalTo: replyPanel.trailingAnchor, constant: -12),
-            replyCancelButton.centerYAnchor.constraint(equalTo: replyPanel.centerYAnchor),
-            replyCancelButton.widthAnchor.constraint(equalToConstant: 28),
-            replyCancelButton.heightAnchor.constraint(equalToConstant: 28),
+            replyTextLabel.trailingAnchor.constraint(lessThanOrEqualTo: replyCancelButton.leadingAnchor, constant: -sp / 2),
+            replyCancelButton.trailingAnchor.constraint(equalTo: replyPanel.trailingAnchor, constant: -sp + 2),
+            replyCancelButton.centerYAnchor.constraint(equalTo: replyPanel.centerYAnchor, constant: -1),
+            replyCancelButton.widthAnchor.constraint(equalToConstant: L.inputReplyCancelSize),
+            replyCancelButton.heightAnchor.constraint(equalToConstant: L.inputReplyCancelSize),
+            replySeparator.leadingAnchor.constraint(equalTo: replyPanel.leadingAnchor, constant: sp),
+            replySeparator.trailingAnchor.constraint(equalTo: replyPanel.trailingAnchor, constant: -sp),
+            replySeparator.bottomAnchor.constraint(equalTo: replyPanel.bottomAnchor),
+            replySeparator.heightAnchor.constraint(equalToConstant: L.inputSeparatorHeight),
         ])
-
-        containerStack.addArrangedSubview(replyPanel)
     }
 
-    // MARK: - Input Row
+    // MARK: - Text View
 
-    private func setupInputRow() {
-        inputStack.axis = .horizontal
-        inputStack.alignment = .bottom
-        inputStack.spacing = ChatLayout.current.inputStackSpacing
-        inputStack.translatesAutoresizingMaskIntoConstraints = false
-        inputStack.layoutMargins = UIEdgeInsets(top: ChatLayout.current.inputBarVPad, left: ChatLayout.current.inputBarHPad,
-                                                 bottom: ChatLayout.current.inputBarVPad, right: ChatLayout.current.inputBarHPad)
-        inputStack.isLayoutMarginsRelativeArrangement = true
-
-        let attachConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
-        attachButton.setImage(UIImage(systemName: "paperclip", withConfiguration: attachConfig), for: .normal)
-        attachButton.addTarget(self, action: #selector(attachTapped), for: .touchUpInside)
-        attachButton.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            attachButton.widthAnchor.constraint(equalToConstant: ChatLayout.current.inputButtonSize),
-            attachButton.heightAnchor.constraint(equalToConstant: ChatLayout.current.inputButtonSize),
-        ])
-
-        textViewContainer.layer.cornerRadius = ChatLayout.current.textViewCornerRadius
-        textViewContainer.layer.borderWidth = ChatLayout.current.inputBorderWidth
-        textViewContainer.translatesAutoresizingMaskIntoConstraints = false
-
-        textView.font = ChatLayout.current.textViewFont
+    private func setupTextView() {
+        let L = ChatLayout.current
+        textView.font = L.textViewFont
         textView.isScrollEnabled = false
-        textView.textContainerInset = ChatLayout.current.textViewInsets
+        textView.textContainerInset = L.textViewInsets
         textView.delegate = self
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.backgroundColor = .clear
-        textViewContainer.addSubview(textView)
 
         placeholderLabel.text = "Сообщение"
-        placeholderLabel.font = ChatLayout.current.textViewFont
+        placeholderLabel.font = L.textViewFont
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
-        textViewContainer.addSubview(placeholderLabel)
+        textView.addSubview(placeholderLabel)
 
-        textViewHeightConstraint = textView.heightAnchor.constraint(equalToConstant: ChatLayout.current.textViewMinHeight)
+        textViewHeightConstraint = textView.heightAnchor.constraint(equalToConstant: L.textViewMinHeight)
         textViewHeightConstraint.priority = .defaultHigh
+        textViewHeightConstraint.isActive = true
 
         NSLayoutConstraint.activate([
-            textView.topAnchor.constraint(equalTo: textViewContainer.topAnchor),
-            textView.leadingAnchor.constraint(equalTo: textViewContainer.leadingAnchor),
-            textView.trailingAnchor.constraint(equalTo: textViewContainer.trailingAnchor),
-            textView.bottomAnchor.constraint(equalTo: textViewContainer.bottomAnchor),
-            textViewHeightConstraint,
-            placeholderLabel.leadingAnchor.constraint(equalTo: textViewContainer.leadingAnchor, constant: 13),
-            placeholderLabel.centerYAnchor.constraint(equalTo: textViewContainer.centerYAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: L.inputPlaceholderLeading),
+            placeholderLabel.centerYAnchor.constraint(equalTo: textView.centerYAnchor),
         ])
-
-        let sendConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold)
-        sendButton.setImage(UIImage(systemName: "arrow.up.circle.fill", withConfiguration: sendConfig), for: .normal)
-        sendButton.addTarget(self, action: #selector(sendTapped), for: .touchUpInside)
-        sendButton.translatesAutoresizingMaskIntoConstraints = false
-        sendButton.isHidden = true
-        NSLayoutConstraint.activate([
-            sendButton.widthAnchor.constraint(equalToConstant: ChatLayout.current.inputButtonSize),
-            sendButton.heightAnchor.constraint(equalToConstant: ChatLayout.current.inputButtonSize),
-        ])
-
-        let recordConfig = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
-        recordButton.setImage(UIImage(systemName: "mic.fill", withConfiguration: recordConfig), for: .normal)
-        recordButton.addTarget(self, action: #selector(recordTapped), for: .touchUpInside)
-        recordButton.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            recordButton.widthAnchor.constraint(equalToConstant: ChatLayout.current.inputButtonSize),
-            recordButton.heightAnchor.constraint(equalToConstant: ChatLayout.current.inputButtonSize),
-        ])
-
-        inputStack.addArrangedSubview(attachButton)
-        inputStack.addArrangedSubview(textViewContainer)
-        inputStack.addArrangedSubview(sendButton)
-        inputStack.addArrangedSubview(recordButton)
-        containerStack.addArrangedSubview(inputStack)
     }
 
-    // MARK: - Recording Overlay
+    // MARK: - Recording Row
 
-    private func setupRecordingOverlay() {
-        recordingOverlay.isHidden = true
-        recordingOverlay.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(recordingOverlay)
+    private func setupRecordingRow() {
+        let L = ChatLayout.current
+        recordingRow.translatesAutoresizingMaskIntoConstraints = false
 
-        recordDot.backgroundColor = theme.voiceRecordingIndicator
-        recordDot.layer.cornerRadius = ChatLayout.current.recordDotSize / 2
+        recordDot.layer.cornerRadius = L.recordDotSize / 2
         recordDot.translatesAutoresizingMaskIntoConstraints = false
-        recordingOverlay.addSubview(recordDot)
+        recordingRow.addSubview(recordDot)
 
-        recordTimerLabel.font = ChatLayout.current.recordTimerFont
-        recordTimerLabel.text = "0:00"
+        recordTimerLabel.font = L.recordTimerFont
+        recordTimerLabel.text = "0:00,00"
         recordTimerLabel.translatesAutoresizingMaskIntoConstraints = false
-        recordingOverlay.addSubview(recordTimerLabel)
+        recordingRow.addSubview(recordTimerLabel)
 
-        recordCancelLabel.text = "< Slide to cancel"
-        recordCancelLabel.font = ChatLayout.current.recordCancelFont
-        recordCancelLabel.textAlignment = .center
-        recordCancelLabel.translatesAutoresizingMaskIntoConstraints = false
-        recordingOverlay.addSubview(recordCancelLabel)
+        slideHintContainer.translatesAutoresizingMaskIntoConstraints = false
+        recordingRow.addSubview(slideHintContainer)
 
-        let stopConfig = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
-        recordStopButton.setImage(UIImage(systemName: "stop.circle.fill", withConfiguration: stopConfig), for: .normal)
-        recordStopButton.tintColor = theme.voiceRecordingStopColor
-        recordStopButton.addTarget(self, action: #selector(stopRecordTapped), for: .touchUpInside)
-        recordStopButton.translatesAutoresizingMaskIntoConstraints = false
-        recordingOverlay.addSubview(recordStopButton)
+        slideArrowLabel.text = "‹‹‹"
+        slideArrowLabel.font = L.recordSlideArrowFont
+        slideArrowLabel.translatesAutoresizingMaskIntoConstraints = false
+        slideHintContainer.addSubview(slideArrowLabel)
 
-        let cancelTap = UITapGestureRecognizer(target: self, action: #selector(cancelRecordTapped))
-        recordCancelLabel.isUserInteractionEnabled = true
-        recordCancelLabel.addGestureRecognizer(cancelTap)
+        slideTextLabel.text = "Отмена"
+        slideTextLabel.font = L.recordCancelFont
+        slideTextLabel.translatesAutoresizingMaskIntoConstraints = false
+        slideHintContainer.addSubview(slideTextLabel)
+
+        let cancelTap = UITapGestureRecognizer(target: self, action: #selector(cancelHintTapped))
+        slideHintContainer.isUserInteractionEnabled = true
+        slideHintContainer.addGestureRecognizer(cancelTap)
 
         NSLayoutConstraint.activate([
-            recordingOverlay.leadingAnchor.constraint(equalTo: leadingAnchor),
-            recordingOverlay.trailingAnchor.constraint(equalTo: trailingAnchor),
-            recordingOverlay.topAnchor.constraint(equalTo: separator.bottomAnchor),
-            recordingOverlay.bottomAnchor.constraint(equalTo: bottomAnchor),
-            recordDot.leadingAnchor.constraint(equalTo: recordingOverlay.leadingAnchor, constant: 16),
-            recordDot.centerYAnchor.constraint(equalTo: recordingOverlay.centerYAnchor),
-            recordDot.widthAnchor.constraint(equalToConstant: ChatLayout.current.recordDotSize),
-            recordDot.heightAnchor.constraint(equalToConstant: ChatLayout.current.recordDotSize),
-            recordTimerLabel.leadingAnchor.constraint(equalTo: recordDot.trailingAnchor, constant: 8),
-            recordTimerLabel.centerYAnchor.constraint(equalTo: recordingOverlay.centerYAnchor),
-            recordCancelLabel.centerXAnchor.constraint(equalTo: recordingOverlay.centerXAnchor),
-            recordCancelLabel.centerYAnchor.constraint(equalTo: recordingOverlay.centerYAnchor),
-            recordStopButton.trailingAnchor.constraint(equalTo: recordingOverlay.trailingAnchor, constant: -16),
-            recordStopButton.centerYAnchor.constraint(equalTo: recordingOverlay.centerYAnchor),
-            recordStopButton.widthAnchor.constraint(equalToConstant: ChatLayout.current.recordStopSize),
-            recordStopButton.heightAnchor.constraint(equalToConstant: ChatLayout.current.recordStopSize),
+            recordingRow.heightAnchor.constraint(equalToConstant: L.textViewMinHeight),
+            recordDot.leadingAnchor.constraint(equalTo: recordingRow.leadingAnchor, constant: L.recordDotLeading),
+            recordDot.centerYAnchor.constraint(equalTo: recordingRow.centerYAnchor),
+            recordDot.widthAnchor.constraint(equalToConstant: L.recordDotSize),
+            recordDot.heightAnchor.constraint(equalToConstant: L.recordDotSize),
+            recordTimerLabel.leadingAnchor.constraint(equalTo: recordDot.trailingAnchor, constant: L.recordTimerLeading),
+            recordTimerLabel.centerYAnchor.constraint(equalTo: recordingRow.centerYAnchor),
+            slideHintContainer.centerXAnchor.constraint(equalTo: recordingRow.centerXAnchor, constant: L.recordSlideHintOffset),
+            slideHintContainer.centerYAnchor.constraint(equalTo: recordingRow.centerYAnchor),
+            slideArrowLabel.leadingAnchor.constraint(equalTo: slideHintContainer.leadingAnchor),
+            slideArrowLabel.centerYAnchor.constraint(equalTo: slideHintContainer.centerYAnchor),
+            slideTextLabel.leadingAnchor.constraint(equalTo: slideArrowLabel.trailingAnchor, constant: 4),
+            slideTextLabel.trailingAnchor.constraint(equalTo: slideHintContainer.trailingAnchor),
+            slideTextLabel.centerYAnchor.constraint(equalTo: slideHintContainer.centerYAnchor),
+        ])
+    }
+
+    // MARK: - Floating Views
+
+    private func setupFloatingViews() {
+        let L = ChatLayout.current
+
+        // Lock container (added first — below floating mic in z-order)
+        lockContainer.layer.cornerRadius = L.recordLockContainerSize / 2
+        lockContainer.clipsToBounds = true
+        lockContainer.translatesAutoresizingMaskIntoConstraints = false
+        lockContainer.alpha = 0
+        addSubview(lockContainer)
+
+        let chevCfg = UIImage.SymbolConfiguration(pointSize: L.recordLockChevronSize, weight: .bold)
+        lockChevron.image = UIImage(systemName: "chevron.up", withConfiguration: chevCfg)
+        lockChevron.contentMode = .scaleAspectFit
+        lockChevron.translatesAutoresizingMaskIntoConstraints = false
+        lockContainer.addSubview(lockChevron)
+
+        let lockCfg = UIImage.SymbolConfiguration(pointSize: L.recordLockButtonIconSize, weight: .bold)
+        lockButtonIcon.image = UIImage(systemName: "lock.fill", withConfiguration: lockCfg)
+        lockButtonIcon.contentMode = .scaleAspectFit
+        lockButtonIcon.translatesAutoresizingMaskIntoConstraints = false
+        lockContainer.addSubview(lockButtonIcon)
+
+        NSLayoutConstraint.activate([
+            lockContainer.widthAnchor.constraint(equalToConstant: L.recordLockContainerSize),
+            lockContainer.heightAnchor.constraint(equalToConstant: L.recordLockContainerSize + 14),
+            lockContainer.centerXAnchor.constraint(equalTo: rightButton.centerXAnchor),
+            lockContainer.bottomAnchor.constraint(equalTo: rightButton.topAnchor, constant: -L.recordLockBottomMargin),
+            lockChevron.centerXAnchor.constraint(equalTo: lockContainer.centerXAnchor),
+            lockChevron.topAnchor.constraint(equalTo: lockContainer.topAnchor, constant: L.recordLockChevronTopPad),
+            lockButtonIcon.centerXAnchor.constraint(equalTo: lockContainer.centerXAnchor),
+            lockButtonIcon.centerYAnchor.constraint(equalTo: lockContainer.centerYAnchor, constant: L.recordLockIconCenterOffset),
+        ])
+
+        // Floating mic (added last — on top of everything)
+        floatingMicButton.layer.cornerRadius = L.recordFloatingMicSize / 2
+        floatingMicButton.translatesAutoresizingMaskIntoConstraints = false
+        floatingMicButton.isHidden = true
+        floatingMicButton.isUserInteractionEnabled = false
+        addSubview(floatingMicButton)
+
+        let micCfg = UIImage.SymbolConfiguration(pointSize: L.recordFloatingMicIconSize, weight: .medium)
+        floatingMicIcon.image = UIImage(systemName: "mic.fill", withConfiguration: micCfg)
+        floatingMicIcon.tintColor = .white
+        floatingMicIcon.contentMode = .scaleAspectFit
+        floatingMicIcon.translatesAutoresizingMaskIntoConstraints = false
+        floatingMicButton.addSubview(floatingMicIcon)
+
+        NSLayoutConstraint.activate([
+            floatingMicButton.widthAnchor.constraint(equalToConstant: L.recordFloatingMicSize),
+            floatingMicButton.heightAnchor.constraint(equalToConstant: L.recordFloatingMicSize),
+            floatingMicIcon.centerXAnchor.constraint(equalTo: floatingMicButton.centerXAnchor),
+            floatingMicIcon.centerYAnchor.constraint(equalTo: floatingMicButton.centerYAnchor),
         ])
     }
 
@@ -284,181 +396,185 @@ final class ChatInputBar: UIView {
 
     func applyTheme(_ theme: ChatTheme) {
         self.theme = theme
-        backgroundColor = theme.inputBarBackground
-        separator.backgroundColor = theme.inputBarSeparator
-        textViewContainer.backgroundColor = theme.inputBarTextViewBackground
-        textViewContainer.layer.borderColor = theme.inputBarSeparator.cgColor
+
+        mainContainer.backgroundColor = theme.inputBarTextViewBackground
+        mainContainer.layer.borderColor = theme.inputBarBorder.cgColor
         textView.textColor = theme.inputBarText
         textView.tintColor = theme.inputBarTint
         placeholderLabel.textColor = theme.inputBarPlaceholder
-        attachButton.tintColor = theme.inputBarTint
-        sendButton.tintColor = theme.inputBarTint
-        recordButton.tintColor = theme.inputBarTint
 
-        replyPanel.backgroundColor = theme.replyPanelBackground
+        for btn in [leftButton, rightButton] {
+            btn.backgroundColor = theme.inputBarTextViewBackground
+            btn.layer.borderColor = theme.inputBarBorder.cgColor
+            btn.tintColor = theme.inputBarTint
+        }
+
         replyAccentBar.backgroundColor = theme.replyPanelAccent
         replySenderLabel.textColor = theme.replyPanelSender
         replyTextLabel.textColor = theme.replyPanelText
         replyCancelButton.tintColor = theme.replyPanelClose
+        replySeparator.backgroundColor = theme.inputBarBorder
 
-        recordingOverlay.backgroundColor = theme.inputBarBackground
-        recordTimerLabel.textColor = theme.inputBarText
-        recordCancelLabel.textColor = theme.inputBarPlaceholder
         recordDot.backgroundColor = theme.voiceRecordingIndicator
-        recordStopButton.tintColor = theme.voiceRecordingStopColor
-        textViewContainer.layer.borderColor = theme.inputBarBorder.cgColor
+        recordTimerLabel.textColor = theme.inputBarText
+        slideArrowLabel.textColor = theme.inputBarPlaceholder
+        slideTextLabel.textColor = theme.inputBarPlaceholder
+
+        lockContainer.backgroundColor = theme.voiceRecordingLockBackground
+        lockChevron.tintColor = theme.voiceRecordingLockIcon
+        lockButtonIcon.tintColor = theme.voiceRecordingLockIcon
+        floatingMicButton.backgroundColor = theme.voiceRecordingMicBackground
     }
 
     // MARK: - Mode Management
 
     func beginReply(info: ReplyInfo, theme: ChatTheme) {
-        let senderName = info.senderName ?? "Сообщение"
+        let L = ChatLayout.current
+        let name = info.senderName ?? "Сообщение"
         let text = info.text ?? (info.hasImage ? "📷 Photo" : "…")
-        mode = .reply(messageId: info.replyToId, senderName: senderName, text: text, hasImage: info.hasImage)
+        mode = .reply(messageId: info.replyToId, senderName: name, text: text, hasImage: info.hasImage)
 
-        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-        replyIconView.image = UIImage(systemName: "arrowshape.turn.up.left.fill", withConfiguration: config)
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputReplyIconSize, weight: .medium)
+        replyIconView.image = UIImage(systemName: "arrowshape.turn.up.left.fill", withConfiguration: cfg)
         replyIconView.tintColor = theme.replyPanelAccent
-        replySenderLabel.text = senderName
+        replySenderLabel.text = name
         replyTextLabel.text = text
-
         showReplyPanel(true)
         textView.becomeFirstResponder()
     }
 
     func beginEdit(messageId: String, text: String, theme: ChatTheme) {
+        let L = ChatLayout.current
         mode = .edit(messageId: messageId, text: text)
 
-        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-        replyIconView.image = UIImage(systemName: "pencil", withConfiguration: config)
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputReplyIconSize, weight: .medium)
+        replyIconView.image = UIImage(systemName: "pencil", withConfiguration: cfg)
         replyIconView.tintColor = theme.replyPanelAccent
         replySenderLabel.text = "Редактирование"
         replyTextLabel.text = text
-
         textView.text = text
         placeholderLabel.isHidden = true
         updateTextViewHeight()
-        updateSendButtonVisibility()
-
+        updateRightButton()
         showReplyPanel(true)
         textView.becomeFirstResponder()
     }
 
     func cancelMode() {
-        let previousMode = mode
+        let prev = mode
         mode = .normal
         showReplyPanel(false)
-
-        switch previousMode {
-        case .edit:
+        if case .edit = prev {
             textView.text = ""
             placeholderLabel.isHidden = false
             updateTextViewHeight()
-            updateSendButtonVisibility()
+            updateRightButton()
             textView.resignFirstResponder()
-        case .reply:
-            // Keep text and keyboard focus
-            break
-        default:
-            break
         }
     }
 
-    // MARK: - Recording UI
+    // MARK: - Recording UI (called externally)
 
     func showRecordingUI(duration: TimeInterval) {
-        let mins = Int(duration) / 60
-        let secs = Int(duration) % 60
-        recordTimerLabel.text = String(format: "%d:%02d", mins, secs)
+        lastRecordedDuration = duration
+        recordTimerLabel.text = formatDuration(duration)
+    }
 
-        if !isRecording {
-            isRecording = true
-            recordingOverlay.isHidden = false
-            startDotAnimation()
+    func hideRecordingUI() {}
+
+    func formatDuration(_ d: TimeInterval) -> String {
+        let m = Int(d) / 60, s = Int(d) % 60, ms = Int((d - floor(d)) * 100)
+        return String(format: "%d:%02d,%02d", m, s, ms)
+    }
+
+    // MARK: - Reply Panel Animation
+
+    func showReplyPanel(_ show: Bool) {
+        let h: CGFloat = show ? ChatLayout.current.inputReplyPanelHeight : 0
+        if show { replyPanel.alpha = 0 }
+        replyPanelHeight.constant = h
+        UIView.animate(withDuration: 0.25, delay: 0, options: show ? .curveEaseOut : .curveEaseIn) {
+            self.replyPanel.alpha = show ? 1 : 0
+            self.layoutIfNeeded()
         }
     }
 
-    func hideRecordingUI() {
-        isRecording = false
-        recordingOverlay.isHidden = true
-        recordDot.layer.removeAllAnimations()
-    }
+    // MARK: - Helpers
 
-    // MARK: - Private
-
-    private func showReplyPanel(_ show: Bool) {
-        if show {
-            replyPanel.alpha = 0
-            replyPanelHeight.constant = ChatLayout.current.inputReplyPanelHeight
-            UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
-                self.replyPanel.alpha = 1
-                self.superview?.layoutIfNeeded()
-            }
-        } else {
-            replyPanelHeight.constant = 0
-            UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseIn, animations: {
-                self.replyPanel.alpha = 0
-                self.superview?.layoutIfNeeded()
-            })
-        }
-    }
-
-    private func updateTextViewHeight() {
+    func updateTextViewHeight() {
+        let L = ChatLayout.current
         let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
-        let h = min(max(size.height, ChatLayout.current.textViewMinHeight), ChatLayout.current.textViewMaxHeight)
+        let h = min(max(size.height, L.textViewMinHeight), L.textViewMaxHeight)
         textViewHeightConstraint.constant = h
-        textView.isScrollEnabled = size.height > ChatLayout.current.textViewMaxHeight
+        textView.isScrollEnabled = size.height > L.textViewMaxHeight
     }
 
-    private func updateSendButtonVisibility() {
+    func updateRightButton() {
+        let L = ChatLayout.current
         let hasText = !(textView.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        sendButton.isHidden = !hasText
-        recordButton.isHidden = hasText
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: hasText ? .semibold : .medium)
+        let icon = hasText ? "arrow.up.circle.fill" : "mic.fill"
+        rightButton.setImage(UIImage(systemName: icon, withConfiguration: cfg), for: .normal)
+
+        rightButton.gestureRecognizers?.forEach { rightButton.removeGestureRecognizer($0) }
+        rightButton.removeTarget(nil, action: nil, for: .touchUpInside)
+
+        if hasText {
+            rightButton.addTarget(self, action: #selector(sendTapped), for: .touchUpInside)
+        } else {
+            let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleRecordGesture(_:)))
+            lp.minimumPressDuration = L.recordMinPressDuration
+            rightButton.addGestureRecognizer(lp)
+        }
     }
 
-    private func startDotAnimation() {
-        UIView.animate(withDuration: 0.5, delay: 0, options: [.repeat, .autoreverse]) {
-            self.recordDot.alpha = ChatLayout.current.recordDotMinAlpha
+    func restoreLeftButtonToClip() {
+        let cfg = UIImage.SymbolConfiguration(pointSize: ChatLayout.current.inputIconSize, weight: .medium)
+        // Shrink trash → swap icon → scale back
+        UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseIn, animations: {
+            self.leftButton.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
+        }) { _ in
+            self.leftButton.setImage(UIImage(systemName: "paperclip", withConfiguration: cfg), for: .normal)
+            self.leftButton.tintColor = self.theme.inputBarTint
+            UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
+                self.leftButton.transform = .identity
+            }
         }
     }
 
     // MARK: - Actions
 
-    @objc private func attachTapped() { delegate?.inputBarDidTapAttachment() }
+    @objc func leftButtonTapped() {
+        switch recordingState {
+        case .locked: performCancel()
+        case .idle:   delegate?.inputBarDidTapAttachment()
+        default:      break
+        }
+    }
 
-    @objc private func sendTapped() {
+    @objc func sendTapped() {
         let text = (textView.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
         switch mode {
-        case .normal:
-            delegate?.inputBarDidSend(text: text, replyToId: nil)
-        case .reply(let id, _, _, _):
-            delegate?.inputBarDidSend(text: text, replyToId: id)
-        case .edit(let id, _):
-            delegate?.inputBarDidEdit(text: text, messageId: id)
+        case .normal:                  delegate?.inputBarDidSend(text: text, replyToId: nil)
+        case .reply(let id, _, _, _):  delegate?.inputBarDidSend(text: text, replyToId: id)
+        case .edit(let id, _):         delegate?.inputBarDidEdit(text: text, messageId: id)
         }
 
         textView.text = ""
         placeholderLabel.isHidden = false
         updateTextViewHeight()
-        updateSendButtonVisibility()
-
-        if mode != .normal {
-            cancelMode()
-        }
+        updateRightButton()
+        if mode != .normal { cancelMode() }
     }
-
-    @objc private func recordTapped() { delegate?.inputBarDidStartRecording() }
-    @objc private func stopRecordTapped() { delegate?.inputBarDidStopRecording() }
-    @objc private func cancelRecordTapped() { delegate?.inputBarDidCancelRecording() }
 
     @objc private func cancelModeTapped() {
         let type: String
         switch mode {
         case .reply: type = "reply"
-        case .edit: type = "edit"
-        default: type = "none"
+        case .edit:  type = "edit"
+        default:     type = "none"
         }
         cancelMode()
         delegate?.inputBarDidCancelMode(type: type)
@@ -471,7 +587,7 @@ extension ChatInputBar: UITextViewDelegate {
     func textViewDidChange(_ textView: UITextView) {
         placeholderLabel.isHidden = !textView.text.isEmpty
         updateTextViewHeight()
-        updateSendButtonVisibility()
+        updateRightButton()
         delegate?.inputBarDidChangeText(textView.text ?? "")
     }
 }

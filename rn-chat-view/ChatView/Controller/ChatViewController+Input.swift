@@ -27,6 +27,19 @@ extension ChatViewController: ChatInputBarDelegate {
     func inputBarDidChangeText(_ text: String) {
         delegate?.chatDidChangeInputText(text)
     }
+
+    func inputBarRecordingStateChanged(isRecording: Bool) {
+        if isRecording {
+            // Hide FAB when recording
+            UIView.animate(withDuration: 0.2) {
+                self.fabButton.alpha = 0
+                self.fabBadge.alpha = 0
+            }
+        } else {
+            // Restore FAB visibility
+            updateFABVisibility(animated: true)
+        }
+    }
 }
 
 // MARK: - VoiceRecorderDelegate

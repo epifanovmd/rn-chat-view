@@ -245,7 +245,6 @@ final class ChatViewController: UIViewController {
         NSLayoutConstraint.activate([
             inputBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             inputBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            inputBar.heightAnchor.constraint(greaterThanOrEqualToConstant: ChatLayout.current.inputBarMinHeight),
             inputBarBackground.topAnchor.constraint(equalTo: inputBar.topAnchor),
             inputBarBackground.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             inputBarBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -278,26 +277,21 @@ final class ChatViewController: UIViewController {
     // MARK: - Setup FAB
 
     private func setupFAB() {
-        let size = ChatLayout.current.fabSize
+        let size = ChatLayout.current.inputButtonSize
         fabButton.translatesAutoresizingMaskIntoConstraints = false
         fabButton.layer.cornerRadius = size / 2
-        fabButton.layer.shadowColor = theme.fabShadowColor.cgColor
-        fabButton.layer.shadowOpacity = ChatLayout.current.fabShadowOpacity
-        fabButton.layer.shadowRadius = ChatLayout.current.fabShadowRadius
-        fabButton.layer.shadowOffset = ChatLayout.current.fabShadowOffset
+        fabButton.layer.borderWidth = ChatLayout.current.inputBorderWidth
         fabButton.alpha = 0
         fabButton.isUserInteractionEnabled = false
         fabButton.addTarget(self, action: #selector(fabTapped), for: .touchUpInside)
         view.addSubview(fabButton)
 
-        let config = UIImage.SymbolConfiguration(pointSize: ChatLayout.current.fabArrowSize, weight: .semibold)
+        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
         fabArrow.image = UIImage(systemName: "chevron.down", withConfiguration: config)
         fabArrow.contentMode = .scaleAspectFit
         fabArrow.translatesAutoresizingMaskIntoConstraints = false
         fabArrow.isUserInteractionEnabled = false
         fabButton.addSubview(fabArrow)
-
-        rebuildFABBlur()
 
         // Badge
         fabBadge.font = ChatLayout.current.fabBadgeFont
@@ -311,15 +305,16 @@ final class ChatViewController: UIViewController {
         fabBadge.isUserInteractionEnabled = false
         view.addSubview(fabBadge)
 
+        // Align FAB above right button — anchor to inputBar.bottom offset by padding+buttonHeight+margin
+        let hPad = ChatLayout.current.inputBarHPad
+        let bottomOffset = ChatLayout.current.inputBarVPad + size + ChatLayout.current.fabMargin
         NSLayoutConstraint.activate([
             fabButton.widthAnchor.constraint(equalToConstant: size),
             fabButton.heightAnchor.constraint(equalToConstant: size),
-            fabButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -ChatLayout.current.fabTrailingMargin),
-            fabButton.bottomAnchor.constraint(equalTo: inputBar.topAnchor, constant: -ChatLayout.current.fabMargin),
+            fabButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -hPad),
+            fabButton.bottomAnchor.constraint(equalTo: inputBar.bottomAnchor, constant: -bottomOffset),
             fabArrow.centerXAnchor.constraint(equalTo: fabButton.centerXAnchor),
             fabArrow.centerYAnchor.constraint(equalTo: fabButton.centerYAnchor),
-            fabArrow.widthAnchor.constraint(equalToConstant: ChatLayout.current.fabArrowSize),
-            fabArrow.heightAnchor.constraint(equalToConstant: ChatLayout.current.fabArrowSize),
             fabBadge.centerXAnchor.constraint(equalTo: fabButton.leadingAnchor),
             fabBadge.centerYAnchor.constraint(equalTo: fabButton.topAnchor),
             fabBadge.heightAnchor.constraint(equalToConstant: ChatLayout.current.fabBadgeHeight),
@@ -328,19 +323,7 @@ final class ChatViewController: UIViewController {
     }
 
     func rebuildFABBlur() {
-        fabBlurView?.removeFromSuperview()
-        fabBlurView = UIVisualEffectView(effect: UIBlurEffect(style: theme.fabBlurStyle))
-        fabBlurView.translatesAutoresizingMaskIntoConstraints = false
-        fabBlurView.isUserInteractionEnabled = false
-        fabBlurView.layer.cornerRadius = ChatLayout.current.fabSize / 2
-        fabBlurView.layer.masksToBounds = true
-        fabButton.insertSubview(fabBlurView, at: 0)
-        NSLayoutConstraint.activate([
-            fabBlurView.topAnchor.constraint(equalTo: fabButton.topAnchor),
-            fabBlurView.bottomAnchor.constraint(equalTo: fabButton.bottomAnchor),
-            fabBlurView.leadingAnchor.constraint(equalTo: fabButton.leadingAnchor),
-            fabBlurView.trailingAnchor.constraint(equalTo: fabButton.trailingAnchor),
-        ])
+        // No longer using blur — FAB uses same solid bg as input buttons
     }
 
     // MARK: - Setup Floating Date
@@ -475,13 +458,13 @@ final class ChatViewController: UIViewController {
         guard isViewLoaded else { return }
         collectionView.backgroundColor = .clear
         emptyLabel.textColor = theme.emptyStateText
+        fabButton.backgroundColor = theme.inputBarTextViewBackground
+        fabButton.layer.borderColor = theme.inputBarBorder.cgColor
         fabArrow.tintColor = theme.fabArrowColor
-        fabButton.layer.shadowColor = theme.fabShadowColor.cgColor
         fabBadge.backgroundColor = theme.fabBadgeBackground
         fabBadge.textColor = theme.fabBadgeTextColor
-        rebuildFABBlur()
         inputBar.applyTheme(theme)
-        inputBarBackground.backgroundColor = theme.inputBarBackground
+        inputBarBackground.backgroundColor = .clear
         floatingDatePill.backgroundColor = theme.dateSeparatorBackground
         floatingDateLabel.textColor = theme.dateSeparatorText
         reloadWithCrossfade()

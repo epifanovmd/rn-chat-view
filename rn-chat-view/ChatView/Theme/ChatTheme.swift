@@ -150,6 +150,14 @@ struct ChatTheme {
     var voiceRecordingIndicator: UIColor
     /// Цвет кнопки остановки записи
     var voiceRecordingStopColor: UIColor
+    /// Цвет кнопки/иконки отмены записи (корзинка)
+    var voiceRecordingCancelColor: UIColor
+    /// Фон контейнера замка записи
+    var voiceRecordingLockBackground: UIColor
+    /// Цвет иконки замка записи
+    var voiceRecordingLockIcon: UIColor
+    /// Фон плавающей кнопки микрофона при записи
+    var voiceRecordingMicBackground: UIColor
 
     // MARK: - Опрос
 
@@ -251,6 +259,10 @@ extension ChatTheme {
         voiceWaveformInactive: UIColor(white: 0.75, alpha: 1),
         voiceRecordingIndicator: .systemRed,
         voiceRecordingStopColor: .systemRed,
+        voiceRecordingCancelColor: .systemRed,
+        voiceRecordingLockBackground: UIColor(white: 0.95, alpha: 1),
+        voiceRecordingLockIcon: UIColor(white: 0.4, alpha: 1),
+        voiceRecordingMicBackground: .systemBlue,
         pollBarFilled: UIColor(red: 0.35, green: 0.65, blue: 0.95, alpha: 1),
         pollBarEmpty: UIColor(white: 0.0, alpha: 0.05),
         pollSelectedBorder: .clear,
@@ -324,6 +336,10 @@ extension ChatTheme {
         voiceWaveformInactive: UIColor(white: 0.35, alpha: 1),
         voiceRecordingIndicator: .systemRed,
         voiceRecordingStopColor: .systemRed,
+        voiceRecordingCancelColor: .systemRed,
+        voiceRecordingLockBackground: UIColor(red: 0.18, green: 0.22, blue: 0.28, alpha: 1),
+        voiceRecordingLockIcon: UIColor(white: 0.6, alpha: 1),
+        voiceRecordingMicBackground: UIColor(red: 0.35, green: 0.6, blue: 0.95, alpha: 1),
         pollBarFilled: UIColor(red: 0.35, green: 0.6, blue: 0.9, alpha: 1),
         pollBarEmpty: UIColor(white: 1.0, alpha: 0.06),
         pollSelectedBorder: .clear,
