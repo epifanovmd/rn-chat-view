@@ -12,16 +12,43 @@ iOS native chat UI component library.
 
 ## Architecture
 
-MVVM-like with delegate pattern. `ChatViewController` is the main orchestrator, split into 7 extensions:
+Delegate-based composition. `ChatViewController` is the main orchestrator, split into 5 extensions:
 
-- `+ContextMenu` — long-press context menu
-- `+Input` — text input, send, edit, attachments
-- `+Keyboard` — keyboard show/hide handling
-- `+ListAdapter` — IGListKit data source & adapter
-- `+Scroll` — scroll logic, FAB, floating date pill
-- `+Updater` — message insert/update/delete with diff
+- `+ContextMenu` — long-press context menu presentation + keyboard freeze/restore
+- `+Input` — InputBarDelegate conformance, forwards to ChatViewControllerDelegate
+- `+ListAdapter` — IGListKit data source, SectionEnvironment & MessageSectionDelegate conformance
+- `+Scroll` — UIScrollViewDelegate with throttled events and pagination
+- `+Updater` — ListAdapterUpdaterDelegate for batch updates
 
-Host app integrates via `ChatViewControllerDelegate` (20 callback methods).
+Extracted managers:
+- `FloatingDateManager` — floating date pill during scrolling
+- `FABManager` — scroll-to-bottom button + unread badge
+- `EmptyStateManager` — empty state view with spinner
+
+### Delegate hierarchy
+
+```
+ChatViewControllerDelegate (typealias combining 4 focused protocols):
+  ├── ChatScrollDelegate       — scroll, pagination, FAB tap
+  ├── ChatVisibilityDelegate   — message visibility tracking
+  ├── ChatMessageDelegate      — tap, long press, reactions, polls
+  └── ChatInputDelegate        — send, edit, attachment, voice recording
+
+SectionEnvironment (protocol)  — provides theme/layout/features to section controllers
+MessageSectionDelegate         — interaction callbacks from message cells
+InputBarDelegate               — input bar events → ChatViewController → ChatViewControllerDelegate
+```
+
+### Configuration flow
+
+```
+ChatConfiguration (theme + layout + features)
+  → ChatViewController.configuration property
+  → ConfigurationDiff detects changes
+  → applyConfigurationDiff() targets specific updates
+  → SectionEnvironment provides config to section controllers
+  → InputBarView.applyLayout() / applyTheme() for input bar
+```
 
 ## Project Structure
 
@@ -30,15 +57,25 @@ rn-chat-view/
 ├── ChatApp.swift                    # SwiftUI entry point
 ├── ChatDemoViewController.swift     # Demo with sample data
 ├── ChatView/
-│   ├── Controller/                  # ChatViewController + extensions
-│   ├── Views/                       # MessageBubbleView, ChatInputBar, Content/
-│   ├── IGList/                      # SectionControllers, ChatListItems, SizeCalculator
-│   ├── Models/                      # ChatModels, ChatParsing
-│   ├── Theme/                       # ChatTheme (light/dark)
-│   ├── Audio/                       # VoiceRecorder, VoicePlayer
-│   ├── Helpers/                     # DateHelper, ImageCache
-│   ├── Keyboard/                    # KeyboardListener
-│   └── Constants/                   # ChatLayoutConstants
+│   ├── Controller/                  # ChatViewController + 5 extensions
+│   ├── Components/                  # FloatingDateManager, FABManager, EmptyStateManager
+│   ├── Delegates/                   # ChatViewControllerDelegate (4 sub-protocols)
+│   ├── Protocols/                   # SectionEnvironment
+│   ├── Configuration/               # ChatConfiguration, ChatFeatures, ConfigurationDiff
+│   ├── Theme/                       # ChatTheme (light/dark, 80+ colors)
+│   ├── Layout/                      # ChatLayout (unified layout constants)
+│   ├── Views/                       # MessageCell, MessageBubbleView, DateSeparatorCell, Content/
+│   ├── IGList/                      # SectionControllers, ChatListItems, MessageSizeCalculator
+│   ├── Models/                      # ChatModels, ChatParsing (RN bridge parsing)
+│   ├── Audio/                       # VoicePlayer
+│   └── Helpers/                     # DateHelper, ImageCache
+├── InputBar/                        # Self-contained input bar module
+│   ├── InputBarView.swift           # Main view + UITextViewDelegate + VoiceRecorderDelegate
+│   ├── InputBarView+Recording.swift # Long-press recording gesture state machine
+│   ├── InputBarTheme.swift          # Color theme (derived from ChatTheme)
+│   ├── Audio/                       # VoiceRecorder (owned by InputBar)
+│   ├── Models/                      # InputBarDelegate, InputBarMode, RecordingState
+│   └── Views/                       # InputBarRecordingRow, InputBarReplyPanel, InputBarLockView
 ├── ContextMenu/                     # Long-press popup (actions + emoji)
 ```
 
@@ -46,6 +83,8 @@ rn-chat-view/
 
 - All UI built programmatically with AutoLayout constraints
 - Views use closure callbacks for event bubbling; controllers use delegate protocols
+- Section controllers access configuration via `SectionEnvironment` protocol (no global singletons)
+- `ChatLayout` has a deprecated `static var current` for views that read defaults at init; new code should pass layout via parameters
 - New content types go in `ChatView/Views/Content/`
 - New section controllers go in `ChatView/IGList/SectionControllers/`
 - Follow existing extension pattern when adding ChatViewController functionality

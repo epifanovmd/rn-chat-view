@@ -24,7 +24,7 @@ final class InputBarReplyPanel: UIView {
     // MARK: - Setup
 
     private func setup() {
-        let L = InputBarLayout.current
+        let L = ChatLayout()
         translatesAutoresizingMaskIntoConstraints = false
         heightConstraint = heightAnchor.constraint(equalToConstant: 0)
         heightConstraint.isActive = true
@@ -36,18 +36,18 @@ final class InputBarReplyPanel: UIView {
         iconView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(iconView)
 
-        senderLabel.font = L.replySenderFont
+        senderLabel.font = L.inputReplySenderFont
         senderLabel.numberOfLines = 1
         senderLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(senderLabel)
 
-        textLabel.font = L.replyTextFont
+        textLabel.font = L.inputReplyTextFont
         textLabel.numberOfLines = 1
         textLabel.lineBreakMode = .byTruncatingTail
         textLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(textLabel)
 
-        let closeCfg = UIImage.SymbolConfiguration(pointSize: L.replyCancelIconSize, weight: .semibold)
+        let closeCfg = UIImage.SymbolConfiguration(pointSize: L.inputReplyCancelIconSize, weight: .semibold)
         closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: closeCfg), for: .normal)
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         addSubview(closeButton)
@@ -55,16 +55,16 @@ final class InputBarReplyPanel: UIView {
         separator.translatesAutoresizingMaskIntoConstraints = false
         addSubview(separator)
 
-        let sp = L.replySpacing
+        let sp = L.inputReplySpacing
         NSLayoutConstraint.activate([
             accentBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: sp + 2),
             accentBar.topAnchor.constraint(equalTo: topAnchor, constant: sp - 2),
             accentBar.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -(sp - 4)),
-            accentBar.widthAnchor.constraint(equalToConstant: L.replyAccentWidth),
+            accentBar.widthAnchor.constraint(equalToConstant: L.inputReplyAccentWidth),
 
             iconView.leadingAnchor.constraint(equalTo: accentBar.trailingAnchor, constant: sp - 2),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -1),
-            iconView.widthAnchor.constraint(equalToConstant: L.replyIconSize + 2),
+            iconView.widthAnchor.constraint(equalToConstant: L.inputReplyIconSize + 2),
 
             senderLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: sp / 2),
             senderLabel.topAnchor.constraint(equalTo: topAnchor, constant: sp - 3),
@@ -76,13 +76,13 @@ final class InputBarReplyPanel: UIView {
 
             closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -sp + 2),
             closeButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -1),
-            closeButton.widthAnchor.constraint(equalToConstant: L.replyCancelSize),
-            closeButton.heightAnchor.constraint(equalToConstant: L.replyCancelSize),
+            closeButton.widthAnchor.constraint(equalToConstant: L.inputReplyCancelSize),
+            closeButton.heightAnchor.constraint(equalToConstant: L.inputReplyCancelSize),
 
             separator.leadingAnchor.constraint(equalTo: leadingAnchor, constant: sp),
             separator.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -sp),
             separator.bottomAnchor.constraint(equalTo: bottomAnchor),
-            separator.heightAnchor.constraint(equalToConstant: L.replySeparatorHeight),
+            separator.heightAnchor.constraint(equalToConstant: L.inputSeparatorHeight),
         ])
     }
 
@@ -98,9 +98,9 @@ final class InputBarReplyPanel: UIView {
 
     // MARK: - Show / Hide
 
-    func show(in container: UIView) {
+    func show(in container: UIView, height: CGFloat) {
         alpha = 0
-        heightConstraint.constant = InputBarLayout.current.replyPanelHeight
+        heightConstraint.constant = height
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
             self.alpha = 1
             container.layoutIfNeeded()

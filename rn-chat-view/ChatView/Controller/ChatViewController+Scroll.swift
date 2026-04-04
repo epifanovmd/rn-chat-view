@@ -41,3 +41,43 @@ extension ChatViewController: UIScrollViewDelegate {
         isProgrammaticScroll = false
     }
 }
+
+// MARK: - Visibility Tracking
+
+extension ChatViewController {
+    func updateVisibleMessages() {
+        guard !messages.isEmpty else { return }
+        var ids: Set<String> = []
+        let cells = Array(collectionView.visibleCells)
+        for cell in cells {
+            guard let indexPath = collectionView.indexPath(for: cell),
+                  indexPath.section < listItems.count,
+                  let msgItem = listItems[indexPath.section] as? MessageListItem,
+                  msgItem.message.status != .read else { continue }
+            ids.insert(msgItem.message.id)
+        }
+
+        let newIDs = ids.subtracting(visibleMessageIDs)
+        guard !newIDs.isEmpty else { return }
+        visibleMessageIDs = ids
+
+        if !isExternalUnreadManagement {
+            let readUnread = newIDs.intersection(unreadMessageIDs)
+            if !readUnread.isEmpty {
+                unreadMessageIDs.subtract(readUnread)
+                unreadCount = unreadMessageIDs.count
+            }
+        }
+
+        pendingVisibleIDs.formUnion(newIDs)
+        visibilityDebounceTask?.cancel()
+        let task = DispatchWorkItem { [weak self] in
+            guard let self, !self.pendingVisibleIDs.isEmpty else { return }
+            let batch = Array(self.pendingVisibleIDs)
+            self.pendingVisibleIDs.removeAll()
+            self.delegate?.chatMessagesDidAppear(ids: batch)
+        }
+        visibilityDebounceTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + layout.visibilityDebounceInterval, execute: task)
+    }
+}

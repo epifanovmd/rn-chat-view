@@ -1,6 +1,8 @@
 import IGListKit
 import UIKit
 
+// MARK: - MessageSectionDelegate (interaction callbacks only)
+
 protocol MessageSectionDelegate: AnyObject {
     func messageSectionDidTap(messageId: String, attachmentIndex: Int?)
     func messageSectionDidLongPress(messageId: String, cell: UICollectionViewCell)
@@ -9,19 +11,19 @@ protocol MessageSectionDelegate: AnyObject {
     func messageSectionDidTapPollDetail(messageId: String, pollId: String)
     func messageSectionDidTapVoice(messageId: String, url: String)
     func messageSectionDidTapReaction(messageId: String, emoji: String)
-    func resolveReply(for info: ReplyInfo) -> ReplyDisplayInfo?
-    var currentTheme: ChatTheme { get }
-    var showSenderName: Bool { get }
 }
+
+// MARK: - MessageSectionController
 
 final class MessageSectionController: ListSectionController {
     private var item: MessageListItem!
     weak var sectionDelegate: MessageSectionDelegate?
+    weak var environment: SectionEnvironment?
 
     override init() {
         super.init()
-        inset = UIEdgeInsets(top: ChatLayout.current.cellVSpacing / 2, left: 0,
-                             bottom: ChatLayout.current.cellVSpacing / 2, right: 0)
+        let spacing = ChatLayout.current.cellVSpacing
+        inset = UIEdgeInsets(top: spacing / 2, left: 0, bottom: spacing / 2, right: 0)
     }
 
     override func numberOfItems() -> Int { 1 }
@@ -29,21 +31,24 @@ final class MessageSectionController: ListSectionController {
     override func sizeForItem(at index: Int) -> CGSize {
         guard let ctx = collectionContext else { return .zero }
         let width = ctx.containerSize.width
-        let showName = sectionDelegate?.showSenderName ?? false
+        let L = environment?.currentLayout ?? ChatLayout.current
+        let features = environment?.currentFeatures ?? ChatFeatures()
+        let showName = features.senderNameMode != .never
+        let reply = item.message.reply.flatMap { environment?.resolveReply(for: $0) }
         let height = MessageSizeCalculator.cellHeight(
             for: item.message,
             maxWidth: width,
-            resolvedReply: sectionDelegate?.resolveReply(for: item.message.reply ?? ReplyInfo(replyToId: "", senderName: nil, text: nil, hasImage: false)),
+            layout: L,
+            resolvedReply: reply,
             showSenderName: showName
         )
-        return CGSize(width: width, height: max(height, ChatLayout.current.cellMinHeight))
+        return CGSize(width: width, height: max(height, L.cellMinHeight))
     }
 
     override func cellForItem(at index: Int) -> UICollectionViewCell {
         guard let ctx = collectionContext else { fatalError() }
         let cell: MessageCell = ctx.dequeueReusableCell(of: MessageCell.self, for: self, at: index) as! MessageCell
 
-        // Callbacks MUST be set BEFORE configure(), because configure() copies them to bubbleView
         cell.onTap = { [weak self] in
             guard let self else { return }
             self.sectionDelegate?.messageSectionDidTap(messageId: self.item.message.id, attachmentIndex: nil)
@@ -81,10 +86,12 @@ final class MessageSectionController: ListSectionController {
             self.sectionDelegate?.messageSectionDidTapReaction(messageId: self.item.message.id, emoji: emoji)
         }
 
-        let theme = sectionDelegate?.currentTheme ?? .light
-        let reply = item.message.reply.flatMap { sectionDelegate?.resolveReply(for: $0) }
+        let theme = environment?.currentTheme ?? .light
+        let L = environment?.currentLayout ?? ChatLayout.current
+        let features = environment?.currentFeatures ?? ChatFeatures()
+        let reply = item.message.reply.flatMap { environment?.resolveReply(for: $0) }
         let maxWidth = ctx.containerSize.width
-        let showName = sectionDelegate?.showSenderName ?? false
+        let showName = features.senderNameMode != .never
 
         cell.configure(
             message: item.message,

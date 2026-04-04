@@ -7,9 +7,7 @@ protocol InputBarDelegate: AnyObject {
     func inputBarDidEdit(text: String, messageId: String)
     func inputBarDidCancelMode(type: String)
     func inputBarDidTapAttachment()
-    func inputBarDidStartRecording()
-    func inputBarDidStopRecording()
-    func inputBarDidCancelRecording()
+    func inputBarDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval, waveform: [Float])
     func inputBarDidChangeText(_ text: String)
     func inputBarRecordingStateChanged(isRecording: Bool)
 }

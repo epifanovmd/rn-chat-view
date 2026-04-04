@@ -21,7 +21,7 @@ final class InputBarRecordingRow: UIView {
     // MARK: - Setup
 
     private func setup() {
-        let L = InputBarLayout.current
+        let L = ChatLayout()
         translatesAutoresizingMaskIntoConstraints = false
 
         dot.layer.cornerRadius = L.recordDotSize / 2
@@ -92,10 +92,10 @@ final class InputBarRecordingRow: UIView {
         slideContainer.transform = .identity
     }
 
-    func startDotBlink() {
+    func startDotBlink(minAlpha: CGFloat = 0.2) {
         dot.alpha = 1
         UIView.animate(withDuration: 0.5, delay: 0, options: [.repeat, .autoreverse]) {
-            self.dot.alpha = InputBarLayout.current.recordDotMinAlpha
+            self.dot.alpha = minAlpha
         }
     }
 

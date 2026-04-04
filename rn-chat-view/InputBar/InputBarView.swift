@@ -31,6 +31,12 @@ final class InputBarView: UIView {
     var textViewHeightConstraint: NSLayoutConstraint!
     private var hasText = false
 
+    /// Layout configuration, passed from ChatViewController.
+    private(set) var layout = ChatLayout()
+
+    /// Voice recorder, owned by InputBar.
+    let voiceRecorder = VoiceRecorder()
+
     /// Включена ли запись голосовых. Если false — кнопка mic не показывается, только send.
     var voiceRecordingEnabled: Bool = true {
         didSet {
@@ -39,7 +45,6 @@ final class InputBarView: UIView {
                 resetRightButtonToMic()
                 updateRightButton()
             } else {
-                // Убираем mic, показываем send всегда
                 rightButton.isHidden = true
                 internalSendButton.alpha = 1
                 internalSendButton.transform = .identity
@@ -56,18 +61,30 @@ final class InputBarView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
+    // MARK: - Apply Layout
+
+    func applyLayout(_ newLayout: ChatLayout) {
+        layout = newLayout
+    }
+
+    // MARK: - Setup VoiceRecorder
+
+    private func setupVoiceRecorder() {
+        voiceRecorder.delegate = self
+    }
+
     // MARK: - Layout
 
     private func setupLayout() {
         backgroundColor = .clear
-        let L = InputBarLayout.current
+        let L = layout
 
         inputStack.axis = .horizontal
         inputStack.alignment = .bottom
-        inputStack.spacing = L.barSpacing
+        inputStack.spacing = L.inputStackSpacing
         inputStack.translatesAutoresizingMaskIntoConstraints = false
-        inputStack.layoutMargins = UIEdgeInsets(top: L.barVPad, left: L.barHPad,
-                                                 bottom: L.barVPad, right: L.barHPad)
+        inputStack.layoutMargins = UIEdgeInsets(top: L.inputBarVPad, left: L.inputBarHPad,
+                                                 bottom: L.inputBarVPad, right: L.inputBarHPad)
         inputStack.isLayoutMarginsRelativeArrangement = true
         addSubview(inputStack)
 
@@ -87,36 +104,37 @@ final class InputBarView: UIView {
         inputStack.addArrangedSubview(rightButton)
 
         setupLockView()
+        setupVoiceRecorder()
     }
 
     // MARK: - Left Button
 
     private func setupLeftButton() {
-        let L = InputBarLayout.current
-        let cfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .medium)
+        let L = layout
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
         leftButton.setImage(UIImage(systemName: "paperclip", withConfiguration: cfg), for: .normal)
         leftButton.addTarget(self, action: #selector(leftButtonTapped), for: .touchUpInside)
         leftButton.translatesAutoresizingMaskIntoConstraints = false
-        leftButton.layer.cornerRadius = L.buttonSize / 2
-        leftButton.layer.borderWidth = L.borderWidth
+        leftButton.layer.cornerRadius = L.inputButtonSize / 2
+        leftButton.layer.borderWidth = L.inputBorderWidth
         NSLayoutConstraint.activate([
-            leftButton.widthAnchor.constraint(equalToConstant: L.buttonSize),
-            leftButton.heightAnchor.constraint(equalToConstant: L.buttonSize),
+            leftButton.widthAnchor.constraint(equalToConstant: L.inputButtonSize),
+            leftButton.heightAnchor.constraint(equalToConstant: L.inputButtonSize),
         ])
     }
 
     // MARK: - Right Button
 
     private func setupRightButton() {
-        let L = InputBarLayout.current
-        let cfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .medium)
+        let L = layout
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
         rightButton.setImage(UIImage(systemName: "mic.fill", withConfiguration: cfg), for: .normal)
         rightButton.translatesAutoresizingMaskIntoConstraints = false
-        rightButton.layer.cornerRadius = L.buttonSize / 2
-        rightButton.layer.borderWidth = L.borderWidth
+        rightButton.layer.cornerRadius = L.inputButtonSize / 2
+        rightButton.layer.borderWidth = L.inputBorderWidth
         NSLayoutConstraint.activate([
-            rightButton.widthAnchor.constraint(equalToConstant: L.buttonSize),
-            rightButton.heightAnchor.constraint(equalToConstant: L.buttonSize),
+            rightButton.widthAnchor.constraint(equalToConstant: L.inputButtonSize),
+            rightButton.heightAnchor.constraint(equalToConstant: L.inputButtonSize),
         ])
 
         let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleRecordGesture(_:)))
@@ -127,9 +145,9 @@ final class InputBarView: UIView {
     // MARK: - Main Container
 
     private func setupMainContainer() {
-        let L = InputBarLayout.current
-        mainContainer.layer.cornerRadius = L.containerCornerRadius
-        mainContainer.layer.borderWidth = L.borderWidth
+        let L = layout
+        mainContainer.layer.cornerRadius = L.textViewCornerRadius
+        mainContainer.layer.borderWidth = L.inputBorderWidth
         mainContainer.clipsToBounds = true
         mainContainer.translatesAutoresizingMaskIntoConstraints = false
 
@@ -161,7 +179,7 @@ final class InputBarView: UIView {
     // MARK: - Text View
 
     private func setupTextView() {
-        let L = InputBarLayout.current
+        let L = layout
         textView.font = L.textViewFont
         textView.isScrollEnabled = false
         textView.textContainerInset = L.textViewInsets
@@ -169,7 +187,7 @@ final class InputBarView: UIView {
         textView.translatesAutoresizingMaskIntoConstraints = false
         textView.backgroundColor = .clear
 
-        placeholderLabel.text = L.placeholderText
+        placeholderLabel.text = L.inputPlaceholderText
         placeholderLabel.font = L.textViewFont
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
         textView.addSubview(placeholderLabel)
@@ -179,7 +197,7 @@ final class InputBarView: UIView {
         textViewHeightConstraint.isActive = true
 
         NSLayoutConstraint.activate([
-            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: L.placeholderLeading),
+            placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: L.inputPlaceholderLeading),
             placeholderLabel.centerYAnchor.constraint(equalTo: textView.centerYAnchor),
         ])
     }
@@ -187,9 +205,9 @@ final class InputBarView: UIView {
     // MARK: - Internal Send Button
 
     private func setupInternalSendButton() {
-        let L = InputBarLayout.current
-        let size = L.textViewMinHeight - L.sendButtonInset * 2
-        let cfg = UIImage.SymbolConfiguration(pointSize: L.sendButtonIconSize, weight: .semibold)
+        let L = layout
+        let size = L.textViewMinHeight - L.inputSendButtonInset * 2
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputSendButtonIconSize, weight: .semibold)
         internalSendButton.setImage(UIImage(systemName: "arrow.up", withConfiguration: cfg), for: .normal)
         internalSendButton.tintColor = .white
         internalSendButton.layer.cornerRadius = size / 2
@@ -202,19 +220,19 @@ final class InputBarView: UIView {
         NSLayoutConstraint.activate([
             internalSendButton.widthAnchor.constraint(equalToConstant: size),
             internalSendButton.heightAnchor.constraint(equalToConstant: size),
-            internalSendButton.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor, constant: -L.sendButtonInset),
-            internalSendButton.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor, constant: -L.sendButtonInset),
+            internalSendButton.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor, constant: -L.inputSendButtonInset),
+            internalSendButton.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor, constant: -L.inputSendButtonInset),
         ])
     }
 
     // MARK: - Lock View
 
     private func setupLockView() {
-        let L = InputBarLayout.current
+        let L = layout
         addSubview(lockView)
         NSLayoutConstraint.activate([
             lockView.centerXAnchor.constraint(equalTo: rightButton.centerXAnchor),
-            lockView.bottomAnchor.constraint(equalTo: rightButton.topAnchor, constant: -L.lockBottomMargin),
+            lockView.bottomAnchor.constraint(equalTo: rightButton.topAnchor, constant: -L.recordLockBottomMargin),
         ])
     }
 
@@ -245,25 +263,25 @@ final class InputBarView: UIView {
     // MARK: - Mode Management
 
     func beginReply(info: InputBarReplyInfo) {
-        let L = InputBarLayout.current
+        let L = layout
         let name = info.senderName ?? "Сообщение"
         let text = info.text ?? (info.hasImage ? "📷 Photo" : "…")
         mode = .reply(messageId: info.messageId, senderName: name, text: text, hasImage: info.hasImage)
 
-        let cfg = UIImage.SymbolConfiguration(pointSize: L.replyIconSize, weight: .medium)
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputReplyIconSize, weight: .medium)
         replyPanel.iconView.image = UIImage(systemName: "arrowshape.turn.up.left.fill", withConfiguration: cfg)
         replyPanel.iconView.tintColor = currentTheme.replyAccent
         replyPanel.senderLabel.text = name
         replyPanel.textLabel.text = text
-        replyPanel.show(in: self)
+        replyPanel.show(in: self, height: L.inputReplyPanelHeight)
         textView.becomeFirstResponder()
     }
 
     func beginEdit(messageId: String, text: String) {
-        let L = InputBarLayout.current
+        let L = layout
         mode = .edit(messageId: messageId, text: text)
 
-        let cfg = UIImage.SymbolConfiguration(pointSize: L.replyIconSize, weight: .medium)
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputReplyIconSize, weight: .medium)
         replyPanel.iconView.image = UIImage(systemName: "pencil", withConfiguration: cfg)
         replyPanel.iconView.tintColor = currentTheme.replyAccent
         replyPanel.senderLabel.text = "Редактирование"
@@ -272,7 +290,7 @@ final class InputBarView: UIView {
         placeholderLabel.isHidden = true
         updateTextViewHeight()
         updateRightButton()
-        replyPanel.show(in: self)
+        replyPanel.show(in: self, height: L.inputReplyPanelHeight)
         textView.becomeFirstResponder()
     }
 
@@ -313,7 +331,7 @@ final class InputBarView: UIView {
     // MARK: - Helpers
 
     func updateTextViewHeight() {
-        let L = InputBarLayout.current
+        let L = layout
         let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
         let h = min(max(size.height, L.textViewMinHeight), L.textViewMaxHeight)
         textViewHeightConstraint.constant = h
@@ -351,7 +369,7 @@ final class InputBarView: UIView {
     }
 
     func resetRightButtonToMic() {
-        let L = InputBarLayout.current
+        let L = layout
         hasText = false
         internalSendButton.alpha = 0
         internalSendButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
@@ -359,7 +377,7 @@ final class InputBarView: UIView {
         rightButton.transform = .identity
         rightButton.alpha = 1
 
-        let cfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .medium)
+        let cfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
         rightButton.setImage(UIImage(systemName: "mic.fill", withConfiguration: cfg), for: .normal)
         rightButton.gestureRecognizers?.forEach { rightButton.removeGestureRecognizer($0) }
         rightButton.removeTarget(nil, action: nil, for: .touchUpInside)
@@ -369,7 +387,7 @@ final class InputBarView: UIView {
     }
 
     func restoreLeftButtonToClip() {
-        let cfg = UIImage.SymbolConfiguration(pointSize: InputBarLayout.current.buttonIconSize, weight: .medium)
+        let cfg = UIImage.SymbolConfiguration(pointSize: layout.inputIconSize, weight: .medium)
         UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseIn, animations: {
             self.leftButton.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
         }) { _ in
@@ -430,4 +448,31 @@ extension InputBarView: UITextViewDelegate {
         updateRightButton()
         delegate?.inputBarDidChangeText(textView.text ?? "")
     }
+}
+
+// MARK: - VoiceRecorderDelegate
+
+extension InputBarView: VoiceRecorderDelegate {
+    func voiceRecorderDidStart() {
+        showRecordingUI(duration: 0)
+    }
+
+    func voiceRecorderDidStop(fileURL: URL, duration: TimeInterval, waveform: [Float]) {
+        hideRecordingUI()
+        delegate?.inputBarDidCompleteVoiceRecording(fileURL: fileURL, duration: duration, waveform: waveform)
+    }
+
+    func voiceRecorderDidCancel() {
+        hideRecordingUI()
+    }
+
+    func voiceRecorderDidFail(error: Error) {
+        hideRecordingUI()
+    }
+
+    func voiceRecorderDidUpdateDuration(_ duration: TimeInterval) {
+        showRecordingUI(duration: duration)
+    }
+
+    func voiceRecorderDidUpdateLevel(_ level: Float) {}
 }

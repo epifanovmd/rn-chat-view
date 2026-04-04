@@ -18,32 +18,32 @@ final class InputBarLockView: UIView {
     private let lockIcon = UIImageView()
 
     private func setup() {
-        let L = InputBarLayout.current
+        let L = ChatLayout()
 
-        layer.cornerRadius = L.lockSize / 2
+        layer.cornerRadius = L.recordLockContainerSize / 2
         clipsToBounds = true
         translatesAutoresizingMaskIntoConstraints = false
         alpha = 0
 
-        let chevCfg = UIImage.SymbolConfiguration(pointSize: L.lockChevronSize, weight: .bold)
+        let chevCfg = UIImage.SymbolConfiguration(pointSize: L.recordLockChevronSize, weight: .bold)
         chevron.image = UIImage(systemName: "chevron.up", withConfiguration: chevCfg)
         chevron.contentMode = .scaleAspectFit
         chevron.translatesAutoresizingMaskIntoConstraints = false
         addSubview(chevron)
 
-        let lockCfg = UIImage.SymbolConfiguration(pointSize: L.lockIconSize, weight: .bold)
+        let lockCfg = UIImage.SymbolConfiguration(pointSize: L.recordLockButtonIconSize, weight: .bold)
         lockIcon.image = UIImage(systemName: "lock.fill", withConfiguration: lockCfg)
         lockIcon.contentMode = .scaleAspectFit
         lockIcon.translatesAutoresizingMaskIntoConstraints = false
         addSubview(lockIcon)
 
         NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: L.lockSize),
-            heightAnchor.constraint(equalToConstant: L.lockSize + 14),
+            widthAnchor.constraint(equalToConstant: L.recordLockContainerSize),
+            heightAnchor.constraint(equalToConstant: L.recordLockContainerSize + 14),
             chevron.centerXAnchor.constraint(equalTo: centerXAnchor),
-            chevron.topAnchor.constraint(equalTo: topAnchor, constant: L.lockChevronTopPad),
+            chevron.topAnchor.constraint(equalTo: topAnchor, constant: L.recordLockChevronTopPad),
             lockIcon.centerXAnchor.constraint(equalTo: centerXAnchor),
-            lockIcon.centerYAnchor.constraint(equalTo: centerYAnchor, constant: L.lockIconCenterOffset),
+            lockIcon.centerYAnchor.constraint(equalTo: centerYAnchor, constant: L.recordLockIconCenterOffset),
         ])
     }
 

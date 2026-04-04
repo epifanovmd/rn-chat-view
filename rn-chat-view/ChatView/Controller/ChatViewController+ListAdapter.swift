@@ -12,11 +12,12 @@ extension ChatViewController: ListAdapterDataSource {
         if object is MessageListItem {
             let sc = MessageSectionController()
             sc.sectionDelegate = self
+            sc.environment = self
             return sc
         }
         if object is DateSeparatorListItem {
             let sc = DateSeparatorSectionController()
-            sc.themeProvider = self
+            sc.environment = self
             return sc
         }
         if object is LoadingListItem {
@@ -28,11 +29,12 @@ extension ChatViewController: ListAdapterDataSource {
     func emptyView(for listAdapter: ListAdapter) -> UIView? { nil }
 }
 
-// MARK: - MessageSectionDelegate
+// MARK: - SectionEnvironment
 
-extension ChatViewController: MessageSectionDelegate {
+extension ChatViewController: SectionEnvironment {
     var currentTheme: ChatTheme { theme }
-    var showSenderName: Bool { showsSenderName }
+    var currentLayout: ChatLayout { layout }
+    var currentFeatures: ChatFeatures { features }
 
     func resolveReply(for info: ReplyInfo) -> ReplyDisplayInfo? {
         guard let original = messageIndex[info.replyToId] else { return nil }
@@ -42,7 +44,11 @@ extension ChatViewController: MessageSectionDelegate {
             hasImage: original.content.media != nil
         )
     }
+}
 
+// MARK: - MessageSectionDelegate
+
+extension ChatViewController: MessageSectionDelegate {
     func messageSectionDidTap(messageId: String, attachmentIndex: Int?) {
         delegate?.chatDidTapMessage(id: messageId, attachmentIndex: attachmentIndex)
     }
@@ -75,42 +81,3 @@ extension ChatViewController: MessageSectionDelegate {
     }
 }
 
-// MARK: - Visibility Tracking
-
-extension ChatViewController {
-    func updateVisibleMessages() {
-        guard !messages.isEmpty else { return }
-        var ids: Set<String> = []
-        let cells = Array(collectionView.visibleCells)
-        for cell in cells {
-            guard let indexPath = collectionView.indexPath(for: cell),
-                  indexPath.section < listItems.count,
-                  let msgItem = listItems[indexPath.section] as? MessageListItem,
-                  msgItem.message.status != .read else { continue }
-            ids.insert(msgItem.message.id)
-        }
-
-        let newIDs = ids.subtracting(visibleMessageIDs)
-        guard !newIDs.isEmpty else { return }
-        visibleMessageIDs = ids
-
-        if !isExternalUnreadManagement {
-            let readUnread = newIDs.intersection(unreadMessageIDs)
-            if !readUnread.isEmpty {
-                unreadMessageIDs.subtract(readUnread)
-                unreadCount = unreadMessageIDs.count
-            }
-        }
-
-        pendingVisibleIDs.formUnion(newIDs)
-        visibilityDebounceTask?.cancel()
-        let task = DispatchWorkItem { [weak self] in
-            guard let self, !self.pendingVisibleIDs.isEmpty else { return }
-            let batch = Array(self.pendingVisibleIDs)
-            self.pendingVisibleIDs.removeAll()
-            self.delegate?.chatMessagesDidAppear(ids: batch)
-        }
-        visibilityDebounceTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + layout.visibilityDebounceInterval, execute: task)
-    }
-}

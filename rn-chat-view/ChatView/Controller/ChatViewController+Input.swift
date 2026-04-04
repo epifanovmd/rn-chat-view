@@ -20,12 +20,10 @@ extension ChatViewController: InputBarDelegate {
         delegate?.chatDidTapAttachment()
     }
 
-    func inputBarDidStartRecording() {
-        VoicePlayer.shared.pauseIfPlaying()
-        voiceRecorder.startRecording()
+    func inputBarDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval, waveform: [Float]) {
+        pendingScrollToBottom = true
+        delegate?.chatDidCompleteVoiceRecording(fileURL: fileURL, duration: duration, waveform: waveform)
     }
-    func inputBarDidStopRecording() { voiceRecorder.stopRecording() }
-    func inputBarDidCancelRecording() { voiceRecorder.cancelRecording() }
 
     func inputBarDidChangeText(_ text: String) {
         delegate?.chatDidChangeInputText(text)
@@ -33,29 +31,9 @@ extension ChatViewController: InputBarDelegate {
 
     func inputBarRecordingStateChanged(isRecording: Bool) {
         if isRecording {
-            UIView.animate(withDuration: 0.2) {
-                self.fabButton.alpha = 0
-                self.fabBadge.alpha = 0
-            }
+            fabManager.hideForRecording()
         } else {
             updateFABVisibility(animated: true)
         }
     }
-}
-
-// MARK: - VoiceRecorderDelegate
-
-extension ChatViewController: VoiceRecorderDelegate {
-    func voiceRecorderDidStart() { inputBar.showRecordingUI(duration: 0) }
-
-    func voiceRecorderDidStop(fileURL: URL, duration: TimeInterval, waveform: [Float]) {
-        inputBar.hideRecordingUI()
-        pendingScrollToBottom = true
-        delegate?.chatDidCompleteVoiceRecording(fileURL: fileURL, duration: duration, waveform: waveform)
-    }
-
-    func voiceRecorderDidCancel() { inputBar.hideRecordingUI() }
-    func voiceRecorderDidFail(error: Error) { inputBar.hideRecordingUI() }
-    func voiceRecorderDidUpdateDuration(_ duration: TimeInterval) { inputBar.showRecordingUI(duration: duration) }
-    func voiceRecorderDidUpdateLevel(_ level: Float) {}
 }

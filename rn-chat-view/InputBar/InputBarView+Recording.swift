@@ -17,7 +17,6 @@ extension InputBarView {
     // MARK: - Start
 
     private func startRecording(at point: CGPoint) {
-        let L = InputBarLayout.current
         recordingState = .recording
         gestureStartPoint = point
         lastRecordedDuration = 0
@@ -51,16 +50,17 @@ extension InputBarView {
         // Show lock
         lockView.animateIn()
 
-        recordingRow.startDotBlink()
+        recordingRow.startDotBlink(minAlpha: layout.recordDotMinAlpha)
         recordingRow.startSlideAnimation()
-        delegate?.inputBarDidStartRecording()
+        VoicePlayer.shared.pauseIfPlaying()
+        voiceRecorder.startRecording()
         delegate?.inputBarRecordingStateChanged(isRecording: true)
     }
 
     // MARK: - Drag
 
     private func handleDrag(at point: CGPoint) {
-        let L = InputBarLayout.current
+        let L = layout
         let dx = point.x - gestureStartPoint.x
         let dy = point.y - gestureStartPoint.y
 
@@ -96,7 +96,7 @@ extension InputBarView {
         }) { _ in
             self.restoreMicStyle()
             self.restoreInputBar(trashAnimation: false) {
-                self.delegate?.inputBarDidStopRecording()
+                self.voiceRecorder.stopRecording()
             }
         }
         delegate?.inputBarRecordingStateChanged(isRecording: false)
@@ -113,7 +113,7 @@ extension InputBarView {
         let wasLocked = recordingState == .locked
         recordingState = .idle
 
-        delegate?.inputBarDidCancelRecording()
+        voiceRecorder.cancelRecording()
         delegate?.inputBarRecordingStateChanged(isRecording: false)
 
         haptic(.heavy)
@@ -146,23 +146,20 @@ extension InputBarView {
     // MARK: - Lock
 
     private func performLock() {
-        let L = InputBarLayout.current
+        let L = layout
         recordingState = .locked
         recordingRow.stopSlideAnimation()
 
-        // Hide cancel hint
         UIView.animate(withDuration: 0.15) {
             self.recordingRow.slideContainer.alpha = 0
         }
 
-        // Snap mic back
         UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5) {
             self.rightButton.transform = .identity
             self.lockView.alpha = 0
         }
 
-        // Change icon to send + pulse
-        let sendCfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .semibold)
+        let sendCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .semibold)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             UIView.transition(with: self.rightButton, duration: 0.15, options: .transitionCrossDissolve) {
                 self.rightButton.setImage(UIImage(systemName: "arrow.up", withConfiguration: sendCfg), for: .normal)
@@ -170,8 +167,7 @@ extension InputBarView {
             self.startSendButtonPulse()
         }
 
-        // Show left button as red trash
-        let trashCfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .medium)
+        let trashCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
         leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: trashCfg), for: .normal)
         leftButton.tintColor = currentTheme.recordingCancel
         leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
@@ -191,12 +187,12 @@ extension InputBarView {
     // MARK: - Pulse
 
     private func startSendButtonPulse() {
-        let L = InputBarLayout.current
-        rightButton.transform = CGAffineTransform(scaleX: L.pulseBaseScale, y: L.pulseBaseScale)
+        let L = layout
+        rightButton.transform = CGAffineTransform(scaleX: L.recordPulseBaseScale, y: L.recordPulseBaseScale)
         let pulse = CABasicAnimation(keyPath: "transform.scale")
-        pulse.fromValue = L.pulseBaseScale
-        pulse.toValue = L.pulseMaxScale
-        pulse.duration = L.pulseDuration
+        pulse.fromValue = L.recordPulseBaseScale
+        pulse.toValue = L.recordPulseMaxScale
+        pulse.duration = L.recordPulseDuration
         pulse.autoreverses = true
         pulse.repeatCount = .infinity
         pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
@@ -214,7 +210,7 @@ extension InputBarView {
         stopSendButtonPulse()
         restoreMicStyle()
         restoreInputBar(trashAnimation: false) {
-            self.delegate?.inputBarDidStopRecording()
+            self.voiceRecorder.stopRecording()
         }
         delegate?.inputBarRecordingStateChanged(isRecording: false)
     }
@@ -222,7 +218,7 @@ extension InputBarView {
     // MARK: - Restore
 
     func restoreInputBar(trashAnimation: Bool, completion: @escaping () -> Void) {
-        let L = InputBarLayout.current
+        let L = layout
         recordingRow.stopDotBlink()
         recordingRow.isHidden = true
         textView.isHidden = false
@@ -234,7 +230,7 @@ extension InputBarView {
         leftButton.alpha = 0
 
         if trashAnimation {
-            let trashCfg = UIImage.SymbolConfiguration(pointSize: L.buttonIconSize, weight: .medium)
+            let trashCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
             leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: trashCfg), for: .normal)
             leftButton.tintColor = currentTheme.recordingCancel
         } else {
@@ -269,6 +265,6 @@ extension InputBarView {
         inputStack.layer.zPosition = 0
         rightButton.backgroundColor = currentTheme.background
         rightButton.tintColor = currentTheme.tint
-        rightButton.layer.borderWidth = InputBarLayout.current.borderWidth
+        rightButton.layer.borderWidth = layout.inputBorderWidth
     }
 }

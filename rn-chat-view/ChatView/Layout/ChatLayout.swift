@@ -223,8 +223,8 @@ struct ChatLayout {
     var textViewCornerRadius: CGFloat = 20
     /// Шрифт поля ввода текста
     var textViewFont: UIFont = .systemFont(ofSize: 16)
-    /// Внутренние отступы поля ввода текста
-    var textViewInsets: UIEdgeInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+    /// Внутренние отступы поля ввода текста (right увеличен для внутренней кнопки отправки)
+    var textViewInsets: UIEdgeInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 40)
     /// Высота панели ответа/редактирования
     var inputReplyPanelHeight: CGFloat = 48
     /// Размер кнопки вложения/отправки
@@ -267,6 +267,18 @@ struct ChatLayout {
     var recordSlideHintOffset: CGFloat = 20
     /// Отступ placeholder от левого края textView
     var inputPlaceholderLeading: CGFloat = 13
+    /// Текст placeholder поля ввода
+    var inputPlaceholderText: String = "Сообщение"
+    /// Внутренний отступ кнопки отправки от края контейнера
+    var inputSendButtonInset: CGFloat = 4
+    /// Размер иконки внутренней кнопки отправки
+    var inputSendButtonIconSize: CGFloat = 14
+    /// Ширина акцентной полоски панели ответа
+    var inputReplyAccentWidth: CGFloat = 2.5
+    /// Шрифт имени отправителя в панели ответа
+    var inputReplySenderFont: UIFont = .systemFont(ofSize: 13, weight: .semibold)
+    /// Шрифт текста превью в панели ответа
+    var inputReplyTextFont: UIFont = .systemFont(ofSize: 13)
 
     // MARK: - FAB (кнопка скролла вниз)
 
@@ -330,6 +342,12 @@ struct ChatLayout {
     var recordMinPressDuration: TimeInterval = 0.15
     /// Размер пульсирующего кольца в режиме блокировки
     var recordPulseRingSize: CGFloat = 56
+    /// Базовый масштаб пульсирующей кнопки отправки в режиме блокировки
+    var recordPulseBaseScale: CGFloat = 1.15
+    /// Максимальный масштаб пульсирующей кнопки отправки
+    var recordPulseMaxScale: CGFloat = 1.28
+    /// Длительность одного цикла пульсации (секунды)
+    var recordPulseDuration: TimeInterval = 0.6
 
     // MARK: - Анимации
 
@@ -370,9 +388,10 @@ struct ChatLayout {
     var paginationDebounceInterval: TimeInterval = 0.5
 }
 
-// MARK: - Общий экземпляр по умолчанию
+// MARK: - Temporary bridge (will be removed after full migration)
 
 extension ChatLayout {
-    /// Общий экземпляр layout, используемый во всём приложении.
+    @available(*, deprecated, message: "Use layout passed via configuration instead")
     static var current = ChatLayout()
 }
+
