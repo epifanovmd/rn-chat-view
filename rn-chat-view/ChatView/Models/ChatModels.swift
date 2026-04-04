@@ -159,14 +159,6 @@ struct ChatMessage: Equatable, Hashable {
     let actions: [MessageAction]
 }
 
-// MARK: - Input Action
-
-enum ChatInputAction: Equatable, Hashable {
-    case none
-    case reply(messageId: String)
-    case edit(messageId: String)
-}
-
 // MARK: - Reply Display
 
 struct ReplyDisplayInfo {

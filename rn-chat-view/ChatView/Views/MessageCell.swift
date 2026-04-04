@@ -61,7 +61,7 @@ final class MessageCell: UICollectionViewCell {
 
     // MARK: - Configure
 
-    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false) {
+    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) {
         currentTheme = theme
         let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, showSenderName: showSenderName)
 
@@ -79,7 +79,7 @@ final class MessageCell: UICollectionViewCell {
         wc.priority = .defaultHigh
         wc.isActive = true
 
-        bubbleView.configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bw, showSenderName: showSenderName)
+        bubbleView.configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bw, showSenderName: showSenderName, features: features)
         bubbleView.onReplyTap = onReplyTap
         bubbleView.onMediaItemTap = onMediaItemTap
         bubbleView.onFileItemTap = onFileItemTap

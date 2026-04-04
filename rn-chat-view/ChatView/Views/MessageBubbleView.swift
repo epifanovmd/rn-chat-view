@@ -138,7 +138,7 @@ final class MessageBubbleView: UIView {
 
     // MARK: - Configure
 
-    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false) {
+    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) {
         let isMine = message.isMine
         let content = message.content
         isEmojiOnly = !content.hasMedia && EmojiHelper.emojiOnlyCount(content.text) != nil
@@ -162,8 +162,8 @@ final class MessageBubbleView: UIView {
         }
 
         // Forwarded
-        let isForwarded = message.forwardedFrom != nil
-        if let fwd = message.forwardedFrom {
+        let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
+        if let fwd = message.forwardedFrom, features.showForwardedMark {
             let L = ChatLayout.current
             let accentColor = isMine ? theme.outgoingForwardedAccent : theme.incomingForwardedAccent
             forwardedAccent.backgroundColor = accentColor
@@ -175,7 +175,7 @@ final class MessageBubbleView: UIView {
             forwardedStack.addArrangedSubview(forwardedLabel)
 
             // Reply Preview inside forwarded
-            if let reply = message.reply {
+            if features.showReplyPreview, let reply = message.reply {
                 replyPreview.configure(reply: reply, resolved: resolvedReply, isMine: isMine, theme: theme)
                 replyPreview.onTap = { [weak self] in self?.onReplyTap?() }
                 forwardedStack.addArrangedSubview(replyPreview)
@@ -192,14 +192,15 @@ final class MessageBubbleView: UIView {
 
         if !isForwarded {
             // Reply Preview
-            if let reply = message.reply {
+            if features.showReplyPreview, let reply = message.reply {
                 replyPreview.configure(reply: reply, resolved: resolvedReply, isMine: isMine, theme: theme)
                 replyPreview.onTap = { [weak self] in self?.onReplyTap?() }
                 stack.addArrangedSubview(replyPreview)
             }
 
-            // Voice top spacer — when voice is first element (no sender name, no reply)
-            let hasHeader = (showSenderName && message.senderName != nil && !isMine) || message.reply != nil
+            // Voice top spacer
+            let hasReply = features.showReplyPreview && message.reply != nil
+            let hasHeader = (showSenderName && message.senderName != nil && !isMine) || hasReply
             if content.voice != nil, !hasHeader {
                 let spacer = UIView()
                 spacer.translatesAutoresizingMaskIntoConstraints = false
@@ -215,7 +216,7 @@ final class MessageBubbleView: UIView {
         }
 
         // Reactions
-        if !message.reactions.isEmpty {
+        if features.showReactions, !message.reactions.isEmpty {
             let maxReactionWidth = bubbleWidth - ChatLayout.current.bubbleHPad * 2
             reactionsView.configure(reactions: message.reactions, theme: theme, maxWidth: maxReactionWidth)
             reactionsView.onReactionTap = { [weak self] emoji in self?.onReactionTap?(emoji) }
@@ -224,7 +225,7 @@ final class MessageBubbleView: UIView {
 
         // Footer
         if !isEmojiOnly {
-            configureFooter(message: message, isMine: isMine, theme: theme)
+            configureFooter(message: message, isMine: isMine, theme: theme, features: features)
             stack.addArrangedSubview(footerContainer)
         }
     }
@@ -311,14 +312,17 @@ final class MessageBubbleView: UIView {
 
     // MARK: - Footer
 
-    private func configureFooter(message: ChatMessage, isMine: Bool, theme: ChatTheme) {
+    private func configureFooter(message: ChatMessage, isMine: Bool, theme: ChatTheme, features: ChatFeatures) {
         timeLabel.text = DateHelper.shared.timeString(from: message.timestamp)
         timeLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
-        editedLabel.isHidden = !message.isEdited
-        editedLabel.textColor = isMine ? theme.outgoingEdited : theme.incomingEdited
-        statusView.configure(status: message.status, isMine: isMine, theme: theme)
+        timeLabel.isHidden = !features.showTimestamp
 
-        statusView.isHidden = !isMine
+        editedLabel.isHidden = !message.isEdited || !features.showEditedMark
+        editedLabel.textColor = isMine ? theme.outgoingEdited : theme.incomingEdited
+
+        statusView.configure(status: message.status, isMine: isMine, theme: theme)
+        statusView.isHidden = !isMine || !features.showMessageStatus
+
         applyFooterLayout(isMine: isMine)
     }
 

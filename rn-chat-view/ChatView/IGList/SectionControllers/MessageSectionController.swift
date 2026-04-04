@@ -98,7 +98,8 @@ final class MessageSectionController: ListSectionController {
             resolvedReply: reply,
             theme: theme,
             maxWidth: maxWidth,
-            showSenderName: showName
+            showSenderName: showName,
+            features: features
         )
 
         return cell

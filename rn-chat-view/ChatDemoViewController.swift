@@ -539,7 +539,7 @@ enum ChatDemoData {
                 reply: ReplyInfo(replyToId: "11", senderName: otherUser, text: "Кстати, хотела сказать, что новый API-эндпоинт...", hasImage: false),
                 forwardedFrom: nil,
                 reactions: [],
-                isEdited: false,
+                isEdited: true,
                 actions: defaultActions
             ),
         ]
@@ -557,56 +557,14 @@ enum ChatDemoData {
 
 private final class DebugPanelView: UIView {
 
+    var onToggleChanged: ((String, Bool) -> Void)?
     var onThemeChanged: ((ChatTheme) -> Void)?
-    var onSenderNameChanged: ((Bool) -> Void)?
     var onRandomizePolls: (() -> Void)?
+    var onClearData: (() -> Void)?
 
-    private let themeToggle: UISegmentedControl = {
-        let control = UISegmentedControl(items: ["Light", "Dark"])
-        control.selectedSegmentIndex = 1
-        control.translatesAutoresizingMaskIntoConstraints = false
-        return control
-    }()
-
-    private let senderNameToggle: UISwitch = {
-        let toggle = UISwitch()
-        toggle.isOn = true
-        toggle.translatesAutoresizingMaskIntoConstraints = false
-        return toggle
-    }()
-
-    private let senderNameLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Sender name"
-        label.font = .systemFont(ofSize: 12, weight: .medium)
-        label.textColor = .secondaryLabel
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-
-    private let titleLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Debug"
-        label.font = .systemFont(ofSize: 12, weight: .semibold)
-        label.textColor = .secondaryLabel
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
-
-    private let randomizePollsButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setTitle("🎲 Polls", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 12, weight: .medium)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        return button
-    }()
-
-    private let separator: UIView = {
-        let view = UIView()
-        view.backgroundColor = .separator
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
+    private let scrollView = UIScrollView()
+    private let stackView = UIStackView()
+    private let separator = UIView()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -619,54 +577,205 @@ private final class DebugPanelView: UIView {
     private func setupLayout() {
         backgroundColor = .systemBackground
 
-        addSubview(titleLabel)
-        addSubview(themeToggle)
-        addSubview(senderNameLabel)
-        addSubview(senderNameToggle)
-        addSubview(randomizePollsButton)
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(scrollView)
+
+        stackView.axis = .horizontal
+        stackView.spacing = 12
+        stackView.alignment = .bottom
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stackView)
+
+        separator.backgroundColor = .separator
+        separator.translatesAutoresizingMaskIntoConstraints = false
         addSubview(separator)
 
-        themeToggle.addTarget(self, action: #selector(themeToggleChanged), for: .valueChanged)
-        senderNameToggle.addTarget(self, action: #selector(senderNameToggleChanged), for: .valueChanged)
-        randomizePollsButton.addTarget(self, action: #selector(randomizePollsTapped), for: .touchUpInside)
-
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: separator.topAnchor),
 
-            themeToggle.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
-            themeToggle.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-
-            senderNameLabel.leadingAnchor.constraint(equalTo: themeToggle.trailingAnchor, constant: 16),
-            senderNameLabel.centerYAnchor.constraint(equalTo: themeToggle.centerYAnchor),
-
-            senderNameToggle.leadingAnchor.constraint(equalTo: senderNameLabel.trailingAnchor, constant: 8),
-            senderNameToggle.centerYAnchor.constraint(equalTo: themeToggle.centerYAnchor),
-
-            randomizePollsButton.leadingAnchor.constraint(equalTo: senderNameToggle.trailingAnchor, constant: 12),
-            randomizePollsButton.centerYAnchor.constraint(equalTo: themeToggle.centerYAnchor),
-
-            themeToggle.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            stackView.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 6),
+            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 12),
+            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -12),
+            stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -6),
+            stackView.heightAnchor.constraint(equalTo: scrollView.heightAnchor, constant: -12),
 
             separator.leadingAnchor.constraint(equalTo: leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: trailingAnchor),
             separator.bottomAnchor.constraint(equalTo: bottomAnchor),
             separator.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+
+            heightAnchor.constraint(equalToConstant: 70),
         ])
+
+        // Theme
+        let themeItem = makeSegmentItem(title: "Theme", items: ["Light", "Dark"], selected: 1) { [weak self] index in
+            self?.onThemeChanged?(index == 0 ? .light : .dark)
+        }
+        stackView.addArrangedSubview(themeItem)
+
+        // Toggles
+        let toggles: [(String, String, Bool)] = [
+            ("Sender", "senderName", true),
+            ("Status", "status", true),
+            ("Time", "time", true),
+            ("Edited", "edited", true),
+            ("Reactions", "reactions", true),
+            ("Reply", "reply", true),
+            ("Forwarded", "forwarded", true),
+            ("FAB", "fab", true),
+            ("Float Date", "floatDate", true),
+            ("Date Sep", "dateSep", true),
+            ("Empty", "empty", true),
+            ("Input", "inputBar", true),
+            ("Attach", "attach", true),
+            ("Voice", "voice", true),
+            ("Ctx Menu", "ctxMenu", true),
+        ]
+
+        for (label, key, defaultOn) in toggles {
+            let item = makeToggleItem(title: label, key: key, isOn: defaultOn)
+            stackView.addArrangedSubview(item)
+        }
+
+        // Polls button
+        let pollsItem = makeButtonItem(title: "Polls", icon: "🎲") { [weak self] in
+            self?.onRandomizePolls?()
+        }
+        stackView.addArrangedSubview(pollsItem)
+
+        // Clear data button
+        let clearItem = makeButtonItem(title: "Clear", icon: "🗑") { [weak self] in
+            self?.onClearData?()
+        }
+        stackView.addArrangedSubview(clearItem)
     }
 
-    @objc private func themeToggleChanged() {
-        let theme: ChatTheme = themeToggle.selectedSegmentIndex == 0 ? .light : .dark
-        onThemeChanged?(theme)
+    // MARK: - Factory
+
+    private func makeToggleItem(title: String, key: String, isOn: Bool) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.text = title
+        label.font = .systemFont(ofSize: 10, weight: .medium)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(label)
+
+        let toggle = UISwitch()
+        toggle.isOn = isOn
+        toggle.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+        toggle.accessibilityIdentifier = key
+        toggle.addTarget(self, action: #selector(toggleChanged(_:)), for: .valueChanged)
+        container.addSubview(toggle)
+
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: container.topAnchor),
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            toggle.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 2),
+            toggle.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            toggle.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            container.widthAnchor.constraint(greaterThanOrEqualToConstant: 40),
+        ])
+
+        return container
     }
 
-    @objc private func senderNameToggleChanged() {
-        onSenderNameChanged?(senderNameToggle.isOn)
+    private func makeSegmentItem(title: String, items: [String], selected: Int, onChange: @escaping (Int) -> Void) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.text = title
+        label.font = .systemFont(ofSize: 10, weight: .medium)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(label)
+
+        let segment = UISegmentedControl(items: items)
+        segment.selectedSegmentIndex = selected
+        segment.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 11)], for: .normal)
+        segment.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(segment)
+
+        let handler = SegmentHandler(onChange: onChange)
+        segment.addTarget(handler, action: #selector(SegmentHandler.changed(_:)), for: .valueChanged)
+        objc_setAssociatedObject(segment, "handler", handler, .OBJC_ASSOCIATION_RETAIN)
+
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: container.topAnchor),
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            segment.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4),
+            segment.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            segment.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            segment.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        return container
     }
 
-    @objc private func randomizePollsTapped() {
-        onRandomizePolls?()
+    private func makeButtonItem(title: String, icon: String, action: @escaping () -> Void) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.text = title
+        label.font = .systemFont(ofSize: 10, weight: .medium)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(label)
+
+        let button = UIButton(type: .system)
+        button.setTitle(icon, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 20)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(button)
+
+        let handler = ButtonHandler(action: action)
+        button.addTarget(handler, action: #selector(ButtonHandler.tapped), for: .touchUpInside)
+        objc_setAssociatedObject(button, "handler", handler, .OBJC_ASSOCIATION_RETAIN)
+
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: container.topAnchor),
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            button.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 2),
+            button.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            button.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            container.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
+        ])
+
+        return container
     }
+
+    // MARK: - Actions
+
+    @objc private func toggleChanged(_ sender: UISwitch) {
+        guard let key = sender.accessibilityIdentifier else { return }
+        onToggleChanged?(key, sender.isOn)
+    }
+}
+
+// MARK: - Action Handlers
+
+private final class SegmentHandler: NSObject {
+    let onChange: (Int) -> Void
+    init(onChange: @escaping (Int) -> Void) { self.onChange = onChange }
+    @objc func changed(_ sender: UISegmentedControl) { onChange(sender.selectedSegmentIndex) }
+}
+
+private final class ButtonHandler: NSObject {
+    let action: () -> Void
+    init(action: @escaping () -> Void) { self.action = action }
+    @objc func tapped() { action() }
 }
 
 // MARK: - Demo ViewController
@@ -683,11 +792,9 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         setupDebugPanel()
 
         chatVC.delegate = self
-        chatVC.configuration = .default.modified {
-            $0.theme = .dark
-            $0.features.senderNameMode = .incomingOnly
-            $0.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
-        }
+        chatVC.theme = .dark
+        chatVC.features.senderNameMode = .incomingOnly
+        chatVC.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
 
         addChild(chatVC)
         view.addSubview(chatVC.view)
@@ -716,18 +823,45 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
         debugPanel.onThemeChanged = { [weak self] theme in
             guard let self else { return }
-            self.chatVC.configuration.theme = theme
+            self.chatVC.theme = theme
             self.view.backgroundColor = theme.backgroundColor
             self.debugPanel.backgroundColor = theme.isDark ? .black : .systemBackground
         }
 
-        debugPanel.onSenderNameChanged = { [weak self] show in
+        debugPanel.onToggleChanged = { [weak self] key, isOn in
             guard let self else { return }
-            self.chatVC.configuration.features.senderNameMode = show ? .incomingOnly : .never
+            switch key {
+            case "senderName": self.chatVC.features.senderNameMode = isOn ? .incomingOnly : .never
+            case "status":     self.chatVC.features.showMessageStatus = isOn
+            case "time":       self.chatVC.features.showTimestamp = isOn
+            case "edited":     self.chatVC.features.showEditedMark = isOn
+            case "reactions":  self.chatVC.features.showReactions = isOn
+            case "reply":      self.chatVC.features.showReplyPreview = isOn
+            case "forwarded":  self.chatVC.features.showForwardedMark = isOn
+            case "fab":        self.chatVC.features.showFab = isOn
+            case "floatDate":  self.chatVC.features.showFloatingDate = isOn
+            case "dateSep":    self.chatVC.features.showDateSeparators = isOn
+            case "empty":      self.chatVC.features.showEmptyState = isOn
+            case "inputBar":   self.chatVC.features.showInputBar = isOn
+            case "attach":     self.chatVC.features.showAttachButton = isOn
+            case "voice":      self.chatVC.features.showVoiceRecording = isOn
+            case "ctxMenu":    self.chatVC.features.contextMenuEnabled = isOn
+            default: break
+            }
         }
 
         debugPanel.onRandomizePolls = { [weak self] in
             self?.randomizePolls()
+        }
+
+        debugPanel.onClearData = { [weak self] in
+            guard let self else { return }
+            if self.chatVC.messages.isEmpty {
+                self.chatVC.isLoading = false
+                self.chatVC.updateMessages(ChatDemoData.makeSampleMessages())
+            } else {
+                self.chatVC.updateMessages([])
+            }
         }
     }
 

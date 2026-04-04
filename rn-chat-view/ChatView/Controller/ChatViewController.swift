@@ -5,14 +5,26 @@ final class ChatViewController: UIViewController {
 
     // MARK: - Public Configuration
 
-    /// Единая конфигурация: тема + layout + features.
-    var configuration: ChatConfiguration = .default {
-        didSet {
-            guard isViewLoaded else { return }
-            let diff = ConfigurationDiff(old: oldValue, new: configuration)
-            guard !diff.isEmpty else { return }
-            applyConfigurationDiff(diff)
-        }
+    var theme: ChatTheme = .light {
+        didSet { guard isViewLoaded, !isBatchUpdate else { return }; applyTheme() }
+    }
+    var layout: ChatLayout = ChatLayout() {
+        didSet { guard isViewLoaded, !isBatchUpdate else { return }; reloadWithCrossfade() }
+    }
+    var features: ChatFeatures = ChatFeatures() {
+        didSet { guard isViewLoaded, !isBatchUpdate else { return }; applyFeatureChanges(from: oldValue) }
+    }
+
+    private var isBatchUpdate = false
+
+    /// Apply multiple configuration changes at once to avoid redundant reloads.
+    func batchUpdate(_ block: () -> Void) {
+        isBatchUpdate = true
+        let oldFeatures = features
+        block()
+        isBatchUpdate = false
+        applyTheme()
+        applyFeatureChanges(from: oldFeatures)
     }
 
     // MARK: - Public Properties
@@ -56,12 +68,6 @@ final class ChatViewController: UIViewController {
     var collectionExtraInsetBottom: CGFloat = 0 {
         didSet { guard isViewLoaded else { return }; view.setNeedsLayout() }
     }
-
-    // MARK: - Convenience accessors
-
-    var theme: ChatTheme { configuration.theme }
-    var layout: ChatLayout { configuration.layout }
-    var features: ChatFeatures { configuration.features }
 
     // MARK: - Initial Scroll
 
@@ -262,33 +268,39 @@ final class ChatViewController: UIViewController {
         reloadWithCrossfade()
     }
 
-    // MARK: - Configuration Diff
+    // MARK: - Feature Changes
 
-    private func applyConfigurationDiff(_ diff: ConfigurationDiff) {
-        if diff.fabChanged {
+    private func applyFeatureChanges(from old: ChatFeatures) {
+        if old.showFab != features.showFab {
             fabManager.setEnabled(features.showFab)
             if features.showFab {
                 fabManager.updateVisibility(isNearBottom: isNearBottom(), hasMessages: !messages.isEmpty, animated: true)
             }
         }
-        if diff.floatingDateChanged {
+        if old.showFloatingDate != features.showFloatingDate {
             floatingDateManager.setHidden(!features.showFloatingDate)
         }
-        if diff.inputBarVisibilityChanged {
+        if old.showInputBar != features.showInputBar
+            || old.showAttachButton != features.showAttachButton
+            || old.showVoiceRecording != features.showVoiceRecording {
             inputBar.isHidden = !features.showInputBar
             inputBarBackground.isHidden = !features.showInputBar
             inputBar.leftButton.isHidden = !features.showAttachButton
             inputBar.voiceRecordingEnabled = features.showVoiceRecording
             updateCollectionInsets()
         }
-        if diff.themeChanged { applyTheme() }
-        if diff.layoutChanged || diff.cellAffectingChanged { reloadWithCrossfade() }
-        if diff.dateSeparatorsChanged {
+        if old.showDateSeparators != features.showDateSeparators {
             rebuildListItems()
             adapter.performUpdates(animated: false)
         }
-        if diff.scrollThresholdsChanged {
-            fabManager.updateVisibility(isNearBottom: isNearBottom(), hasMessages: !messages.isEmpty, animated: false)
+        if old.senderNameMode != features.senderNameMode
+            || old.showMessageStatus != features.showMessageStatus
+            || old.showTimestamp != features.showTimestamp
+            || old.showReactions != features.showReactions
+            || old.showReplyPreview != features.showReplyPreview
+            || old.showEditedMark != features.showEditedMark
+            || old.showForwardedMark != features.showForwardedMark {
+            reloadWithCrossfade()
         }
     }
 
