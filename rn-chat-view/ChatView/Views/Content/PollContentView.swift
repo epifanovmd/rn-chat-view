@@ -19,7 +19,7 @@ final class PollContentView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        let L = ChatLayout.current
+        let L = ChatLayout()
 
         questionLabel.font = L.pollQuestionFont
         questionLabel.numberOfLines = 0
@@ -122,7 +122,7 @@ private final class PollOptionRow: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        let L = ChatLayout.current
+        let L = ChatLayout()
 
         barBg.layer.cornerRadius = L.pollBarCornerRadius
         barBg.layer.masksToBounds = true
@@ -166,7 +166,7 @@ private final class PollOptionRow: UIView {
     }
 
     func configure(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme) {
-        let L = ChatLayout.current
+        let L = ChatLayout()
 
         label.text = option.text
         barBg.backgroundColor = theme.pollBarEmpty

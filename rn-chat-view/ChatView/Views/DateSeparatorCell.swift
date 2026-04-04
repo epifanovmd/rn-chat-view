@@ -15,11 +15,11 @@ final class DateSeparatorCell: UICollectionViewCell {
         backgroundColor = .clear
         contentView.backgroundColor = .clear
 
-        pillView.layer.cornerRadius = ChatLayout.current.dateSeparatorCornerRadius
+        pillView.layer.cornerRadius = ChatLayout().dateSeparatorCornerRadius
         pillView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(pillView)
 
-        label.font = ChatLayout.current.dateSeparatorFont
+        label.font = ChatLayout().dateSeparatorFont
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         pillView.addSubview(label)
@@ -27,10 +27,10 @@ final class DateSeparatorCell: UICollectionViewCell {
         NSLayoutConstraint.activate([
             pillView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             pillView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            label.topAnchor.constraint(equalTo: pillView.topAnchor, constant: ChatLayout.current.dateSeparatorVPad),
-            label.bottomAnchor.constraint(equalTo: pillView.bottomAnchor, constant: -ChatLayout.current.dateSeparatorVPad),
-            label.leadingAnchor.constraint(equalTo: pillView.leadingAnchor, constant: ChatLayout.current.dateSeparatorHPad),
-            label.trailingAnchor.constraint(equalTo: pillView.trailingAnchor, constant: -ChatLayout.current.dateSeparatorHPad),
+            label.topAnchor.constraint(equalTo: pillView.topAnchor, constant: ChatLayout().dateSeparatorVPad),
+            label.bottomAnchor.constraint(equalTo: pillView.bottomAnchor, constant: -ChatLayout().dateSeparatorVPad),
+            label.leadingAnchor.constraint(equalTo: pillView.leadingAnchor, constant: ChatLayout().dateSeparatorHPad),
+            label.trailingAnchor.constraint(equalTo: pillView.trailingAnchor, constant: -ChatLayout().dateSeparatorHPad),
         ])
     }
 

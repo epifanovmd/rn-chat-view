@@ -18,11 +18,15 @@ protocol MessageSectionDelegate: AnyObject {
 final class MessageSectionController: ListSectionController {
     private var item: MessageListItem!
     weak var sectionDelegate: MessageSectionDelegate?
-    weak var environment: SectionEnvironment?
+
+    var theme: ChatTheme = .light
+    var layout: ChatLayout = ChatLayout()
+    var features: ChatFeatures = ChatFeatures()
+    var replyResolver: ((ReplyInfo) -> ReplyDisplayInfo?)?
 
     override init() {
         super.init()
-        let spacing = ChatLayout.current.cellVSpacing
+        let spacing = ChatLayout().cellVSpacing
         inset = UIEdgeInsets(top: spacing / 2, left: 0, bottom: spacing / 2, right: 0)
     }
 
@@ -31,18 +35,15 @@ final class MessageSectionController: ListSectionController {
     override func sizeForItem(at index: Int) -> CGSize {
         guard let ctx = collectionContext else { return .zero }
         let width = ctx.containerSize.width
-        let L = environment?.currentLayout ?? ChatLayout.current
-        let features = environment?.currentFeatures ?? ChatFeatures()
         let showName = features.senderNameMode != .never
-        let reply = item.message.reply.flatMap { environment?.resolveReply(for: $0) }
         let height = MessageSizeCalculator.cellHeight(
             for: item.message,
             maxWidth: width,
-            layout: L,
-            resolvedReply: reply,
-            showSenderName: showName
+            layout: layout,
+            showSenderName: showName,
+            features: features
         )
-        return CGSize(width: width, height: max(height, L.cellMinHeight))
+        return CGSize(width: width, height: max(height, layout.cellMinHeight))
     }
 
     override func cellForItem(at index: Int) -> UICollectionViewCell {
@@ -86,20 +87,17 @@ final class MessageSectionController: ListSectionController {
             self.sectionDelegate?.messageSectionDidTapReaction(messageId: self.item.message.id, emoji: emoji)
         }
 
-        let theme = environment?.currentTheme ?? .light
-        let L = environment?.currentLayout ?? ChatLayout.current
-        let features = environment?.currentFeatures ?? ChatFeatures()
-        let reply = item.message.reply.flatMap { environment?.resolveReply(for: $0) }
-        let maxWidth = ctx.containerSize.width
+        let reply = item.message.reply.flatMap { replyResolver?($0) }
         let showName = features.senderNameMode != .never
 
         cell.configure(
             message: item.message,
             resolvedReply: reply,
             theme: theme,
-            maxWidth: maxWidth,
+            maxWidth: ctx.containerSize.width,
             showSenderName: showName,
-            features: features
+            features: features,
+            layout: layout
         )
 
         return cell

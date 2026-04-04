@@ -1,7 +1,7 @@
 import UIKit
 
 /// Manages the empty state view (spinner + "no messages" text).
-final class EmptyStateManager {
+final class EmptyStateManager: NSObject {
 
     // MARK: - Views
 
@@ -11,10 +11,15 @@ final class EmptyStateManager {
 
     // MARK: - Setup
 
-    func setup(in parentView: UIView, layout: ChatLayout, theme: ChatTheme) {
+    var onTap: (() -> Void)?
+
+    func setup(in parentView: UIView, inputBar: UIView, layout: ChatLayout, theme: ChatTheme) {
         container.isHidden = true
         container.translatesAutoresizingMaskIntoConstraints = false
         parentView.addSubview(container)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        container.addGestureRecognizer(tap)
 
         label.text = NSLocalizedString("chat.empty", value: "Сообщений пока нет.\nНапишите первым!", comment: "")
         label.font = layout.emptyStateFont
@@ -31,10 +36,10 @@ final class EmptyStateManager {
             container.topAnchor.constraint(equalTo: parentView.topAnchor),
             container.leadingAnchor.constraint(equalTo: parentView.leadingAnchor),
             container.trailingAnchor.constraint(equalTo: parentView.trailingAnchor),
-            container.bottomAnchor.constraint(equalTo: parentView.bottomAnchor),
+            container.bottomAnchor.constraint(equalTo: inputBar.topAnchor),
             label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: layout.emptyStatePadding),
+            label.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor, constant: layout.emptyStatePadding),
             spinner.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             spinner.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
@@ -63,5 +68,11 @@ final class EmptyStateManager {
             spinner.stopAnimating()
             label.isHidden = false
         }
+    }
+
+    // MARK: - Actions
+
+    @objc private func handleTap() {
+        onTap?()
     }
 }

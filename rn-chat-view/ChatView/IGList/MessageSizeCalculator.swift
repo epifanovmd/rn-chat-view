@@ -4,18 +4,15 @@ enum MessageSizeCalculator {
 
     // MARK: - Public
 
-    static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = .current, resolvedReply: ReplyDisplayInfo?, showSenderName: Bool = false) -> CGFloat {
-        let bw = bubbleWidth(for: msg, containerWidth: maxWidth, layout: L, showSenderName: showSenderName)
-        let bh = bubbleHeight(for: msg, bubbleWidth: bw, layout: L, resolvedReply: resolvedReply, showSenderName: showSenderName)
-        let maxW = maxWidth * L.bubbleMaxWidthRatio
-        let tw = msg.content.text.map { textWidth($0, font: L.messageFont) } ?? 0
-        print("[SIZE] id=\(msg.id) isMine=\(msg.isMine) maxW=\(Int(maxW)) bubbleW=\(Int(bw)) textW=\(Int(tw)) cellH=\(Int(bh + L.cellVSpacing)) text=\"\(msg.content.text?.prefix(40) ?? "")\"")
+    static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) -> CGFloat {
+        let bw = bubbleWidth(for: msg, containerWidth: maxWidth, layout: L, showSenderName: showSenderName, features: features)
+        let bh = bubbleHeight(for: msg, bubbleWidth: bw, layout: L, showSenderName: showSenderName, features: features)
         return bh + L.cellVSpacing
     }
 
     // MARK: - Bubble Width
 
-    static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, layout L: ChatLayout = .current, showSenderName: Bool = false) -> CGFloat {
+    static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) -> CGFloat {
         let maxW = containerWidth * L.bubbleMaxWidthRatio
         let content = msg.content
 
@@ -23,7 +20,7 @@ enum MessageSizeCalculator {
             let font = emojiFont(for: count, layout: L)
             let tw = textWidth(content.text!, font: font)
             var w = min(tw + L.bubbleHPad * 2, maxW)
-            if !msg.reactions.isEmpty {
+            if features.showReactions, !msg.reactions.isEmpty {
                 w = max(w, reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2)
             }
             return min(w, maxW)
@@ -35,7 +32,7 @@ enum MessageSizeCalculator {
         }
 
         var replyW: CGFloat = 0
-        if let reply = msg.reply {
+        if features.showReplyPreview, let reply = msg.reply {
             let replyInner = L.replyAccentWidth + 8 + 8
             let senderW = textWidth(reply.senderName ?? "", font: L.replySenderFont)
             let textW = textWidth(reply.text ?? "…", font: L.replyFont)
@@ -46,7 +43,7 @@ enum MessageSizeCalculator {
 
         if content.hasMedia {
             var w = maxW
-            if !msg.reactions.isEmpty {
+            if features.showReactions, !msg.reactions.isEmpty {
                 w = max(w, reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2)
             }
             return min(w, maxW)
@@ -54,10 +51,10 @@ enum MessageSizeCalculator {
 
         if let text = content.text {
             let tw = textWidth(text, font: L.messageFont)
-            let minW = minFooterWidth(for: msg, layout: L)
+            let minW = minFooterWidth(for: msg, layout: L, features: features)
             var contentW = max(tw + L.bubbleHPad * 2, minW + L.bubbleHPad * 2)
 
-            if !msg.reactions.isEmpty {
+            if features.showReactions, !msg.reactions.isEmpty {
                 let reactionW = reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2
                 contentW = max(contentW, reactionW)
             }
@@ -71,23 +68,25 @@ enum MessageSizeCalculator {
 
     // MARK: - Bubble Height
 
-    static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = .current, resolvedReply: ReplyDisplayInfo?, showSenderName: Bool = false) -> CGFloat {
+    static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) -> CGFloat {
         let content = msg.content
 
         if !content.hasMedia, let count = EmojiHelper.emojiOnlyCount(content.text) {
             let font = emojiFont(for: count, layout: L)
             var h = textHeight(content.text!, font: font, width: bw - L.bubbleHPad * 2) + 8
 
-            if !msg.reactions.isEmpty {
+            if features.showReactions, !msg.reactions.isEmpty {
                 let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2, layout: L)
                 h += CGFloat(reactionLines) * (L.reactionChipHeight + 4)
             }
 
-            h += L.footerHeight + L.bubbleBottomPad
+            let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.isMine && features.showMessageStatus)
+            if hasFooter { h += L.footerHeight }
+            h += L.bubbleBottomPad
             return h
         }
 
-        let isForwarded = msg.forwardedFrom != nil
+        let isForwarded = features.showForwardedMark && msg.forwardedFrom != nil
         let forwardedInset = isForwarded
             ? L.forwardedAccentWidth + L.forwardedContentInset
             : 0
@@ -100,29 +99,32 @@ enum MessageSizeCalculator {
         if isForwarded {
             h += L.forwardedFont.lineHeight + L.bubbleSpacing
         }
-        if msg.reply != nil {
+        if features.showReplyPreview, msg.reply != nil {
             h += L.replyHeight + L.bubbleSpacing
         }
 
-        let hasHeader = (showSenderName && msg.senderName != nil && !msg.isMine) || msg.reply != nil || isForwarded
+        let hasReply = features.showReplyPreview && msg.reply != nil
+        let hasHeader = (showSenderName && msg.senderName != nil && !msg.isMine) || hasReply || isForwarded
         if content.voice != nil, !hasHeader {
             h += 4 + L.bubbleSpacing
         }
 
         h += contentHeight(for: content, width: innerW, layout: L)
 
-        if !msg.reactions.isEmpty {
+        if features.showReactions, !msg.reactions.isEmpty {
             let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2, layout: L)
             h += CGFloat(reactionLines) * (L.reactionChipHeight + 4)
         }
 
-        h += L.footerHeight + L.bubbleBottomPad
+        let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.isMine && features.showMessageStatus)
+        if hasFooter { h += L.footerHeight }
+        h += L.bubbleBottomPad
         return h
     }
 
     // MARK: - Reaction Lines
 
-    static func reactionLinesCount(for reactions: [Reaction], maxWidth: CGFloat, layout L: ChatLayout = .current) -> Int {
+    static func reactionLinesCount(for reactions: [Reaction], maxWidth: CGFloat, layout L: ChatLayout = ChatLayout()) -> Int {
         guard !reactions.isEmpty else { return 0 }
         var currentLineWidth: CGFloat = 0
         var lines = 1
@@ -144,7 +146,7 @@ enum MessageSizeCalculator {
 
     // MARK: - Content Height
 
-    static func contentHeight(for content: MessageContent, width: CGFloat, layout L: ChatLayout = .current) -> CGFloat {
+    static func contentHeight(for content: MessageContent, width: CGFloat, layout L: ChatLayout = ChatLayout()) -> CGFloat {
         var h: CGFloat = 0
 
         if let poll = content.poll {
@@ -168,7 +170,7 @@ enum MessageSizeCalculator {
 
     // MARK: - Reaction Width
 
-    static func reactionWidth(for reactions: [Reaction], layout L: ChatLayout = .current) -> CGFloat {
+    static func reactionWidth(for reactions: [Reaction], layout L: ChatLayout = ChatLayout()) -> CGFloat {
         guard !reactions.isEmpty else { return 0 }
         var total: CGFloat = 0
         for reaction in reactions {
@@ -181,7 +183,7 @@ enum MessageSizeCalculator {
 
     // MARK: - Helpers
 
-    static func pollHeight(_ poll: PollPayload, width: CGFloat, layout L: ChatLayout = .current) -> CGFloat {
+    static func pollHeight(_ poll: PollPayload, width: CGFloat, layout L: ChatLayout = ChatLayout()) -> CGFloat {
         let count = poll.options.count
         var h: CGFloat = textHeight(poll.question, font: L.pollQuestionFont, width: width)
         h += 2 + L.pollSubtitleFont.lineHeight
@@ -211,14 +213,22 @@ enum MessageSizeCalculator {
         return ceil(size.width)
     }
 
-    static func minFooterWidth(for msg: ChatMessage, layout L: ChatLayout = .current) -> CGFloat {
-        var w = textWidth(DateHelper.shared.timeString(from: msg.timestamp), font: L.timeFont)
-        if msg.isMine { w += L.statusIconSize + L.footerSpacing }
-        if msg.isEdited { w += textWidth("изм.", font: L.editedFont) + L.footerSpacing }
-        return w + L.footerSpacing * 2
+    static func minFooterWidth(for msg: ChatMessage, layout L: ChatLayout = ChatLayout(), features: ChatFeatures = ChatFeatures()) -> CGFloat {
+        var w: CGFloat = 0
+        if features.showTimestamp {
+            w += textWidth(DateHelper.shared.timeString(from: msg.timestamp), font: L.timeFont)
+        }
+        if msg.isMine && features.showMessageStatus {
+            w += L.statusIconSize + L.footerSpacing
+        }
+        if msg.isEdited && features.showEditedMark {
+            w += textWidth("изм.", font: L.editedFont) + L.footerSpacing
+        }
+        if w > 0 { w += L.footerSpacing * 2 }
+        return w
     }
 
-    static func emojiFont(for count: Int, layout L: ChatLayout = .current) -> UIFont {
+    static func emojiFont(for count: Int, layout L: ChatLayout = ChatLayout()) -> UIFont {
         switch count {
         case 1: return L.emojiFont1
         case 2: return L.emojiFont2

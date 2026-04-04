@@ -15,7 +15,7 @@ final class FileContentView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        let L = ChatLayout.current
+        let L = ChatLayout()
 
         layer.cornerRadius = L.fileCornerRadius
         layer.masksToBounds = true
@@ -62,7 +62,7 @@ final class FileContentView: UIView {
         nameLabel.textColor = isMine ? theme.outgoingText : theme.incomingText
         sizeLabel.text = formatSize(file.size)
         sizeLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
-        iconView.tintColor = isMine ? theme.outgoingText : theme.inputBarTint
+        iconView.tintColor = isMine ? theme.outgoingText : theme.fileIconColor
 
         let ext = (file.name as NSString).pathExtension.lowercased()
         let icon: String
@@ -73,7 +73,7 @@ final class FileContentView: UIView {
         case "mp4", "mov", "avi": icon = "film"
         default: icon = "doc.fill"
         }
-        let cfg = UIImage.SymbolConfiguration(pointSize: ChatLayout.current.fileIconPointSize, weight: .regular)
+        let cfg = UIImage.SymbolConfiguration(pointSize: ChatLayout().fileIconPointSize, weight: .regular)
         iconView.image = UIImage(systemName: icon, withConfiguration: cfg)
     }
 

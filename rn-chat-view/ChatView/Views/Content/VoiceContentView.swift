@@ -38,7 +38,7 @@ final class VoiceContentView: UIView {
     // MARK: - Setup
 
     private func setup() {
-        let L = ChatLayout.current
+        let L = ChatLayout()
         let btnSize = L.voicePlaySize
 
         // Play button
@@ -157,7 +157,7 @@ final class VoiceContentView: UIView {
     private func updateUI() {
         let state = VoicePlayer.shared.state
         let isMe = state.url == voiceURL
-        let L = ChatLayout.current
+        let L = ChatLayout()
         let config = UIImage.SymbolConfiguration(pointSize: L.voicePlayIconSize, weight: .semibold)
         let errorConfig = UIImage.SymbolConfiguration(pointSize: L.voicePlayIconSize - 2, weight: .medium)
 
@@ -332,8 +332,8 @@ final class WaveformView: UIView, UIGestureRecognizerDelegate {
 
         guard bounds.width > 0, bounds.height > 0 else { return }
 
-        let barW = ChatLayout.current.voiceBarWidth
-        let spacing = ChatLayout.current.voiceBarSpacing
+        let barW = ChatLayout().voiceBarWidth
+        let spacing = ChatLayout().voiceBarSpacing
         let totalW = barW + spacing
         let count = Int(bounds.width / totalW)
         guard count > 0 else { return }

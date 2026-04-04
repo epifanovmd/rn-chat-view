@@ -17,7 +17,7 @@ final class ReactionsView: UIView {
         chipViews.removeAll()
         currentMaxWidth = maxWidth
 
-        let spacing = ChatLayout.current.reactionChipSpacing
+        let spacing = ChatLayout().reactionChipSpacing
         var x: CGFloat = 0
         var y: CGFloat = 0
         var lineHeight: CGFloat = 0
@@ -33,12 +33,12 @@ final class ReactionsView: UIView {
                 lineHeight = 0
             }
             
-            chip.frame = CGRect(x: x, y: y, width: chipWidth, height: ChatLayout.current.reactionChipHeight)
+            chip.frame = CGRect(x: x, y: y, width: chipWidth, height: ChatLayout().reactionChipHeight)
             addSubview(chip)
             chipViews.append(chip)
             
             x += chipWidth + spacing
-            lineHeight = max(lineHeight, ChatLayout.current.reactionChipHeight)
+            lineHeight = max(lineHeight, ChatLayout().reactionChipHeight)
         }
         
         let totalHeight = y + lineHeight
@@ -52,7 +52,7 @@ final class ReactionsView: UIView {
 
     private func makeChip(reaction: Reaction, theme: ChatTheme) -> UIView {
         let container = UIView()
-        let L = ChatLayout.current
+        let L = ChatLayout()
         container.layer.cornerRadius = L.reactionChipHeight / 2
 
         if reaction.isMine {

@@ -12,7 +12,7 @@ final class LoadingSectionController: ListSectionController {
 
     override func sizeForItem(at index: Int) -> CGSize {
         guard let ctx = collectionContext else { return .zero }
-        let L = ChatLayout.current
+        let L = ChatLayout()
         if item.position == .top {
             // Same height as date separator to avoid scroll jumps
             let height = L.dateSeparatorFont.lineHeight + L.dateSeparatorVPad * 2

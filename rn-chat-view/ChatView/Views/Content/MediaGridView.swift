@@ -4,7 +4,7 @@ final class MediaGridView: UIView {
 
     var onItemTap: ((Int) -> Void)?
 
-    private var spacing: CGFloat { ChatLayout.current.mediaGridSpacing }
+    private var spacing: CGFloat { ChatLayout().mediaGridSpacing }
     private let maxVisible = 4
     private var cellViews: [MediaCellView] = []
     private var heightConstraint: NSLayoutConstraint?
@@ -12,7 +12,7 @@ final class MediaGridView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         clipsToBounds = true
-        layer.cornerRadius = ChatLayout.current.imageCornerRadius
+        layer.cornerRadius = ChatLayout().imageCornerRadius
 
         isUserInteractionEnabled = true
     }
@@ -116,13 +116,13 @@ final class MediaGridView: UIView {
             let item = media[0]
             if let w = item.width, let h = item.height, w > 0 {
                 let ratio = h / w
-                return min(max(width * ratio, ChatLayout.current.imageMinHeight), ChatLayout.current.imageMaxHeight)
+                return min(max(width * ratio, ChatLayout().imageMinHeight), ChatLayout().imageMaxHeight)
             }
-            return ChatLayout.current.imageMinHeight
+            return ChatLayout().imageMinHeight
 
         default:
             // Grid: square-ish, capped
-            return min(width * 0.75, ChatLayout.current.imageMaxHeight)
+            return min(width * 0.75, ChatLayout().imageMaxHeight)
         }
     }
 
@@ -151,7 +151,7 @@ private final class MediaCellView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        let L = ChatLayout.current
+        let L = ChatLayout()
         clipsToBounds = true
 
         imageView.contentMode = .scaleAspectFill
@@ -216,8 +216,8 @@ private final class MediaCellView: UIView {
         imageView.backgroundColor = theme.mediaPlaceholderBackground
         playIcon.tintColor = theme.mediaPlayIconColor
         playIcon.layer.shadowColor = theme.mediaPlayShadowColor.cgColor
-        playIcon.layer.shadowOpacity = ChatLayout.current.mediaPlayShadowOpacity
-        playIcon.layer.shadowRadius = ChatLayout.current.mediaPlayShadowRadius
+        playIcon.layer.shadowOpacity = ChatLayout().mediaPlayShadowOpacity
+        playIcon.layer.shadowRadius = ChatLayout().mediaPlayShadowRadius
         durationBg.backgroundColor = theme.mediaDurationBackground
         durationLabel.textColor = theme.mediaDurationTextColor
         overlayView.backgroundColor = theme.mediaOverlayBackground

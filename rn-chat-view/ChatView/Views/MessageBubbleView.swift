@@ -29,6 +29,13 @@ final class MessageBubbleView: UIView {
     private let statusView = MessageStatusView()
 
     private var isEmojiOnly = false
+    private var currentLayout = ChatLayout()
+
+    // MARK: - Stored constraints (updated in applyLayout)
+
+    private var stackTopConstraint: NSLayoutConstraint!
+    private var stackLeadingConstraint: NSLayoutConstraint!
+    private var stackTrailingConstraint: NSLayoutConstraint!
 
     // MARK: - Init
 
@@ -40,35 +47,44 @@ final class MessageBubbleView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        layer.cornerRadius = ChatLayout.current.bubbleCornerRadius
         layer.masksToBounds = true
 
         stack.axis = .vertical
-        stack.spacing = ChatLayout.current.bubbleSpacing
         stack.alignment = .fill
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
-        senderLabel.font = ChatLayout.current.senderNameFont
         senderLabel.numberOfLines = 1
-        forwardedLabel.font = ChatLayout.current.forwardedFont
         forwardedLabel.numberOfLines = 1
-        editedLabel.font = ChatLayout.current.editedFont
         editedLabel.text = "изм."
-        timeLabel.font = ChatLayout.current.timeFont
 
         setupForwardedContainer()
         setupFooter()
 
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: topAnchor, constant: ChatLayout.current.bubbleVPad),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: ChatLayout.current.bubbleHPad),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -ChatLayout.current.bubbleHPad),
-        ])
+        stackTopConstraint = stack.topAnchor.constraint(equalTo: topAnchor)
+        stackLeadingConstraint = stack.leadingAnchor.constraint(equalTo: leadingAnchor)
+        stackTrailingConstraint = stack.trailingAnchor.constraint(equalTo: trailingAnchor)
+
+        NSLayoutConstraint.activate([stackTopConstraint, stackLeadingConstraint, stackTrailingConstraint])
+
+        applyLayout(ChatLayout())
+    }
+
+    private func applyLayout(_ L: ChatLayout) {
+        currentLayout = L
+        layer.cornerRadius = L.bubbleCornerRadius
+        stack.spacing = L.bubbleSpacing
+        senderLabel.font = L.senderNameFont
+        forwardedLabel.font = L.forwardedFont
+        editedLabel.font = L.editedFont
+        timeLabel.font = L.timeFont
+        stackTopConstraint.constant = L.bubbleVPad
+        stackLeadingConstraint.constant = L.bubbleHPad
+        stackTrailingConstraint.constant = -L.bubbleHPad
     }
 
     private func setupForwardedContainer() {
-        let L = ChatLayout.current
+        let L = ChatLayout()
 
         forwardedAccent.translatesAutoresizingMaskIntoConstraints = false
         forwardedAccent.layer.cornerRadius = L.forwardedAccentWidth / 2
@@ -93,52 +109,36 @@ final class MessageBubbleView: UIView {
         ])
     }
 
-    private var footerTrailingGroup: [NSLayoutConstraint] = []
-    private var footerLeadingGroup: [NSLayoutConstraint] = []
+    private let footerStack = UIStackView()
 
     private func setupFooter() {
         footerContainer.translatesAutoresizingMaskIntoConstraints = false
-        [editedLabel, timeLabel, statusView].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-            footerContainer.addSubview($0)
-        }
 
+        footerStack.axis = .horizontal
+        footerStack.spacing = ChatLayout().footerSpacing
+        footerStack.alignment = .center
+        footerStack.translatesAutoresizingMaskIntoConstraints = false
+        footerContainer.addSubview(footerStack)
+
+        statusView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            footerContainer.heightAnchor.constraint(equalToConstant: ChatLayout.current.footerHeight),
-            statusView.centerYAnchor.constraint(equalTo: footerContainer.centerYAnchor),
-            statusView.widthAnchor.constraint(equalToConstant: ChatLayout.current.statusIconSize),
-            statusView.heightAnchor.constraint(equalToConstant: ChatLayout.current.statusIconSize),
-            timeLabel.centerYAnchor.constraint(equalTo: footerContainer.centerYAnchor),
-            editedLabel.centerYAnchor.constraint(equalTo: footerContainer.centerYAnchor),
+            footerContainer.heightAnchor.constraint(equalToConstant: ChatLayout().footerHeight),
+            footerStack.trailingAnchor.constraint(equalTo: footerContainer.trailingAnchor),
+            footerStack.centerYAnchor.constraint(equalTo: footerContainer.centerYAnchor),
+            statusView.widthAnchor.constraint(equalToConstant: ChatLayout().statusIconSize),
+            statusView.heightAnchor.constraint(equalToConstant: ChatLayout().statusIconSize),
         ])
 
-        // Outgoing: [edited] [time] [status] ─── trailing
-        footerTrailingGroup = [
-            statusView.trailingAnchor.constraint(equalTo: footerContainer.trailingAnchor),
-            timeLabel.trailingAnchor.constraint(equalTo: statusView.leadingAnchor, constant: -ChatLayout.current.footerSpacing),
-            editedLabel.trailingAnchor.constraint(equalTo: timeLabel.leadingAnchor, constant: -ChatLayout.current.footerSpacing),
-        ]
-
-        // Incoming: leading ─── [edited] [time]
-        footerLeadingGroup = [
-            editedLabel.trailingAnchor.constraint(equalTo: timeLabel.leadingAnchor, constant: -ChatLayout.current.footerSpacing),
-            timeLabel.trailingAnchor.constraint(equalTo: footerContainer.trailingAnchor),
-        ]
-    }
-
-    private func applyFooterLayout(isMine: Bool) {
-        footerTrailingGroup.forEach { $0.isActive = false }
-        footerLeadingGroup.forEach { $0.isActive = false }
-        if isMine {
-            footerTrailingGroup.forEach { $0.isActive = true }
-        } else {
-            footerLeadingGroup.forEach { $0.isActive = true }
-        }
+        // Order: [edited] [time] [status] — stack handles spacing for hidden views
+        footerStack.addArrangedSubview(editedLabel)
+        footerStack.addArrangedSubview(timeLabel)
+        footerStack.addArrangedSubview(statusView)
     }
 
     // MARK: - Configure
 
-    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) {
+    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout()) {
+        applyLayout(layout)
         let isMine = message.isMine
         let content = message.content
         isEmojiOnly = !content.hasMedia && EmojiHelper.emojiOnlyCount(content.text) != nil
@@ -149,7 +149,7 @@ final class MessageBubbleView: UIView {
             layer.cornerRadius = 0
         } else {
             backgroundColor = isMine ? theme.outgoingBubble : theme.incomingBubble
-            layer.cornerRadius = ChatLayout.current.bubbleCornerRadius
+            layer.cornerRadius = currentLayout.bubbleCornerRadius
         }
 
         stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
@@ -164,7 +164,7 @@ final class MessageBubbleView: UIView {
         // Forwarded
         let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
         if let fwd = message.forwardedFrom, features.showForwardedMark {
-            let L = ChatLayout.current
+            let L = currentLayout
             let accentColor = isMine ? theme.outgoingForwardedAccent : theme.incomingForwardedAccent
             forwardedAccent.backgroundColor = accentColor
 
@@ -209,7 +209,7 @@ final class MessageBubbleView: UIView {
             }
 
             // Content
-            let innerW = bubbleWidth - ChatLayout.current.bubbleHPad * 2
+            let innerW = bubbleWidth - currentLayout.bubbleHPad * 2
             let newContent = createContentView(for: message, width: innerW, isMine: isMine, theme: theme)
             contentView = newContent
             stack.addArrangedSubview(newContent)
@@ -217,7 +217,7 @@ final class MessageBubbleView: UIView {
 
         // Reactions
         if features.showReactions, !message.reactions.isEmpty {
-            let maxReactionWidth = bubbleWidth - ChatLayout.current.bubbleHPad * 2
+            let maxReactionWidth = bubbleWidth - currentLayout.bubbleHPad * 2
             reactionsView.configure(reactions: message.reactions, theme: theme, maxWidth: maxReactionWidth)
             reactionsView.onReactionTap = { [weak self] emoji in self?.onReactionTap?(emoji) }
             stack.addArrangedSubview(reactionsView)
@@ -225,8 +225,11 @@ final class MessageBubbleView: UIView {
 
         // Footer
         if !isEmojiOnly {
-            configureFooter(message: message, isMine: isMine, theme: theme, features: features)
-            stack.addArrangedSubview(footerContainer)
+            let hasFooter = features.showTimestamp || (message.isEdited && features.showEditedMark) || (isMine && features.showMessageStatus)
+            if hasFooter {
+                configureFooter(message: message, isMine: isMine, theme: theme, features: features)
+                stack.addArrangedSubview(footerContainer)
+            }
         }
     }
 
@@ -253,7 +256,7 @@ final class MessageBubbleView: UIView {
         } else if let files = content.files, !files.isEmpty {
             let filesStack = UIStackView()
             filesStack.axis = .vertical
-            filesStack.spacing = ChatLayout.current.fileRowSpacing
+            filesStack.spacing = currentLayout.fileRowSpacing
             for (index, file) in files.enumerated() {
                 let view = FileContentView()
                 view.configure(file: file, isMine: isMine, theme: theme)
@@ -287,7 +290,7 @@ final class MessageBubbleView: UIView {
         if views.count > 1 {
             let container = UIStackView()
             container.axis = .vertical
-            container.spacing = ChatLayout.current.mixedContentSpacing
+            container.spacing = currentLayout.mixedContentSpacing
             views.forEach { container.addArrangedSubview($0) }
             return container
         }
@@ -322,8 +325,6 @@ final class MessageBubbleView: UIView {
 
         statusView.configure(status: message.status, isMine: isMine, theme: theme)
         statusView.isHidden = !isMine || !features.showMessageStatus
-
-        applyFooterLayout(isMine: isMine)
     }
 
     // MARK: - Reuse
@@ -339,5 +340,9 @@ final class MessageBubbleView: UIView {
         onPollDetailTap = nil
         onVoiceTap = nil
         onReactionTap = nil
+        // Reset footer visibility
+        timeLabel.isHidden = false
+        editedLabel.isHidden = true
+        statusView.isHidden = false
     }
 }

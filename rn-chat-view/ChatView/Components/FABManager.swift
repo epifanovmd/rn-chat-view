@@ -84,9 +84,8 @@ final class FABManager {
     // MARK: - Theme
 
     func applyTheme(_ theme: ChatTheme) {
-        let ibTheme = InputBarTheme.from(theme)
-        button.backgroundColor = ibTheme.background
-        button.layer.borderColor = ibTheme.border.cgColor
+        button.backgroundColor = theme.fabBackground
+        button.layer.borderColor = theme.fabBorder.cgColor
         arrow.tintColor = theme.fabArrowColor
         badge.backgroundColor = theme.fabBadgeBackground
         badge.textColor = theme.fabBadgeTextColor

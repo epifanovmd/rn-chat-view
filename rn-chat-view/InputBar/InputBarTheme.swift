@@ -82,23 +82,4 @@ extension InputBarTheme {
         lockIcon: UIColor(white: 0.6, alpha: 1)
     )
 
-    /// Create InputBarTheme from the existing ChatTheme.
-    static func from(_ theme: ChatTheme) -> InputBarTheme {
-        InputBarTheme(
-            background: theme.inputBarTextViewBackground,
-            border: theme.inputBarBorder,
-            text: theme.inputBarText,
-            tint: theme.inputBarTint,
-            placeholder: theme.inputBarPlaceholder,
-            replyAccent: theme.replyPanelAccent,
-            replySender: theme.replyPanelSender,
-            replyText: theme.replyPanelText,
-            replyClose: theme.replyPanelClose,
-            recordingDot: theme.voiceRecordingIndicator,
-            recordingCancel: theme.voiceRecordingCancelColor,
-            recordingMicFill: theme.voiceRecordingMicBackground,
-            lockBackground: theme.voiceRecordingLockBackground,
-            lockIcon: theme.voiceRecordingLockIcon
-        )
-    }
 }

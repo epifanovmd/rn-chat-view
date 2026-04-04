@@ -15,19 +15,19 @@ final class ReplyPreviewView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        layer.cornerRadius = ChatLayout.current.replyCornerRadius
+        layer.cornerRadius = ChatLayout().replyCornerRadius
         clipsToBounds = true
 
         accentBar.translatesAutoresizingMaskIntoConstraints = false
         addSubview(accentBar)
 
-        senderLabel.font = ChatLayout.current.replySenderFont
+        senderLabel.font = ChatLayout().replySenderFont
         senderLabel.numberOfLines = 1
         senderLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         senderLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(senderLabel)
 
-        contentLabel.font = ChatLayout.current.replyFont
+        contentLabel.font = ChatLayout().replyFont
         contentLabel.numberOfLines = 1
         contentLabel.lineBreakMode = .byTruncatingTail
         contentLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -35,11 +35,11 @@ final class ReplyPreviewView: UIView {
         addSubview(contentLabel)
 
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: ChatLayout.current.replyHeight),
+            heightAnchor.constraint(equalToConstant: ChatLayout().replyHeight),
             accentBar.leadingAnchor.constraint(equalTo: leadingAnchor),
             accentBar.topAnchor.constraint(equalTo: topAnchor),
             accentBar.bottomAnchor.constraint(equalTo: bottomAnchor),
-            accentBar.widthAnchor.constraint(equalToConstant: ChatLayout.current.replyAccentWidth),
+            accentBar.widthAnchor.constraint(equalToConstant: ChatLayout().replyAccentWidth),
             senderLabel.leadingAnchor.constraint(equalTo: accentBar.trailingAnchor, constant: 8),
             senderLabel.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             senderLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
@@ -70,22 +70,6 @@ final class ReplyPreviewView: UIView {
         contentLabel.textColor = isMine ? theme.outgoingReplyText : theme.incomingReplyText
     }
 
-    /// Configure from snapshot data (for input bar reply panel)
-    func configureFromSnapshot(senderName: String?, text: String?, hasImage: Bool, isMine: Bool, theme: ChatTheme) {
-        backgroundColor = theme.replyPanelBackground
-        accentBar.backgroundColor = theme.replyPanelAccent
-        senderLabel.text = senderName ?? ""
-        senderLabel.textColor = theme.replyPanelSender
-
-        if let text, !text.isEmpty {
-            contentLabel.text = text
-        } else if hasImage {
-            contentLabel.text = "📷 Photo"
-        } else {
-            contentLabel.text = "…"
-        }
-        contentLabel.textColor = theme.replyPanelText
-    }
 
     @objc private func tapped() { onTap?() }
 }

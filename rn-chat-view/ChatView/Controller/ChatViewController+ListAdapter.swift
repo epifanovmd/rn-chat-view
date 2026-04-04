@@ -12,12 +12,23 @@ extension ChatViewController: ListAdapterDataSource {
         if object is MessageListItem {
             let sc = MessageSectionController()
             sc.sectionDelegate = self
-            sc.environment = self
+            sc.theme = theme
+            sc.layout = layout
+            sc.features = features
+            sc.replyResolver = { [weak self] info in
+                guard let original = self?.messageIndex[info.replyToId] else { return nil }
+                return ReplyDisplayInfo(
+                    senderName: original.senderName ?? "Неизвестный",
+                    text: original.content.text ?? "",
+                    hasImage: original.content.media != nil
+                )
+            }
             return sc
         }
         if object is DateSeparatorListItem {
             let sc = DateSeparatorSectionController()
-            sc.environment = self
+            sc.theme = theme
+            sc.layout = layout
             return sc
         }
         if object is LoadingListItem {
@@ -27,23 +38,6 @@ extension ChatViewController: ListAdapterDataSource {
     }
 
     func emptyView(for listAdapter: ListAdapter) -> UIView? { nil }
-}
-
-// MARK: - SectionEnvironment
-
-extension ChatViewController: SectionEnvironment {
-    var currentTheme: ChatTheme { theme }
-    var currentLayout: ChatLayout { layout }
-    var currentFeatures: ChatFeatures { features }
-
-    func resolveReply(for info: ReplyInfo) -> ReplyDisplayInfo? {
-        guard let original = messageIndex[info.replyToId] else { return nil }
-        return ReplyDisplayInfo(
-            senderName: original.senderName ?? "Неизвестный",
-            text: original.content.text ?? "",
-            hasImage: original.content.media != nil
-        )
-    }
 }
 
 // MARK: - MessageSectionDelegate
@@ -80,4 +74,3 @@ extension ChatViewController: MessageSectionDelegate {
         delegate?.chatDidTapReaction(messageId: messageId, emoji: emoji)
     }
 }
-

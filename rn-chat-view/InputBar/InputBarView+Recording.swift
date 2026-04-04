@@ -17,18 +17,15 @@ extension InputBarView {
     // MARK: - Start
 
     private func startRecording(at point: CGPoint) {
+        haptic(.light)
         recordingState = .recording
         gestureStartPoint = point
-        lastRecordedDuration = 0
-        haptic(.light)
 
-        // Reset & show recording row
         recordingRow.reset()
         recordingRow.applyTheme(currentTheme)
         textView.isHidden = true
         recordingRow.isHidden = false
 
-        // Animate left button out
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
             self.leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
             self.leftButton.alpha = 0
@@ -36,18 +33,11 @@ extension InputBarView {
             self.inputStack.layoutIfNeeded()
         }
 
-        // Lift inputStack above lock view
         inputStack.layer.zPosition = 1000
-
-        // Style rightButton as draggable mic
         rightButton.backgroundColor = currentTheme.recordingMicFill
         rightButton.tintColor = .white
         rightButton.layer.borderWidth = 0
 
-        // Record origin
-        micOriginCenter = rightButton.superview!.convert(rightButton.center, to: self)
-
-        // Show lock
         lockView.animateIn()
 
         recordingRow.startDotBlink(minAlpha: layout.recordDotMinAlpha)
@@ -117,7 +107,6 @@ extension InputBarView {
         delegate?.inputBarRecordingStateChanged(isRecording: false)
 
         haptic(.heavy)
-
         recordingRow.stopDotBlink()
         recordingRow.stopSlideAnimation()
 
@@ -174,7 +163,7 @@ extension InputBarView {
         leftButton.alpha = 0
 
         UIView.animate(withDuration: 0.25, delay: 0.1, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8) {
-            self.leftButton.isHidden = false
+            self.leftButton.isHidden = !self.showAttachButton
             self.leftButton.transform = .identity
             self.leftButton.alpha = 1
             self.inputStack.layoutIfNeeded()
@@ -233,31 +222,20 @@ extension InputBarView {
             let trashCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
             leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: trashCfg), for: .normal)
             leftButton.tintColor = currentTheme.recordingCancel
-        } else {
-            restoreLeftButtonToClip()
         }
 
-        if trashAnimation {
-            UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, animations: {
-                self.leftButton.isHidden = false
-                self.leftButton.transform = .identity
-                self.leftButton.alpha = 1
-                self.inputStack.layoutIfNeeded()
-            }) { _ in
+        UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, animations: {
+            self.leftButton.isHidden = !self.showAttachButton
+            self.leftButton.transform = .identity
+            self.leftButton.alpha = 1
+            self.inputStack.layoutIfNeeded()
+        }) { _ in
+            if trashAnimation {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.restoreLeftButtonToClip()
                 }
-                completion()
             }
-        } else {
-            UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, animations: {
-                self.leftButton.isHidden = false
-                self.leftButton.transform = .identity
-                self.leftButton.alpha = 1
-                self.inputStack.layoutIfNeeded()
-            }) { _ in
-                completion()
-            }
+            completion()
         }
     }
 

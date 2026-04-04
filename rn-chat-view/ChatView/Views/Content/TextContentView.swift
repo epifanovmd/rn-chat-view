@@ -5,7 +5,7 @@ final class TextContentView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        label.font = ChatLayout.current.messageFont
+        label.font = ChatLayout().messageFont
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
         label.translatesAutoresizingMaskIntoConstraints = false

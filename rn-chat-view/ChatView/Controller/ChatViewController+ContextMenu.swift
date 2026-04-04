@@ -8,7 +8,7 @@ extension ChatViewController {
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         freezeCollectionBottomInset()
-        inputBar.textView.resignFirstResponder()
+        inputBar.dismissKeyboard()
 
         let config = ContextMenuConfiguration(
             id: msg.id,
@@ -59,7 +59,7 @@ extension ChatViewController {
     func freezeCollectionBottomInset() {
         guard !isInsetFrozen else { return }
 
-        keyboardWasVisible = inputBar.textView.isFirstResponder
+        keyboardWasVisible = inputBar.isKeyboardActive
         isInsetFrozen = true
         frozenBottomInset = collectionView.contentInset.bottom
 
@@ -93,7 +93,7 @@ extension ChatViewController {
                 }
                 self?.thawInset()
             }
-            inputBar.textView.becomeFirstResponder()
+            inputBar.activateKeyboard()
         } else {
             thawInset()
         }

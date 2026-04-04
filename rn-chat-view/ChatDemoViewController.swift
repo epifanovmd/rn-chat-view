@@ -66,38 +66,6 @@ enum ChatDemoData {
                 actions: defaultActions
             ),
 
-            // 3a. Same text, outgoing, NO reply
-            ChatMessage(
-                id: "3a",
-                content: MessageContent(text: "Звучит здорово! Можешь показать дизайн?", media: nil, voice: nil, poll: nil, files: nil),
-                timestamp: cal.date(byAdding: .hour, value: -22, to: now)! - 1800,
-                senderName: nil,
-                isMine: true,
-                groupDate: yesterday,
-                status: .read,
-                reply: nil,
-                forwardedFrom: nil,
-                reactions: [],
-                isEdited: false,
-                actions: defaultActions
-            ),
-
-            // 3b. Same text, incoming, NO reply
-            ChatMessage(
-                id: "3b",
-                content: MessageContent(text: "Звучит здорово! Можешь показать дизайн?", media: nil, voice: nil, poll: nil, files: nil),
-                timestamp: cal.date(byAdding: .hour, value: -22, to: now)! - 1200,
-                senderName: otherUser,
-                isMine: false,
-                groupDate: yesterday,
-                status: .read,
-                reply: nil,
-                forwardedFrom: nil,
-                reactions: [],
-                isEdited: false,
-                actions: defaultActions
-            ),
-
             // 4. Image message (outgoing)
             ChatMessage(
                 id: "4",
@@ -547,6 +515,7 @@ enum ChatDemoData {
 
     private static let defaultActions: [MessageAction] = [
         MessageAction(id: "reply", title: "Ответить", systemImage: "arrowshape.turn.up.left", isDestructive: false),
+        MessageAction(id: "edit", title: "Редактировать", systemImage: "pencil", isDestructive: false),
         MessageAction(id: "copy", title: "Копировать", systemImage: "doc.on.doc", isDestructive: false),
         MessageAction(id: "forward", title: "Переслать", systemImage: "arrowshape.turn.up.right", isDestructive: false),
         MessageAction(id: "delete", title: "Удалить", systemImage: "trash", isDestructive: true),
@@ -764,6 +733,98 @@ private final class DebugPanelView: UIView {
     }
 }
 
+// MARK: - Debug Scroll Panel (Layout / Theme toggles)
+
+private final class DebugScrollPanel: UIView {
+
+    var onChanged: ((String, Int) -> Void)?
+
+    private let scrollView = UIScrollView()
+    private let stackView = UIStackView()
+    private let separator = UIView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setup()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func setup() {
+        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(scrollView)
+
+        stackView.axis = .horizontal
+        stackView.spacing = 10
+        stackView.alignment = .bottom
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(stackView)
+
+        separator.backgroundColor = .separator
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(separator)
+
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: separator.topAnchor),
+
+            stackView.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 4),
+            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 12),
+            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -12),
+            stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -4),
+            stackView.heightAnchor.constraint(equalTo: scrollView.heightAnchor, constant: -8),
+
+            separator.leadingAnchor.constraint(equalTo: leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: trailingAnchor),
+            separator.bottomAnchor.constraint(equalTo: bottomAnchor),
+            separator.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+
+            heightAnchor.constraint(equalToConstant: 50),
+        ])
+    }
+
+    func addToggle(label title: String, key: String, titleA: String, titleB: String) {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = UILabel()
+        label.text = title
+        label.font = .systemFont(ofSize: 9, weight: .medium)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(label)
+
+        let segment = UISegmentedControl(items: [titleA, titleB])
+        segment.selectedSegmentIndex = 0
+        segment.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 9)], for: .normal)
+        segment.translatesAutoresizingMaskIntoConstraints = false
+        segment.accessibilityIdentifier = key
+        segment.addTarget(self, action: #selector(segmentChanged(_:)), for: .valueChanged)
+        container.addSubview(segment)
+
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: container.topAnchor),
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            segment.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 2),
+            segment.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            segment.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            segment.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        stackView.addArrangedSubview(container)
+    }
+
+    @objc private func segmentChanged(_ sender: UISegmentedControl) {
+        guard let key = sender.accessibilityIdentifier else { return }
+        onChanged?(key, sender.selectedSegmentIndex)
+    }
+}
+
 // MARK: - Action Handlers
 
 private final class SegmentHandler: NSObject {
@@ -784,6 +845,8 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
     private let chatVC = ChatViewController()
     private let debugPanel = DebugPanelView()
+    private let layoutPanel = DebugScrollPanel()
+    private let themePanel = DebugScrollPanel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -796,11 +859,14 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         chatVC.features.senderNameMode = .incomingOnly
         chatVC.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
 
+        setupLayoutPanel()
+        setupThemePanel()
+
         addChild(chatVC)
         view.addSubview(chatVC.view)
         chatVC.view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            chatVC.view.topAnchor.constraint(equalTo: debugPanel.bottomAnchor),
+            chatVC.view.topAnchor.constraint(equalTo: themePanel.bottomAnchor),
             chatVC.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             chatVC.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             chatVC.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -865,6 +931,157 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         }
     }
 
+    private func setupLayoutPanel() {
+        layoutPanel.translatesAutoresizingMaskIntoConstraints = false
+        layoutPanel.backgroundColor = debugPanel.backgroundColor
+        view.addSubview(layoutPanel)
+
+        NSLayoutConstraint.activate([
+            layoutPanel.topAnchor.constraint(equalTo: debugPanel.bottomAnchor),
+            layoutPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            layoutPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
+
+        let items: [(String, String, CGFloat, CGFloat)] = [
+            ("Corner", "bubbleCornerRadius", 18, 6),
+            ("MaxW", "bubbleMaxWidthRatio", 0.78, 0.55),
+            ("HPad", "bubbleHPad", 12, 20),
+            ("VPad", "bubbleVPad", 6, 12),
+            ("CellH", "cellHMargin", 8, 20),
+            ("CellV", "cellVSpacing", 2, 8),
+            ("Font", "messageFont", 15, 18),
+            ("ImgH", "imageMaxHeight", 280, 180),
+            ("ReplyH", "replyHeight", 38, 50),
+        ]
+
+        for (label, key, valA, valB) in items {
+            layoutPanel.addToggle(label: label, key: key, titleA: "\(Int(valA))", titleB: "\(Int(valB))")
+        }
+
+        layoutPanel.onChanged = { [weak self] key, index in
+            guard let self else { return }
+            var L = self.chatVC.layout
+            switch key {
+            case "bubbleCornerRadius": L.bubbleCornerRadius = index == 0 ? 18 : 6
+            case "bubbleMaxWidthRatio": L.bubbleMaxWidthRatio = index == 0 ? 0.78 : 0.55
+            case "bubbleHPad": L.bubbleHPad = index == 0 ? 12 : 20
+            case "bubbleVPad": L.bubbleVPad = index == 0 ? 6 : 12
+            case "cellHMargin": L.cellHMargin = index == 0 ? 8 : 20
+            case "cellVSpacing": L.cellVSpacing = index == 0 ? 2 : 8
+            case "messageFont": L.messageFont = .systemFont(ofSize: index == 0 ? 15 : 18)
+            case "imageMaxHeight": L.imageMaxHeight = index == 0 ? 280 : 180
+            case "replyHeight": L.replyHeight = index == 0 ? 38 : 50
+            default: break
+            }
+            self.chatVC.layout = L
+        }
+    }
+
+    private var currentInputBarTheme: InputBarTheme = .dark
+
+    private func setupThemePanel() {
+        themePanel.translatesAutoresizingMaskIntoConstraints = false
+        themePanel.backgroundColor = debugPanel.backgroundColor
+        view.addSubview(themePanel)
+
+        NSLayoutConstraint.activate([
+            themePanel.topAnchor.constraint(equalTo: layoutPanel.bottomAnchor),
+            themePanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            themePanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
+
+        let items: [(String, String)] = [
+            // Chat colors
+            ("OutBbl", "outBubble"),
+            ("InBbl", "inBubble"),
+            ("OutTxt", "outText"),
+            ("InTxt", "inText"),
+            ("OutTime", "outTime"),
+            ("Sender", "senderName"),
+            ("DateBg", "dateSepBg"),
+            ("DateTxt", "dateSepTxt"),
+            ("ReactBg", "reactBg"),
+            ("FabBg", "fabBg"),
+            ("Wave", "waveform"),
+            ("PollBar", "pollBar"),
+            ("Highlight", "highlight"),
+            // InputBar colors
+            ("IB Bg", "ibBg"),
+            ("IB Txt", "ibText"),
+            ("IB Tint", "ibTint"),
+            ("IB Brd", "ibBorder"),
+            ("IB Mic", "ibMic"),
+        ]
+
+        for (label, key) in items {
+            themePanel.addToggle(label: label, key: key, titleA: "A", titleB: "B")
+        }
+
+        themePanel.onChanged = { [weak self] key, index in
+            guard let self else { return }
+            var T = self.chatVC.theme
+            var IB = self.currentInputBarTheme
+
+            switch key {
+            // Chat theme
+            case "outBubble": T.outgoingBubble = index == 0
+                ? UIColor(red: 0.17, green: 0.32, blue: 0.47, alpha: 1)
+                : UIColor(red: 0.13, green: 0.45, blue: 0.27, alpha: 1)
+            case "inBubble": T.incomingBubble = index == 0
+                ? UIColor(red: 0.11, green: 0.15, blue: 0.20, alpha: 1)
+                : UIColor(red: 0.18, green: 0.12, blue: 0.22, alpha: 1)
+            case "outText": T.outgoingText = index == 0 ? .white : .yellow
+            case "inText": T.incomingText = index == 0 ? .white : UIColor(red: 0.8, green: 0.9, blue: 1.0, alpha: 1)
+            case "outTime": T.outgoingTime = index == 0
+                ? UIColor(white: 1.0, alpha: 0.5)
+                : UIColor(red: 0.6, green: 0.9, blue: 0.6, alpha: 0.7)
+            case "senderName": T.incomingSenderName = index == 0
+                ? UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
+                : .systemOrange
+            case "dateSepBg": T.dateSeparatorBackground = index == 0
+                ? UIColor(white: 1.0, alpha: 0.08)
+                : UIColor(red: 0.2, green: 0.3, blue: 0.5, alpha: 0.3)
+            case "dateSepTxt": T.dateSeparatorText = index == 0
+                ? UIColor(white: 1.0, alpha: 0.5)
+                : UIColor.systemCyan
+            case "reactBg": T.reactionBackground = index == 0
+                ? UIColor(white: 0.2, alpha: 1)
+                : UIColor(red: 0.3, green: 0.15, blue: 0.4, alpha: 1)
+            case "fabBg": T.fabBackground = index == 0
+                ? UIColor(red: 0.15, green: 0.19, blue: 0.25, alpha: 1)
+                : UIColor.systemIndigo
+            case "waveform": T.voiceWaveformActive = index == 0
+                ? UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
+                : .systemGreen
+            case "pollBar": T.pollBarFilled = index == 0
+                ? UIColor(red: 0.35, green: 0.6, blue: 0.9, alpha: 1)
+                : .systemOrange
+            case "highlight": T.messageHighlightColor = index == 0
+                ? UIColor.systemYellow.withAlphaComponent(0.3)
+                : UIColor.systemRed.withAlphaComponent(0.3)
+            // InputBar theme
+            case "ibBg": IB.background = index == 0
+                ? UIColor(red: 0.15, green: 0.19, blue: 0.25, alpha: 1)
+                : UIColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 1)
+            case "ibText": IB.text = index == 0 ? .white : .systemGreen
+            case "ibTint": IB.tint = index == 0
+                ? UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
+                : .systemOrange
+            case "ibBorder": IB.border = index == 0
+                ? UIColor(white: 0.25, alpha: 1)
+                : UIColor.systemPurple.withAlphaComponent(0.5)
+            case "ibMic": IB.recordingMicFill = index == 0
+                ? UIColor(red: 0.35, green: 0.6, blue: 0.95, alpha: 1)
+                : .systemGreen
+            default: break
+            }
+
+            self.chatVC.theme = T
+            self.currentInputBarTheme = IB
+            self.chatVC.inputBar.applyTheme(IB)
+        }
+    }
+
     // MARK: - Alert Helper
 
     private func showAlert(_ title: String, _ message: String? = nil) {
@@ -895,16 +1112,25 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     }
 
     func chatDidSelectAction(actionId: String, messageId: String) {
-        if actionId == "reply", let msg = chatVC.message(forID: messageId) {
+        guard let msg = chatVC.message(forID: messageId) else { return }
+
+        switch actionId {
+        case "reply":
             chatVC.beginReply(info: ReplyInfo(
                 replyToId: messageId,
                 senderName: msg.senderName ?? "Вы",
                 text: msg.content.text,
                 hasImage: msg.content.media?.isEmpty == false
             ))
-            return
+        case "edit":
+            chatVC.beginEdit(messageId: messageId, text: msg.content.text ?? "")
+        case "delete":
+            var msgs = chatVC.messages
+            msgs.removeAll { $0.id == messageId }
+            chatVC.updateMessages(msgs)
+        default:
+            showAlert("Action: \(actionId)", "message: \(messageId)")
         }
-        showAlert("Action: \(actionId)", "message: \(messageId)")
     }
 
     func chatDidSelectEmojiReaction(emoji: String, messageId: String) {
@@ -1101,7 +1327,24 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     }
 
     func chatDidEditMessage(text: String, messageId: String) {
-        showAlert("Edit Message", "id: \(messageId)\ntext: \(text)")
+        var msgs = chatVC.messages
+        guard let idx = msgs.firstIndex(where: { $0.id == messageId }) else { return }
+        let msg = msgs[idx]
+        msgs[idx] = ChatMessage(
+            id: msg.id,
+            content: MessageContent(text: text, media: msg.content.media, voice: msg.content.voice, poll: msg.content.poll, files: msg.content.files),
+            timestamp: msg.timestamp,
+            senderName: msg.senderName,
+            isMine: msg.isMine,
+            groupDate: msg.groupDate,
+            status: msg.status,
+            reply: msg.reply,
+            forwardedFrom: msg.forwardedFrom,
+            reactions: msg.reactions,
+            isEdited: true,
+            actions: msg.actions
+        )
+        chatVC.updateMessages(msgs)
     }
 
     func chatDidCancelInputAction(type: String) {

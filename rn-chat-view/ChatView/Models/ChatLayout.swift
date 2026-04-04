@@ -356,7 +356,7 @@ struct ChatLayout {
     /// Длительность исчезновения плавающей даты
     var floatingDateHideDuration: TimeInterval = 0.3
     /// Задержка перед автоскрытием плавающей даты
-    var floatingDateHideDelay: TimeInterval = 1.5
+    var floatingDateHideDelay: TimeInterval = 0.5
     /// Длительность появления подсветки сообщения
     var highlightAnimateIn: TimeInterval = 0.2
     /// Длительность исчезновения подсветки сообщения
@@ -386,12 +386,5 @@ struct ChatLayout {
     var visibilityDebounceInterval: TimeInterval = 0.3
     /// Интервал дебаунса подгрузки сообщений при скролле (секунды)
     var paginationDebounceInterval: TimeInterval = 0.5
-}
-
-// MARK: - Temporary bridge (will be removed after full migration)
-
-extension ChatLayout {
-    @available(*, deprecated, message: "Use layout passed via configuration instead")
-    static var current = ChatLayout()
 }
 

@@ -89,7 +89,6 @@ final class ChatViewController: UIViewController {
     // MARK: - UI Components
 
     var inputBar: InputBarView!
-    private let inputBarBackground = UIView()
 
     // MARK: - Managers
 
@@ -130,12 +129,12 @@ final class ChatViewController: UIViewController {
         isInitialScrollProtected = true
         setupCollectionView()
         setupAdapter()
-        emptyStateManager.setup(in: view, layout: layout, theme: theme)
         setupInputBar()
+        emptyStateManager.setup(in: view, inputBar: inputBar, layout: layout, theme: theme)
+        emptyStateManager.onTap = { [weak self] in self?.view.endEditing(true) }
         setupFAB()
         setupFloatingDate()
         applyTheme()
-        warmUpKeyboard()
     }
 
     override func viewDidLayoutSubviews() {
@@ -200,9 +199,6 @@ final class ChatViewController: UIViewController {
     // MARK: - Setup Input Bar
 
     private func setupInputBar() {
-        inputBarBackground.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(inputBarBackground)
-
         inputBar = InputBarView()
         inputBar.delegate = self
         inputBar.translatesAutoresizingMaskIntoConstraints = false
@@ -211,26 +207,12 @@ final class ChatViewController: UIViewController {
         NSLayoutConstraint.activate([
             inputBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             inputBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            inputBarBackground.topAnchor.constraint(equalTo: inputBar.topAnchor),
-            inputBarBackground.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            inputBarBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            inputBarBackground.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
         view.keyboardLayoutGuide.followsUndockedKeyboard = true
         let c = inputBar.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor)
         c.isActive = true
         inputBarKeyboardConstraint = c
-    }
-
-    // MARK: - Keyboard Warm-Up
-
-    private func warmUpKeyboard() {
-        let field = UITextField(frame: .zero)
-        view.addSubview(field)
-        field.becomeFirstResponder()
-        field.resignFirstResponder()
-        field.removeFromSuperview()
     }
 
     // MARK: - Setup FAB
@@ -262,8 +244,7 @@ final class ChatViewController: UIViewController {
         collectionView.backgroundColor = .clear
         emptyStateManager.applyTheme(theme)
         fabManager.applyTheme(theme)
-        inputBar.applyTheme(.from(theme))
-        inputBarBackground.backgroundColor = .clear
+        inputBar.applyTheme(theme.isDark ? .dark : .light)
         floatingDateManager.applyTheme(theme)
         reloadWithCrossfade()
     }
@@ -284,9 +265,11 @@ final class ChatViewController: UIViewController {
             || old.showAttachButton != features.showAttachButton
             || old.showVoiceRecording != features.showVoiceRecording {
             inputBar.isHidden = !features.showInputBar
-            inputBarBackground.isHidden = !features.showInputBar
-            inputBar.leftButton.isHidden = !features.showAttachButton
+            inputBar.showAttachButton = features.showAttachButton
             inputBar.voiceRecordingEnabled = features.showVoiceRecording
+            if !features.showVoiceRecording {
+                fabManager.setExpanded(true, animated: true)
+            }
             updateCollectionInsets()
         }
         if old.showDateSeparators != features.showDateSeparators {
@@ -301,6 +284,9 @@ final class ChatViewController: UIViewController {
             || old.showEditedMark != features.showEditedMark
             || old.showForwardedMark != features.showForwardedMark {
             reloadWithCrossfade()
+        }
+        if old.showEmptyState != features.showEmptyState {
+            updateEmptyState()
         }
     }
 
@@ -349,104 +335,28 @@ final class ChatViewController: UIViewController {
 
     // MARK: - Update Messages
 
+    private lazy var messageUpdateHandler = MessageUpdateHandler(controller: self)
+
     func updateMessages(_ newMessages: [ChatMessage]) {
         pendingLoadingRebuild?.cancel()
         pendingLoadingRebuild = nil
-        let wasAtBottom = isNearBottom()
-        let wasEmpty = messages.isEmpty
-        let oldFirstId = messages.first?.id
-        let oldLastId = messages.last?.id
-        let oldCount = messages.count
+        messageUpdateHandler.update(with: newMessages)
+    }
 
+    /// Called by MessageUpdateHandler to apply new messages data.
+    func applyMessages(_ newMessages: [ChatMessage]) {
         messages = newMessages
         messageIndex = Dictionary(newMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         rebuildListItems()
-
-        let grew = newMessages.count > oldCount
-
-        let isPrepend = !wasEmpty && grew
-            && oldFirstId != nil && oldFirstId != newMessages.first?.id
-            && oldLastId == newMessages.last?.id
-
-        let isAppendAtBottom = !wasEmpty && grew
-            && oldLastId != nil && oldLastId != newMessages.last?.id
-
-        if isPrepend {
-            handlePrepend(oldFirstId: oldFirstId, count: newMessages.count)
-        } else if isAppendAtBottom {
-            handleAppend(wasAtBottom: wasAtBottom, oldCount: oldCount, newMessages: newMessages)
-        } else if wasEmpty && !newMessages.isEmpty {
-            handleInitialLoad(count: newMessages.count)
-        } else {
-            handleContentUpdate(count: newMessages.count)
-        }
     }
 
-    private func handlePrepend(oldFirstId: String?, count: Int) {
-        collectionView.prePrependContentHeight = collectionView.contentSize.height
-        collectionView.prePrependContentOffset = collectionView.contentOffset.y
-        collectionView.needsPrependCompensation = true
-        adapter.performUpdates(animated: false) { [weak self] _ in
-            self?.finalizeUpdate(count: count, animated: false)
-        }
-    }
-
-    private func handleAppend(wasAtBottom: Bool, oldCount: Int, newMessages: [ChatMessage]) {
-        let wasLoadingNewer = isLoadingNewerActive
-        let wantScroll = pendingScrollToBottom || (wasAtBottom && !isLoadingNewerActive)
-        isLoadingNewerActive = false
-
-        if wantScroll {
-            pendingScrollToBottom = false
-            adapter.performUpdates(animated: false) { [weak self] _ in
-                guard let self else { return }
-                self.scrollToBottom(animated: true)
-                self.finalizeUpdate(count: newMessages.count, animated: false)
-            }
-        } else {
-            if !wasLoadingNewer && !wasAtBottom {
-                trackNewUnread(newMessages: newMessages, oldCount: oldCount)
-            }
-            let savedOffset = collectionView.contentOffset
-            adapter.performUpdates(animated: false) { [weak self] _ in
-                guard let self else { return }
-                self.collectionView.contentOffset = savedOffset
-                self.finalizeUpdate(count: newMessages.count, animated: false)
-            }
-        }
-    }
-
-    private func handleInitialLoad(count: Int) {
-        adapter.reloadData { [weak self] _ in
-            guard let self else { return }
-            if let scrollId = self.pendingScrollMessageId {
-                self.scrollToMessage(id: scrollId, position: "center", animated: false, highlight: true)
-                self.pendingScrollMessageId = nil
-            } else {
-                self.scrollToBottom(animated: false)
-            }
-            self.isInitialScrollProtected = false
-            self.finalizeUpdate(count: count, animated: false)
-        }
-    }
-
-    private func handleContentUpdate(count: Int) {
-        let shouldScroll = pendingScrollToBottom
-        if shouldScroll { pendingScrollToBottom = false }
-        adapter.performUpdates(animated: !shouldScroll) { [weak self] _ in
-            guard let self else { return }
-            if shouldScroll { self.scrollToBottom(animated: true) }
-            self.finalizeUpdate(count: count, animated: !shouldScroll)
-        }
-    }
-
-    private func finalizeUpdate(count: Int, animated: Bool) {
+    func finalizeUpdate(count: Int, animated: Bool) {
         lastKnownMessageCount = count
         updateEmptyState()
         updateFABVisibility(animated: animated)
     }
 
-    private func trackNewUnread(newMessages: [ChatMessage], oldCount: Int) {
+    func trackNewUnread(newMessages: [ChatMessage], oldCount: Int) {
         guard !isExternalUnreadManagement else { return }
         let delta = newMessages.count - oldCount
         guard delta > 0 else { return }

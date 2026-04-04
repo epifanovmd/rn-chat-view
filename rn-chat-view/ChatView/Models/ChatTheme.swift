@@ -78,6 +78,8 @@ struct ChatTheme {
     var outgoingFileBackground: UIColor
     /// Фон карточки файла во входящем сообщении
     var incomingFileBackground: UIColor
+    /// Цвет иконки файла
+    var fileIconColor: UIColor
 
     // MARK: - Реакции
 
@@ -97,38 +99,12 @@ struct ChatTheme {
     /// Цвет текста разделителя дат
     var dateSeparatorText: UIColor
 
-    // MARK: - Панель ввода
-
-    /// Фон панели ввода
-    var inputBarBackground: UIColor
-    /// Цвет верхней разделительной линии панели ввода
-    var inputBarSeparator: UIColor
-    /// Фон поля ввода текста
-    var inputBarTextViewBackground: UIColor
-    /// Цвет плейсхолдера в поле ввода
-    var inputBarPlaceholder: UIColor
-    /// Цвет текста в поле ввода
-    var inputBarText: UIColor
-    /// Цвет кнопок панели ввода (скрепка, отправить)
-    var inputBarTint: UIColor
-    /// Цвет рамки поля ввода текста
-    var inputBarBorder: UIColor
-
-    // MARK: - Панель ответа/редактирования
-
-    /// Фон панели ответа
-    var replyPanelBackground: UIColor
-    /// Цвет акцентной полоски панели ответа
-    var replyPanelAccent: UIColor
-    /// Цвет имени отправителя в панели ответа
-    var replyPanelSender: UIColor
-    /// Цвет превью текста в панели ответа
-    var replyPanelText: UIColor
-    /// Цвет кнопки закрытия панели ответа
-    var replyPanelClose: UIColor
-
     // MARK: - FAB (кнопка скролла вниз)
 
+    /// Фон кнопки FAB
+    var fabBackground: UIColor
+    /// Цвет рамки FAB
+    var fabBorder: UIColor
     /// Стиль размытия фона FAB
     var fabBlurStyle: UIBlurEffect.Style
     /// Цвет стрелки FAB
@@ -140,24 +116,12 @@ struct ChatTheme {
     /// Цвет тени FAB
     var fabShadowColor: UIColor
 
-    // MARK: - Голосовое сообщение
+    // MARK: - Голосовое сообщение (контент)
 
     /// Цвет активных (проигранных) полосок волны
     var voiceWaveformActive: UIColor
     /// Цвет неактивных полосок волны
     var voiceWaveformInactive: UIColor
-    /// Цвет индикатора записи (красная точка)
-    var voiceRecordingIndicator: UIColor
-    /// Цвет кнопки остановки записи
-    var voiceRecordingStopColor: UIColor
-    /// Цвет кнопки/иконки отмены записи (корзинка)
-    var voiceRecordingCancelColor: UIColor
-    /// Фон контейнера замка записи
-    var voiceRecordingLockBackground: UIColor
-    /// Цвет иконки замка записи
-    var voiceRecordingLockIcon: UIColor
-    /// Фон плавающей кнопки микрофона при записи
-    var voiceRecordingMicBackground: UIColor
 
     // MARK: - Опрос
 
@@ -232,24 +196,15 @@ extension ChatTheme {
         incomingForwardedAccent: .systemBlue,
         outgoingFileBackground: UIColor(red: 0.78, green: 0.93, blue: 0.74, alpha: 1),
         incomingFileBackground: UIColor(red: 0.93, green: 0.93, blue: 0.95, alpha: 1),
+        fileIconColor: .systemBlue,
         reactionBackground: UIColor(white: 0.93, alpha: 1),
         reactionMineBackground: UIColor.systemBlue.withAlphaComponent(0.15),
         reactionText: .black,
         reactionMineBorder: UIColor.systemBlue.withAlphaComponent(0.5),
         dateSeparatorBackground: UIColor(white: 0.0, alpha: 0.08),
         dateSeparatorText: UIColor(white: 0.0, alpha: 0.5),
-        inputBarBackground: UIColor(red: 0.97, green: 0.97, blue: 0.98, alpha: 1),
-        inputBarSeparator: UIColor(white: 0.8, alpha: 1),
-        inputBarTextViewBackground: .white,
-        inputBarPlaceholder: UIColor(white: 0.6, alpha: 1),
-        inputBarText: .black,
-        inputBarTint: .systemBlue,
-        inputBarBorder: UIColor(white: 0.8, alpha: 1),
-        replyPanelBackground: UIColor(red: 0.97, green: 0.97, blue: 0.98, alpha: 1),
-        replyPanelAccent: .systemBlue,
-        replyPanelSender: .systemBlue,
-        replyPanelText: UIColor(white: 0.3, alpha: 1),
-        replyPanelClose: UIColor(white: 0.5, alpha: 1),
+        fabBackground: .white,
+        fabBorder: UIColor(white: 0.8, alpha: 1),
         fabBlurStyle: .systemUltraThinMaterial,
         fabArrowColor: UIColor(red: 0.25, green: 0.55, blue: 0.9, alpha: 1),
         fabBadgeBackground: UIColor(red: 0.25, green: 0.55, blue: 0.9, alpha: 1),
@@ -257,12 +212,6 @@ extension ChatTheme {
         fabShadowColor: UIColor(red: 0.2, green: 0.4, blue: 0.7, alpha: 0.3),
         voiceWaveformActive: .systemBlue,
         voiceWaveformInactive: UIColor(white: 0.75, alpha: 1),
-        voiceRecordingIndicator: .systemRed,
-        voiceRecordingStopColor: .systemRed,
-        voiceRecordingCancelColor: .systemRed,
-        voiceRecordingLockBackground: UIColor(white: 0.95, alpha: 1),
-        voiceRecordingLockIcon: UIColor(white: 0.4, alpha: 1),
-        voiceRecordingMicBackground: .systemBlue,
         pollBarFilled: UIColor(red: 0.35, green: 0.65, blue: 0.95, alpha: 1),
         pollBarEmpty: UIColor(white: 0.0, alpha: 0.05),
         pollSelectedBorder: .clear,
@@ -309,24 +258,15 @@ extension ChatTheme {
         incomingForwardedAccent: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
         outgoingFileBackground: UIColor(red: 0.14, green: 0.27, blue: 0.40, alpha: 1),
         incomingFileBackground: UIColor(red: 0.14, green: 0.18, blue: 0.24, alpha: 1),
+        fileIconColor: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
         reactionBackground: UIColor(white: 0.2, alpha: 1),
         reactionMineBackground: UIColor.systemBlue.withAlphaComponent(0.25),
         reactionText: .white,
         reactionMineBorder: UIColor.systemBlue.withAlphaComponent(0.6),
         dateSeparatorBackground: UIColor(white: 1.0, alpha: 0.08),
         dateSeparatorText: UIColor(white: 1.0, alpha: 0.5),
-        inputBarBackground: UIColor(red: 0.11, green: 0.14, blue: 0.19, alpha: 1),
-        inputBarSeparator: UIColor(white: 0.25, alpha: 1),
-        inputBarTextViewBackground: UIColor(red: 0.15, green: 0.19, blue: 0.25, alpha: 1),
-        inputBarPlaceholder: UIColor(white: 0.45, alpha: 1),
-        inputBarText: .white,
-        inputBarTint: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
-        inputBarBorder: UIColor(white: 0.25, alpha: 1),
-        replyPanelBackground: UIColor(red: 0.11, green: 0.14, blue: 0.19, alpha: 1),
-        replyPanelAccent: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
-        replyPanelSender: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
-        replyPanelText: UIColor(white: 0.65, alpha: 1),
-        replyPanelClose: UIColor(white: 0.5, alpha: 1),
+        fabBackground: UIColor(red: 0.15, green: 0.19, blue: 0.25, alpha: 1),
+        fabBorder: UIColor(white: 0.25, alpha: 1),
         fabBlurStyle: .systemUltraThinMaterialDark,
         fabArrowColor: UIColor(red: 0.45, green: 0.7, blue: 1.0, alpha: 1),
         fabBadgeBackground: UIColor(red: 0.35, green: 0.6, blue: 0.95, alpha: 1),
@@ -334,12 +274,6 @@ extension ChatTheme {
         fabShadowColor: UIColor.black.withAlphaComponent(0.4),
         voiceWaveformActive: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
         voiceWaveformInactive: UIColor(white: 0.35, alpha: 1),
-        voiceRecordingIndicator: .systemRed,
-        voiceRecordingStopColor: .systemRed,
-        voiceRecordingCancelColor: .systemRed,
-        voiceRecordingLockBackground: UIColor(red: 0.18, green: 0.22, blue: 0.28, alpha: 1),
-        voiceRecordingLockIcon: UIColor(white: 0.6, alpha: 1),
-        voiceRecordingMicBackground: UIColor(red: 0.35, green: 0.6, blue: 0.95, alpha: 1),
         pollBarFilled: UIColor(red: 0.35, green: 0.6, blue: 0.9, alpha: 1),
         pollBarEmpty: UIColor(white: 1.0, alpha: 0.06),
         pollSelectedBorder: .clear,

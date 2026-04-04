@@ -58,9 +58,7 @@ final class VoiceRecorder: NSObject {
         delegate?.voiceRecorderDidCancel()
     }
 
-    var currentDuration: TimeInterval {
-        recorder?.currentTime ?? 0
-    }
+
 
     // MARK: - Private
 

@@ -41,9 +41,9 @@ final class MessageCell: UICollectionViewCell {
         contentView.addSubview(bubbleView)
 
         leadingConstraint = bubbleView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor,
-                                                                 constant: ChatLayout.current.cellHMargin)
+                                                                 constant: ChatLayout().cellHMargin)
         trailingConstraint = bubbleView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor,
-                                                                   constant: -ChatLayout.current.cellHMargin)
+                                                                   constant: -ChatLayout().cellHMargin)
 
         NSLayoutConstraint.activate([
             bubbleView.topAnchor.constraint(equalTo: contentView.topAnchor),
@@ -55,15 +55,15 @@ final class MessageCell: UICollectionViewCell {
         bubbleView.addGestureRecognizer(tap)
 
         let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress))
-        longPress.minimumPressDuration = ChatLayout.current.longPressDuration
+        longPress.minimumPressDuration = ChatLayout().longPressDuration
         bubbleView.addGestureRecognizer(longPress)
     }
 
     // MARK: - Configure
 
-    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) {
+    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout()) {
         currentTheme = theme
-        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, showSenderName: showSenderName)
+        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, showSenderName: showSenderName, features: features)
 
         leadingConstraint.isActive = false
         trailingConstraint.isActive = false
@@ -79,7 +79,7 @@ final class MessageCell: UICollectionViewCell {
         wc.priority = .defaultHigh
         wc.isActive = true
 
-        bubbleView.configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bw, showSenderName: showSenderName, features: features)
+        bubbleView.configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bw, showSenderName: showSenderName, features: features, layout: layout)
         bubbleView.onReplyTap = onReplyTap
         bubbleView.onMediaItemTap = onMediaItemTap
         bubbleView.onFileItemTap = onFileItemTap
@@ -94,10 +94,10 @@ final class MessageCell: UICollectionViewCell {
     func playHighlight() {
         let overlay = UIView(frame: bubbleView.bounds)
         overlay.backgroundColor = currentTheme.messageHighlightColor
-        overlay.layer.cornerRadius = ChatLayout.current.bubbleCornerRadius
+        overlay.layer.cornerRadius = ChatLayout().bubbleCornerRadius
         overlay.alpha = 0
         bubbleView.addSubview(overlay)
-        let L = ChatLayout.current
+        let L = ChatLayout()
         UIView.animate(withDuration: L.highlightAnimateIn, animations: { overlay.alpha = 1 }) { _ in
             UIView.animate(withDuration: L.highlightAnimateOut, delay: L.highlightDelay, animations: { overlay.alpha = 0 }) { _ in
                 overlay.removeFromSuperview()

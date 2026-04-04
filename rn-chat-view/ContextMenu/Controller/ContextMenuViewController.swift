@@ -247,8 +247,8 @@ public final class ContextMenuViewController: UIViewController {
 
         let wrapper = UIView(frame: CGRect(origin: .zero, size: source.bounds.size))
         wrapper.layer.shadowColor   = UIColor.black.cgColor
-        wrapper.layer.shadowOpacity = ChatLayout.current.bubbleShadowOpacity
-        wrapper.layer.shadowRadius  = ChatLayout.current.bubbleShadowRadius
+        wrapper.layer.shadowOpacity = ChatLayout().bubbleShadowOpacity
+        wrapper.layer.shadowRadius  = ChatLayout().bubbleShadowRadius
         wrapper.layer.shadowOffset  = CGSize(width: 0, height: 3)
         wrapper.addSubview(snap)
         return wrapper
