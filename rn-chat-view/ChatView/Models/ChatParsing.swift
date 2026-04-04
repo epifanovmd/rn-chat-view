@@ -40,52 +40,44 @@ extension ChatMessage {
     }
 
     private static func parseContent(dict: NSDictionary, text: String?) -> MessageContent {
-        // Build unified media array from images + video
-        var media: [MediaItem] = []
+        let finalText = (text?.isEmpty == false) ? text : nil
 
-        if let imagesArr = dict["images"] as? [NSDictionary] {
-            for imgDict in imagesArr {
-                if let item = parseImageItem(imgDict) {
-                    media.append(.image(item))
+        // Determine media type by priority: poll > files > voice > images
+        let messageMedia: MessageMedia?
+
+        if let pollDict = dict["poll"] as? NSDictionary {
+            messageMedia = .poll(parsePoll(pollDict))
+        } else {
+            // Files: support single "file" or array "files"
+            var files: [FilePayload] = []
+            if let filesArr = dict["files"] as? [NSDictionary] {
+                files = filesArr.compactMap { parseFile($0) }
+            } else if let fileDict = dict["file"] as? NSDictionary, let file = parseFile(fileDict) {
+                files = [file]
+            }
+
+            if !files.isEmpty {
+                messageMedia = .files(files)
+            } else if let voiceDict = dict["voice"] as? NSDictionary {
+                messageMedia = .voice(parseVoice(voiceDict))
+            } else {
+                // Build unified media array from images + video
+                var media: [MediaItem] = []
+                if let imagesArr = dict["images"] as? [NSDictionary] {
+                    for imgDict in imagesArr {
+                        if let item = parseImageItem(imgDict) {
+                            media.append(.image(item))
+                        }
+                    }
                 }
+                if let videoDict = dict["video"] as? NSDictionary {
+                    media.append(.video(parseVideo(videoDict)))
+                }
+                messageMedia = media.isEmpty ? nil : .images(media)
             }
         }
 
-        if let videoDict = dict["video"] as? NSDictionary {
-            media.append(.video(parseVideo(videoDict)))
-        }
-
-        let voice: VoicePayload?
-        if let voiceDict = dict["voice"] as? NSDictionary {
-            voice = parseVoice(voiceDict)
-        } else {
-            voice = nil
-        }
-
-        let poll: PollPayload?
-        if let pollDict = dict["poll"] as? NSDictionary {
-            poll = parsePoll(pollDict)
-        } else {
-            poll = nil
-        }
-
-        // Files: support single "file" or array "files"
-        var files: [FilePayload] = []
-        if let filesArr = dict["files"] as? [NSDictionary] {
-            files = filesArr.compactMap { parseFile($0) }
-        } else if let fileDict = dict["file"] as? NSDictionary, let file = parseFile(fileDict) {
-            files = [file]
-        }
-
-        let finalText = (text?.isEmpty == false) ? text : nil
-
-        return MessageContent(
-            text: finalText,
-            media: media.isEmpty ? nil : media,
-            voice: voice,
-            poll: poll,
-            files: files.isEmpty ? nil : files
-        )
+        return MessageContent(text: finalText, media: messageMedia)
     }
 
     private static func parseImageItem(_ dict: NSDictionary) -> ImageItem? {

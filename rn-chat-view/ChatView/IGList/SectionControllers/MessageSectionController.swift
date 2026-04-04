@@ -22,6 +22,7 @@ final class MessageSectionController: ListSectionController {
     var theme: ChatTheme = .light
     var layout: ChatLayout = ChatLayout()
     var features: ChatFeatures = ChatFeatures()
+    var factory: ChatContentFactory = DefaultChatContentFactory()
     var replyResolver: ((ReplyInfo) -> ReplyDisplayInfo?)?
 
     override init() {
@@ -41,7 +42,8 @@ final class MessageSectionController: ListSectionController {
             maxWidth: width,
             layout: layout,
             showSenderName: showName,
-            features: features
+            features: features,
+            factory: factory
         )
         return CGSize(width: width, height: max(height, layout.cellMinHeight))
     }
@@ -62,25 +64,21 @@ final class MessageSectionController: ListSectionController {
             guard let self, let replyTo = self.item.message.reply?.replyToId else { return }
             self.sectionDelegate?.messageSectionDidTapReply(messageId: replyTo)
         }
-        cell.onMediaItemTap = { [weak self] index in
+        cell.onContentInteraction = { [weak self] interaction in
             guard let self else { return }
-            self.sectionDelegate?.messageSectionDidTap(messageId: self.item.message.id, attachmentIndex: index)
-        }
-        cell.onFileItemTap = { [weak self] index in
-            guard let self else { return }
-            self.sectionDelegate?.messageSectionDidTap(messageId: self.item.message.id, attachmentIndex: index)
-        }
-        cell.onPollOptionTap = { [weak self] pollId, optionId in
-            guard let self else { return }
-            self.sectionDelegate?.messageSectionDidTapPollOption(messageId: self.item.message.id, pollId: pollId, optionId: optionId)
-        }
-        cell.onPollDetailTap = { [weak self] pollId in
-            guard let self else { return }
-            self.sectionDelegate?.messageSectionDidTapPollDetail(messageId: self.item.message.id, pollId: pollId)
-        }
-        cell.onVoiceTap = { [weak self] url in
-            guard let self else { return }
-            self.sectionDelegate?.messageSectionDidTapVoice(messageId: self.item.message.id, url: url)
+            let id = self.item.message.id
+            switch interaction {
+            case .mediaTap(let i):
+                self.sectionDelegate?.messageSectionDidTap(messageId: id, attachmentIndex: i)
+            case .fileTap(let i):
+                self.sectionDelegate?.messageSectionDidTap(messageId: id, attachmentIndex: i)
+            case .pollOptionTap(let pId, let oId):
+                self.sectionDelegate?.messageSectionDidTapPollOption(messageId: id, pollId: pId, optionId: oId)
+            case .pollDetailTap(let pId):
+                self.sectionDelegate?.messageSectionDidTapPollDetail(messageId: id, pollId: pId)
+            case .voiceTap(let url):
+                self.sectionDelegate?.messageSectionDidTapVoice(messageId: id, url: url)
+            }
         }
         cell.onReactionTap = { [weak self] emoji in
             guard let self else { return }
@@ -97,7 +95,8 @@ final class MessageSectionController: ListSectionController {
             maxWidth: ctx.containerSize.width,
             showSenderName: showName,
             features: features,
-            layout: layout
+            layout: layout,
+            factory: factory
         )
 
         return cell

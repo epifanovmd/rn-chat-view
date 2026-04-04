@@ -4,9 +4,9 @@ enum MessageSizeCalculator {
 
     // MARK: - Public
 
-    static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) -> CGFloat {
+    static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         let bw = bubbleWidth(for: msg, containerWidth: maxWidth, layout: L, showSenderName: showSenderName, features: features)
-        let bh = bubbleHeight(for: msg, bubbleWidth: bw, layout: L, showSenderName: showSenderName, features: features)
+        let bh = bubbleHeight(for: msg, bubbleWidth: bw, layout: L, showSenderName: showSenderName, features: features, factory: factory)
         return bh + L.cellVSpacing
     }
 
@@ -16,7 +16,7 @@ enum MessageSizeCalculator {
         let maxW = containerWidth * L.bubbleMaxWidthRatio
         let content = msg.content
 
-        if !content.hasMedia, let count = EmojiHelper.emojiOnlyCount(content.text) {
+        if content.media == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
             let font = emojiFont(for: count, layout: L)
             let tw = textWidth(content.text!, font: font)
             var w = min(tw + L.bubbleHPad * 2, maxW)
@@ -41,7 +41,7 @@ enum MessageSizeCalculator {
             replyW = minReplyW + L.bubbleHPad * 2
         }
 
-        if content.hasMedia {
+        if content.media != nil {
             var w = maxW
             if features.showReactions, !msg.reactions.isEmpty {
                 w = max(w, reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2)
@@ -49,7 +49,7 @@ enum MessageSizeCalculator {
             return min(w, maxW)
         }
 
-        if let text = content.text {
+        if content.media == nil, let text = content.text {
             let tw = textWidth(text, font: L.messageFont)
             let minW = minFooterWidth(for: msg, layout: L, features: features)
             var contentW = max(tw + L.bubbleHPad * 2, minW + L.bubbleHPad * 2)
@@ -68,10 +68,10 @@ enum MessageSizeCalculator {
 
     // MARK: - Bubble Height
 
-    static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) -> CGFloat {
+    static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         let content = msg.content
 
-        if !content.hasMedia, let count = EmojiHelper.emojiOnlyCount(content.text) {
+        if content.media == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
             let font = emojiFont(for: count, layout: L)
             var h = textHeight(content.text!, font: font, width: bw - L.bubbleHPad * 2) + L.bubbleVPad * 2
 
@@ -105,11 +105,11 @@ enum MessageSizeCalculator {
 
         let hasReply = features.showReplyPreview && msg.reply != nil
         let hasHeader = (showSenderName && msg.senderName != nil && !msg.isMine) || hasReply || isForwarded
-        if content.voice != nil, !hasHeader {
+        if case .voice = content.media, !hasHeader {
             h += L.bubbleSpacing + L.bubbleSpacing
         }
 
-        h += contentHeight(for: content, width: innerW, layout: L)
+        h += contentHeight(for: content, width: innerW, layout: L, factory: factory)
 
         if features.showReactions, !msg.reactions.isEmpty {
             let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2, layout: L)
@@ -146,23 +146,16 @@ enum MessageSizeCalculator {
 
     // MARK: - Content Height
 
-    static func contentHeight(for content: MessageContent, width: CGFloat, layout L: ChatLayout = ChatLayout()) -> CGFloat {
+    static func contentHeight(for content: MessageContent, width: CGFloat, layout L: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         var h: CGFloat = 0
 
-        if let poll = content.poll {
-            h += pollHeight(poll, width: width, layout: L)
-        } else if let files = content.files, !files.isEmpty {
-            let fileRowH = L.fileIconSize + L.filePadding * 2
-            h += fileRowH * CGFloat(files.count) + L.fileRowSpacing * CGFloat(max(0, files.count - 1))
-        } else if content.voice != nil {
-            h += L.voicePlaySize
-        } else if let media = content.media, !media.isEmpty {
-            h += MediaGridView.gridHeight(for: media, width: width, layout: L)
+        if let media = content.media {
+            h += factory.contentHeight(for: media, width: width, layout: L)
         }
 
         if let text = content.text, !text.isEmpty {
             if h > 0 { h += L.mixedContentSpacing }
-            h += textHeight(text, font: L.messageFont, width: width)
+            h += factory.textHeight(text: text, font: L.messageFont, width: width)
         }
 
         return max(h, 0)

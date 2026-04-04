@@ -29,6 +29,7 @@ final class ChatViewController: UIViewController {
 
     // MARK: - Public Properties
 
+    var contentFactory: ChatContentFactory = DefaultChatContentFactory()
     weak var delegate: ChatViewControllerDelegate?
 
     var hasMore = false

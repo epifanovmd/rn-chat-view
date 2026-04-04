@@ -102,18 +102,30 @@ struct FilePayload: Equatable, Hashable {
     let mimeType: String?
 }
 
+// MARK: - Message Media (enum — ровно один тип медиа)
+
+enum MessageMedia: Equatable, Hashable {
+    case images([MediaItem])
+    case voice(VoicePayload)
+    case poll(PollPayload)
+    case files([FilePayload])
+}
+
 // MARK: - Message Content
 
 struct MessageContent: Equatable, Hashable {
     let text: String?
-    let media: [MediaItem]?
-    let voice: VoicePayload?
-    let poll: PollPayload?
-    let files: [FilePayload]?
+    let media: MessageMedia?
+}
 
-    var hasMedia: Bool {
-        (media != nil && !(media!.isEmpty)) || voice != nil || poll != nil || (files != nil && !(files!.isEmpty))
-    }
+// MARK: - Content Interaction
+
+enum ChatContentInteraction {
+    case mediaTap(index: Int)
+    case fileTap(index: Int)
+    case pollOptionTap(pollId: String, optionId: String)
+    case pollDetailTap(pollId: String)
+    case voiceTap(url: String)
 }
 
 // MARK: - Reaction

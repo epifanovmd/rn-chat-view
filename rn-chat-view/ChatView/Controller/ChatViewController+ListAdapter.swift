@@ -15,6 +15,7 @@ extension ChatViewController: ListAdapterDataSource {
             sc.theme = theme
             sc.layout = layout
             sc.features = features
+            sc.factory = contentFactory
             sc.replyResolver = { [weak self] info in
                 guard let original = self?.messageIndex[info.replyToId] else { return nil }
                 return ReplyDisplayInfo(

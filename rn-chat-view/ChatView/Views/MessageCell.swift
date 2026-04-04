@@ -7,11 +7,7 @@ final class MessageCell: UICollectionViewCell {
     var onTap: (() -> Void)?
     var onLongPress: ((UICollectionViewCell) -> Void)?
     var onReplyTap: (() -> Void)?
-    var onMediaItemTap: ((Int) -> Void)?
-    var onFileItemTap: ((Int) -> Void)?
-    var onPollOptionTap: ((String, String) -> Void)?
-    var onPollDetailTap: ((String) -> Void)?
-    var onVoiceTap: ((String) -> Void)?
+    var onContentInteraction: ((ChatContentInteraction) -> Void)?
     var onReactionTap: ((String) -> Void)?
 
     // MARK: - State
@@ -62,7 +58,7 @@ final class MessageCell: UICollectionViewCell {
 
     // MARK: - Configure
 
-    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout()) {
+    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
         currentTheme = theme
         currentLayout = layout
         leadingConstraint.constant = layout.cellHMargin
@@ -83,13 +79,9 @@ final class MessageCell: UICollectionViewCell {
         wc.priority = .defaultHigh
         wc.isActive = true
 
-        bubbleView.configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bw, showSenderName: showSenderName, features: features, layout: layout)
+        bubbleView.configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bw, showSenderName: showSenderName, features: features, layout: layout, factory: factory)
         bubbleView.onReplyTap = onReplyTap
-        bubbleView.onMediaItemTap = onMediaItemTap
-        bubbleView.onFileItemTap = onFileItemTap
-        bubbleView.onPollOptionTap = onPollOptionTap
-        bubbleView.onPollDetailTap = onPollDetailTap
-        bubbleView.onVoiceTap = onVoiceTap
+        bubbleView.onContentInteraction = onContentInteraction
         bubbleView.onReactionTap = onReactionTap
     }
 
@@ -116,11 +108,7 @@ final class MessageCell: UICollectionViewCell {
         onTap = nil
         onLongPress = nil
         onReplyTap = nil
-        onMediaItemTap = nil
-        onFileItemTap = nil
-        onPollOptionTap = nil
-        onPollDetailTap = nil
-        onVoiceTap = nil
+        onContentInteraction = nil
         onReactionTap = nil
         for c in bubbleView.constraints where c.firstAttribute == .width { c.isActive = false }
         bubbleView.prepareForReuse()
