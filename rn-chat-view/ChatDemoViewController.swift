@@ -66,6 +66,38 @@ enum ChatDemoData {
                 actions: defaultActions
             ),
 
+            // 3a. Same text, outgoing, NO reply
+            ChatMessage(
+                id: "3a",
+                content: MessageContent(text: "Звучит здорово! Можешь показать дизайн?", media: nil, voice: nil, poll: nil, files: nil),
+                timestamp: cal.date(byAdding: .hour, value: -22, to: now)! - 1800,
+                senderName: nil,
+                isMine: true,
+                groupDate: yesterday,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
+            // 3b. Same text, incoming, NO reply
+            ChatMessage(
+                id: "3b",
+                content: MessageContent(text: "Звучит здорово! Можешь показать дизайн?", media: nil, voice: nil, poll: nil, files: nil),
+                timestamp: cal.date(byAdding: .hour, value: -22, to: now)! - 1200,
+                senderName: otherUser,
+                isMine: false,
+                groupDate: yesterday,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: defaultActions
+            ),
+
             // 4. Image message (outgoing)
             ChatMessage(
                 id: "4",

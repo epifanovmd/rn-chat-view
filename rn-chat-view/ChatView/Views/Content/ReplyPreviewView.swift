@@ -23,12 +23,14 @@ final class ReplyPreviewView: UIView {
 
         senderLabel.font = ChatLayout.current.replySenderFont
         senderLabel.numberOfLines = 1
+        senderLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         senderLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(senderLabel)
 
         contentLabel.font = ChatLayout.current.replyFont
         contentLabel.numberOfLines = 1
         contentLabel.lineBreakMode = .byTruncatingTail
+        contentLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         contentLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(contentLabel)
 

@@ -224,7 +224,7 @@ struct ChatLayout {
     /// Шрифт поля ввода текста
     var textViewFont: UIFont = .systemFont(ofSize: 16)
     /// Внутренние отступы поля ввода текста (right увеличен для внутренней кнопки отправки)
-    var textViewInsets: UIEdgeInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 40)
+    var textViewInsets: UIEdgeInsets = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 40)
     /// Высота панели ответа/редактирования
     var inputReplyPanelHeight: CGFloat = 48
     /// Размер кнопки вложения/отправки

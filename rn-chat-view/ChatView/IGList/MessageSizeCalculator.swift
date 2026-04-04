@@ -7,6 +7,9 @@ enum MessageSizeCalculator {
     static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = .current, resolvedReply: ReplyDisplayInfo?, showSenderName: Bool = false) -> CGFloat {
         let bw = bubbleWidth(for: msg, containerWidth: maxWidth, layout: L, showSenderName: showSenderName)
         let bh = bubbleHeight(for: msg, bubbleWidth: bw, layout: L, resolvedReply: resolvedReply, showSenderName: showSenderName)
+        let maxW = maxWidth * L.bubbleMaxWidthRatio
+        let tw = msg.content.text.map { textWidth($0, font: L.messageFont) } ?? 0
+        print("[SIZE] id=\(msg.id) isMine=\(msg.isMine) maxW=\(Int(maxW)) bubbleW=\(Int(bw)) textW=\(Int(tw)) cellH=\(Int(bh + L.cellVSpacing)) text=\"\(msg.content.text?.prefix(40) ?? "")\"")
         return bh + L.cellVSpacing
     }
 
@@ -92,13 +95,13 @@ enum MessageSizeCalculator {
         var h: CGFloat = L.bubbleVPad
 
         if showSenderName, msg.senderName != nil, !msg.isMine {
-            h += L.senderNameFont.lineHeight + 2
+            h += L.senderNameFont.lineHeight + L.bubbleSpacing
         }
         if isForwarded {
-            h += L.forwardedFont.lineHeight + 2
+            h += L.forwardedFont.lineHeight + L.bubbleSpacing
         }
         if msg.reply != nil {
-            h += L.replyHeight + 4
+            h += L.replyHeight + L.bubbleSpacing
         }
 
         let hasHeader = (showSenderName && msg.senderName != nil && !msg.isMine) || msg.reply != nil || isForwarded

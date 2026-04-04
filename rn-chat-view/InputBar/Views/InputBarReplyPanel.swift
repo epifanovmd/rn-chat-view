@@ -68,11 +68,11 @@ final class InputBarReplyPanel: UIView {
 
             senderLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: sp / 2),
             senderLabel.topAnchor.constraint(equalTo: topAnchor, constant: sp - 3),
-            senderLabel.trailingAnchor.constraint(lessThanOrEqualTo: closeButton.leadingAnchor, constant: -sp / 2),
+            senderLabel.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -sp / 2),
 
             textLabel.leadingAnchor.constraint(equalTo: senderLabel.leadingAnchor),
             textLabel.topAnchor.constraint(equalTo: senderLabel.bottomAnchor, constant: 1),
-            textLabel.trailingAnchor.constraint(lessThanOrEqualTo: closeButton.leadingAnchor, constant: -sp / 2),
+            textLabel.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -sp / 2),
 
             closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -sp + 2),
             closeButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -1),
@@ -99,19 +99,20 @@ final class InputBarReplyPanel: UIView {
     // MARK: - Show / Hide
 
     func show(in container: UIView, height: CGFloat) {
-        alpha = 0
         heightConstraint.constant = height
+        alpha = 0
+        container.setNeedsLayout()
         UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut) {
             self.alpha = 1
-            container.layoutIfNeeded()
+            container.superview?.layoutIfNeeded()
         }
     }
 
     func hide(in container: UIView) {
-        heightConstraint.constant = 0
-        UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseIn) {
+        UIView.animate(withDuration: 0.2, delay: 0, options: .curveEaseIn, animations: {
             self.alpha = 0
-            container.layoutIfNeeded()
-        }
+            self.heightConstraint.constant = 0
+            container.superview?.layoutIfNeeded()
+        })
     }
 }

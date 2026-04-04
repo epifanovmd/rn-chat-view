@@ -5,6 +5,7 @@ import UIKit
 extension ChatViewController: InputBarDelegate {
     func inputBarDidSend(text: String, replyToId: String?) {
         pendingScrollToBottom = true
+        fabManager.setExpanded(false, animated: true)
         delegate?.chatDidSendMessage(text: text, replyToId: replyToId)
     }
 
@@ -26,6 +27,8 @@ extension ChatViewController: InputBarDelegate {
     }
 
     func inputBarDidChangeText(_ text: String) {
+        let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        fabManager.setExpanded(hasText, animated: true)
         delegate?.chatDidChangeInputText(text)
     }
 

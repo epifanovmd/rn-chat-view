@@ -12,7 +12,15 @@ final class FABManager {
     // MARK: - State
 
     private(set) var isVisible = false
+    private var isExpanded = false
     var onTap: (() -> Void)?
+
+    // MARK: - Constraints
+
+    /// Above mic button (inputBar.bottomAnchor based) — used when no text
+    private var compactConstraint: NSLayoutConstraint!
+    /// Above entire input bar (inputBar.topAnchor based) — used when text present
+    private var expandedConstraint: NSLayoutConstraint!
 
     // MARK: - Setup
 
@@ -48,12 +56,20 @@ final class FABManager {
         parentView.addSubview(badge)
 
         let hPad = layout.inputBarHPad
-        let bottomOffset = layout.inputBarVPad + size + layout.fabMargin
+        let aboveMicOffset = layout.inputBarVPad + size + layout.fabMargin
+        let singleLineHeight = 2 * layout.inputBarVPad + layout.textViewMinHeight
+        let expandedGap = aboveMicOffset - singleLineHeight
+
+        compactConstraint = button.bottomAnchor.constraint(equalTo: inputBar.bottomAnchor, constant: -aboveMicOffset)
+        expandedConstraint = button.bottomAnchor.constraint(equalTo: inputBar.topAnchor, constant: -expandedGap)
+
+        compactConstraint.isActive = true
+        expandedConstraint.isActive = false
+
         NSLayoutConstraint.activate([
             button.widthAnchor.constraint(equalToConstant: size),
             button.heightAnchor.constraint(equalToConstant: size),
             button.trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -hPad),
-            button.bottomAnchor.constraint(equalTo: inputBar.bottomAnchor, constant: -bottomOffset),
             arrow.centerXAnchor.constraint(equalTo: button.centerXAnchor),
             arrow.centerYAnchor.constraint(equalTo: button.centerYAnchor),
             badge.centerXAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
@@ -74,6 +90,23 @@ final class FABManager {
         arrow.tintColor = theme.fabArrowColor
         badge.backgroundColor = theme.fabBadgeBackground
         badge.textColor = theme.fabBadgeTextColor
+    }
+
+    // MARK: - Position
+
+    /// Switch between compact (above mic) and expanded (above entire input bar) positions.
+    func setExpanded(_ expanded: Bool, animated: Bool) {
+        guard expanded != isExpanded else { return }
+        isExpanded = expanded
+
+        compactConstraint.isActive = !expanded
+        expandedConstraint.isActive = expanded
+
+        if animated {
+            UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseInOut) {
+                self.button.superview?.layoutIfNeeded()
+            }
+        }
     }
 
     // MARK: - Visibility
