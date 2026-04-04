@@ -10,6 +10,11 @@ final class PollContentView: UIView {
     private let footerStack = UIStackView()
     private let votesLabel = UILabel()
     private let resultsLabel = UILabel()
+    private var currentLayout = ChatLayout()
+
+    // MARK: - Stored constraints
+
+    private var optionsTopConstraint: NSLayoutConstraint!
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -19,7 +24,7 @@ final class PollContentView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        let L = ChatLayout()
+        let L = currentLayout
 
         questionLabel.font = L.pollQuestionFont
         questionLabel.numberOfLines = 0
@@ -54,6 +59,8 @@ final class PollContentView: UIView {
         footerStack.addArrangedSubview(resultsLabel)
         addSubview(footerStack)
 
+        optionsTopConstraint = optionsStack.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: L.pollHeaderSpacing)
+
         NSLayoutConstraint.activate([
             questionLabel.topAnchor.constraint(equalTo: topAnchor),
             questionLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -63,7 +70,7 @@ final class PollContentView: UIView {
             subtitleLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
             subtitleLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
 
-            optionsStack.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: L.pollHeaderSpacing),
+            optionsTopConstraint,
             optionsStack.leadingAnchor.constraint(equalTo: leadingAnchor),
             optionsStack.trailingAnchor.constraint(equalTo: trailingAnchor),
 
@@ -74,7 +81,18 @@ final class PollContentView: UIView {
         ])
     }
 
-    func configure(poll: PollPayload, isMine: Bool, theme: ChatTheme) {
+    func configure(poll: PollPayload, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+        currentLayout = layout
+        let L = currentLayout
+
+        // Update fonts and constraints from layout
+        questionLabel.font = L.pollQuestionFont
+        subtitleLabel.font = L.pollSubtitleFont
+        optionsStack.spacing = L.pollOptionSpacing
+        votesLabel.font = L.pollVotesFont
+        resultsLabel.font = L.pollVotesFont
+        optionsTopConstraint.constant = L.pollHeaderSpacing
+
         questionLabel.text = poll.question
         questionLabel.textColor = isMine ? theme.outgoingText : theme.incomingText
 
@@ -89,7 +107,7 @@ final class PollContentView: UIView {
         for option in poll.options {
             let row = PollOptionRow()
             let isSelected = poll.selectedOptionIds.contains(option.id)
-            row.configure(option: option, isSelected: isSelected, isMine: isMine, theme: theme)
+            row.configure(option: option, isSelected: isSelected, isMine: isMine, theme: theme, layout: L)
             row.onTap = poll.isClosed ? nil : { [weak self] in self?.onOptionTap?(option.id) }
             optionsStack.addArrangedSubview(row)
         }
@@ -113,6 +131,13 @@ private final class PollOptionRow: UIView {
     private let label = UILabel()
     private let percentLabel = UILabel()
     private var fillWidthConstraint: NSLayoutConstraint?
+    private var currentLayout = ChatLayout()
+
+    // MARK: - Stored constraints
+
+    private var heightConst: NSLayoutConstraint!
+    private var labelLeadingConstraint: NSLayoutConstraint!
+    private var percentTrailingConstraint: NSLayoutConstraint!
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -122,7 +147,7 @@ private final class PollOptionRow: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        let L = ChatLayout()
+        let L = currentLayout
 
         barBg.layer.cornerRadius = L.pollBarCornerRadius
         barBg.layer.masksToBounds = true
@@ -141,8 +166,12 @@ private final class PollOptionRow: UIView {
         percentLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(percentLabel)
 
+        heightConst = heightAnchor.constraint(equalToConstant: L.pollBarHeight)
+        labelLeadingConstraint = label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: L.pollBarHPad)
+        percentTrailingConstraint = percentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -L.pollBarHPad)
+
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: L.pollBarHeight),
+            heightConst,
 
             barBg.topAnchor.constraint(equalTo: topAnchor),
             barBg.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -153,11 +182,11 @@ private final class PollOptionRow: UIView {
             barFill.leadingAnchor.constraint(equalTo: barBg.leadingAnchor),
             barFill.bottomAnchor.constraint(equalTo: barBg.bottomAnchor),
 
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: L.pollBarHPad),
+            labelLeadingConstraint,
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
             label.trailingAnchor.constraint(lessThanOrEqualTo: percentLabel.leadingAnchor, constant: -6),
 
-            percentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -L.pollBarHPad),
+            percentTrailingConstraint,
             percentLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
 
@@ -165,8 +194,16 @@ private final class PollOptionRow: UIView {
         addGestureRecognizer(tap)
     }
 
-    func configure(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme) {
-        let L = ChatLayout()
+    func configure(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+        currentLayout = layout
+        let L = currentLayout
+
+        // Update layout-dependent values
+        barBg.layer.cornerRadius = L.pollBarCornerRadius
+        barFill.layer.cornerRadius = L.pollBarCornerRadius
+        heightConst.constant = L.pollBarHeight
+        labelLeadingConstraint.constant = L.pollBarHPad
+        percentTrailingConstraint.constant = -L.pollBarHPad
 
         label.text = option.text
         barBg.backgroundColor = theme.pollBarEmpty
@@ -183,6 +220,7 @@ private final class PollOptionRow: UIView {
             percentLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
         }
 
+        percentLabel.font = L.pollPercentFont
         percentLabel.text = "\(Int(option.percentage * 100))%"
 
         fillWidthConstraint?.isActive = false

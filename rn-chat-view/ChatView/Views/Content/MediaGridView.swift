@@ -4,7 +4,8 @@ final class MediaGridView: UIView {
 
     var onItemTap: ((Int) -> Void)?
 
-    private var spacing: CGFloat { ChatLayout().mediaGridSpacing }
+    private var currentLayout = ChatLayout()
+    private var spacing: CGFloat { currentLayout.mediaGridSpacing }
     private let maxVisible = 4
     private var cellViews: [MediaCellView] = []
     private var heightConstraint: NSLayoutConstraint?
@@ -12,7 +13,7 @@ final class MediaGridView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         clipsToBounds = true
-        layer.cornerRadius = ChatLayout().imageCornerRadius
+        layer.cornerRadius = currentLayout.imageCornerRadius
 
         isUserInteractionEnabled = true
     }
@@ -21,7 +22,10 @@ final class MediaGridView: UIView {
 
     // MARK: - Configure
 
-    func configure(media: [MediaItem], width: CGFloat, theme: ChatTheme) {
+    func configure(media: [MediaItem], width: CGFloat, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+        currentLayout = layout
+        layer.cornerRadius = currentLayout.imageCornerRadius
+
         cellViews.forEach { $0.removeFromSuperview() }
         cellViews.removeAll()
 
@@ -29,7 +33,7 @@ final class MediaGridView: UIView {
         guard count > 0 else { return }
 
         let visibleCount = min(count, maxVisible)
-        let totalH = MediaGridView.gridHeight(for: media, width: width)
+        let totalH = MediaGridView.gridHeight(for: media, width: width, layout: layout)
 
         heightConstraint?.isActive = false
         heightConstraint = heightAnchor.constraint(equalToConstant: totalH)
@@ -41,7 +45,7 @@ final class MediaGridView: UIView {
         for i in 0..<visibleCount {
             let item = media[i]
             let cell = MediaCellView()
-            cell.configure(item: item, theme: theme)
+            cell.configure(item: item, theme: theme, layout: layout)
 
             // "+N" overlay on last cell if more items
             if i == visibleCount - 1 && count > maxVisible {
@@ -106,23 +110,21 @@ final class MediaGridView: UIView {
 
     // MARK: - Static Height
 
-    static func gridHeight(for media: [MediaItem], width: CGFloat) -> CGFloat {
+    static func gridHeight(for media: [MediaItem], width: CGFloat, layout L: ChatLayout = ChatLayout()) -> CGFloat {
         let count = media.count
         guard count > 0 else { return 0 }
 
         switch count {
         case 1:
-            // Single item: use aspect ratio, capped
             let item = media[0]
             if let w = item.width, let h = item.height, w > 0 {
                 let ratio = h / w
-                return min(max(width * ratio, ChatLayout().imageMinHeight), ChatLayout().imageMaxHeight)
+                return min(max(width * ratio, L.imageMinHeight), L.imageMaxHeight)
             }
-            return ChatLayout().imageMinHeight
+            return L.imageMinHeight
 
         default:
-            // Grid: square-ish, capped
-            return min(width * 0.75, ChatLayout().imageMaxHeight)
+            return min(width * 0.75, L.imageMaxHeight)
         }
     }
 
@@ -142,6 +144,14 @@ private final class MediaCellView: UIView {
     private let durationLabel = UILabel()
     private let overlayView = UIView()
     private let overlayLabel = UILabel()
+    private var currentLayout = ChatLayout()
+
+    // MARK: - Stored constraints
+
+    private var playIconWidthConstraint: NSLayoutConstraint!
+    private var playIconHeightConstraint: NSLayoutConstraint!
+    private var durationBgTrailingConstraint: NSLayoutConstraint!
+    private var durationBgBottomConstraint: NSLayoutConstraint!
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -151,7 +161,7 @@ private final class MediaCellView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        let L = ChatLayout()
+        let L = currentLayout
         clipsToBounds = true
 
         imageView.contentMode = .scaleAspectFill
@@ -185,6 +195,11 @@ private final class MediaCellView: UIView {
         overlayLabel.translatesAutoresizingMaskIntoConstraints = false
         overlayView.addSubview(overlayLabel)
 
+        playIconWidthConstraint = playIcon.widthAnchor.constraint(equalToConstant: L.mediaPlayIconSize)
+        playIconHeightConstraint = playIcon.heightAnchor.constraint(equalToConstant: L.mediaPlayIconSize)
+        durationBgTrailingConstraint = durationBg.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -L.mediaDurationMargin)
+        durationBgBottomConstraint = durationBg.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -L.mediaDurationMargin)
+
         NSLayoutConstraint.activate([
             imageView.topAnchor.constraint(equalTo: topAnchor),
             imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -193,11 +208,11 @@ private final class MediaCellView: UIView {
 
             playIcon.centerXAnchor.constraint(equalTo: centerXAnchor),
             playIcon.centerYAnchor.constraint(equalTo: centerYAnchor),
-            playIcon.widthAnchor.constraint(equalToConstant: L.mediaPlayIconSize),
-            playIcon.heightAnchor.constraint(equalToConstant: L.mediaPlayIconSize),
+            playIconWidthConstraint,
+            playIconHeightConstraint,
 
-            durationBg.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -L.mediaDurationMargin),
-            durationBg.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -L.mediaDurationMargin),
+            durationBgTrailingConstraint,
+            durationBgBottomConstraint,
             durationLabel.topAnchor.constraint(equalTo: durationBg.topAnchor, constant: 2),
             durationLabel.bottomAnchor.constraint(equalTo: durationBg.bottomAnchor, constant: -2),
             durationLabel.leadingAnchor.constraint(equalTo: durationBg.leadingAnchor, constant: 4),
@@ -212,12 +227,27 @@ private final class MediaCellView: UIView {
         ])
     }
 
-    func configure(item: MediaItem, theme: ChatTheme) {
+    func configure(item: MediaItem, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+        currentLayout = layout
+        let L = currentLayout
+
+        // Update layout-dependent values
+        durationBg.layer.cornerRadius = L.mediaDurationCornerRadius
+        durationLabel.font = L.mediaDurationFont
+        overlayLabel.font = L.mediaOverlayFont
+        playIconWidthConstraint.constant = L.mediaPlayIconSize
+        playIconHeightConstraint.constant = L.mediaPlayIconSize
+        durationBgTrailingConstraint.constant = -L.mediaDurationMargin
+        durationBgBottomConstraint.constant = -L.mediaDurationMargin
+
+        let config = UIImage.SymbolConfiguration(pointSize: L.mediaPlayIconSize, weight: .regular)
+        playIcon.image = UIImage(systemName: "play.circle.fill", withConfiguration: config)
+
         imageView.backgroundColor = theme.mediaPlaceholderBackground
         playIcon.tintColor = theme.mediaPlayIconColor
         playIcon.layer.shadowColor = theme.mediaPlayShadowColor.cgColor
-        playIcon.layer.shadowOpacity = ChatLayout().mediaPlayShadowOpacity
-        playIcon.layer.shadowRadius = ChatLayout().mediaPlayShadowRadius
+        playIcon.layer.shadowOpacity = L.mediaPlayShadowOpacity
+        playIcon.layer.shadowRadius = L.mediaPlayShadowRadius
         durationBg.backgroundColor = theme.mediaDurationBackground
         durationLabel.textColor = theme.mediaDurationTextColor
         overlayView.backgroundColor = theme.mediaOverlayBackground

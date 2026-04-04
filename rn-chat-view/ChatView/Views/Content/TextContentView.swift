@@ -2,10 +2,11 @@ import UIKit
 
 final class TextContentView: UIView {
     private let label = UILabel()
+    private var currentLayout = ChatLayout()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        label.font = ChatLayout().messageFont
+        label.font = currentLayout.messageFont
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -20,7 +21,9 @@ final class TextContentView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(text: String, isMine: Bool, theme: ChatTheme) {
+    func configure(text: String, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+        currentLayout = layout
+        label.font = currentLayout.messageFont
         label.text = text
         label.textColor = isMine ? theme.outgoingText : theme.incomingText
     }

@@ -26,8 +26,7 @@ final class MessageSectionController: ListSectionController {
 
     override init() {
         super.init()
-        let spacing = ChatLayout().cellVSpacing
-        inset = UIEdgeInsets(top: spacing / 2, left: 0, bottom: spacing / 2, right: 0)
+        inset = UIEdgeInsets(top: 1, left: 0, bottom: 1, right: 0)
     }
 
     override func numberOfItems() -> Int { 1 }
@@ -36,6 +35,7 @@ final class MessageSectionController: ListSectionController {
         guard let ctx = collectionContext else { return .zero }
         let width = ctx.containerSize.width
         let showName = features.senderNameMode != .never
+        inset = UIEdgeInsets(top: layout.cellVSpacing / 2, left: 0, bottom: layout.cellVSpacing / 2, right: 0)
         let height = MessageSizeCalculator.cellHeight(
             for: item.message,
             maxWidth: width,

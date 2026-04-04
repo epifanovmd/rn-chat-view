@@ -5,6 +5,7 @@ final class ReactionsView: UIView {
 
     private var chipViews: [UIView] = []
     private var currentMaxWidth: CGFloat = 0
+    private var currentLayout = ChatLayout()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -12,35 +13,36 @@ final class ReactionsView: UIView {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(reactions: [Reaction], theme: ChatTheme, maxWidth: CGFloat) {
+    func configure(reactions: [Reaction], theme: ChatTheme, maxWidth: CGFloat, layout: ChatLayout = ChatLayout()) {
         chipViews.forEach { $0.removeFromSuperview() }
         chipViews.removeAll()
         currentMaxWidth = maxWidth
+        currentLayout = layout
 
-        let spacing = ChatLayout().reactionChipSpacing
+        let spacing = currentLayout.reactionChipSpacing
         var x: CGFloat = 0
         var y: CGFloat = 0
         var lineHeight: CGFloat = 0
-        
+
         for reaction in reactions {
             let chip = makeChip(reaction: reaction, theme: theme)
             let chipWidth = chip.bounds.width
-            
+
             // Перенос на новую строку
             if x + chipWidth > maxWidth && x > 0 {
                 x = 0
                 y += lineHeight + spacing
                 lineHeight = 0
             }
-            
-            chip.frame = CGRect(x: x, y: y, width: chipWidth, height: ChatLayout().reactionChipHeight)
+
+            chip.frame = CGRect(x: x, y: y, width: chipWidth, height: currentLayout.reactionChipHeight)
             addSubview(chip)
             chipViews.append(chip)
-            
+
             x += chipWidth + spacing
-            lineHeight = max(lineHeight, ChatLayout().reactionChipHeight)
+            lineHeight = max(lineHeight, currentLayout.reactionChipHeight)
         }
-        
+
         let totalHeight = y + lineHeight
         frame.size = CGSize(width: maxWidth, height: totalHeight)
         invalidateIntrinsicContentSize()
@@ -52,7 +54,7 @@ final class ReactionsView: UIView {
 
     private func makeChip(reaction: Reaction, theme: ChatTheme) -> UIView {
         let container = UIView()
-        let L = ChatLayout()
+        let L = currentLayout
         container.layer.cornerRadius = L.reactionChipHeight / 2
 
         if reaction.isMine {

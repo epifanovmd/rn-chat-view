@@ -17,6 +17,7 @@ final class MessageCell: UICollectionViewCell {
     // MARK: - State
 
     private var currentTheme: ChatTheme = .light
+    private var currentLayout: ChatLayout = ChatLayout()
 
     // MARK: - Views
 
@@ -63,7 +64,10 @@ final class MessageCell: UICollectionViewCell {
 
     func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout()) {
         currentTheme = theme
-        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, showSenderName: showSenderName, features: features)
+        currentLayout = layout
+        leadingConstraint.constant = layout.cellHMargin
+        trailingConstraint.constant = -layout.cellHMargin
+        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, layout: layout, showSenderName: showSenderName, features: features)
 
         leadingConstraint.isActive = false
         trailingConstraint.isActive = false
@@ -94,10 +98,10 @@ final class MessageCell: UICollectionViewCell {
     func playHighlight() {
         let overlay = UIView(frame: bubbleView.bounds)
         overlay.backgroundColor = currentTheme.messageHighlightColor
-        overlay.layer.cornerRadius = ChatLayout().bubbleCornerRadius
+        overlay.layer.cornerRadius = currentLayout.bubbleCornerRadius
         overlay.alpha = 0
         bubbleView.addSubview(overlay)
-        let L = ChatLayout()
+        let L = currentLayout
         UIView.animate(withDuration: L.highlightAnimateIn, animations: { overlay.alpha = 1 }) { _ in
             UIView.animate(withDuration: L.highlightAnimateOut, delay: L.highlightDelay, animations: { overlay.alpha = 0 }) { _ in
                 overlay.removeFromSuperview()

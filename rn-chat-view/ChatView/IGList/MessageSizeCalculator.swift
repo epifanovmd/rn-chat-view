@@ -33,7 +33,7 @@ enum MessageSizeCalculator {
 
         var replyW: CGFloat = 0
         if features.showReplyPreview, let reply = msg.reply {
-            let replyInner = L.replyAccentWidth + 8 + 8
+            let replyInner = L.replyAccentWidth + L.bubbleHPad + L.bubbleHPad
             let senderW = textWidth(reply.senderName ?? "", font: L.replySenderFont)
             let textW = textWidth(reply.text ?? "…", font: L.replyFont)
             let replyContentW = max(senderW, textW)
@@ -73,11 +73,11 @@ enum MessageSizeCalculator {
 
         if !content.hasMedia, let count = EmojiHelper.emojiOnlyCount(content.text) {
             let font = emojiFont(for: count, layout: L)
-            var h = textHeight(content.text!, font: font, width: bw - L.bubbleHPad * 2) + 8
+            var h = textHeight(content.text!, font: font, width: bw - L.bubbleHPad * 2) + L.bubbleVPad * 2
 
             if features.showReactions, !msg.reactions.isEmpty {
                 let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2, layout: L)
-                h += CGFloat(reactionLines) * (L.reactionChipHeight + 4)
+                h += CGFloat(reactionLines) * (L.reactionChipHeight + L.reactionChipSpacing)
             }
 
             let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.isMine && features.showMessageStatus)
@@ -106,14 +106,14 @@ enum MessageSizeCalculator {
         let hasReply = features.showReplyPreview && msg.reply != nil
         let hasHeader = (showSenderName && msg.senderName != nil && !msg.isMine) || hasReply || isForwarded
         if content.voice != nil, !hasHeader {
-            h += 4 + L.bubbleSpacing
+            h += L.bubbleSpacing + L.bubbleSpacing
         }
 
         h += contentHeight(for: content, width: innerW, layout: L)
 
         if features.showReactions, !msg.reactions.isEmpty {
             let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2, layout: L)
-            h += CGFloat(reactionLines) * (L.reactionChipHeight + 4)
+            h += CGFloat(reactionLines) * (L.reactionChipHeight + L.reactionChipSpacing)
         }
 
         let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.isMine && features.showMessageStatus)
@@ -131,7 +131,7 @@ enum MessageSizeCalculator {
 
         for reaction in reactions {
             let text = "\(reaction.emoji) \(reaction.count)"
-            let chipWidth = textWidth(text, font: L.reactionFont) + 16
+            let chipWidth = textWidth(text, font: L.reactionFont) + L.reactionChipPadding * 2
 
             if currentLineWidth + chipWidth + (currentLineWidth > 0 ? L.reactionChipSpacing : 0) > maxWidth {
                 lines += 1
@@ -157,11 +157,11 @@ enum MessageSizeCalculator {
         } else if content.voice != nil {
             h += L.voicePlaySize
         } else if let media = content.media, !media.isEmpty {
-            h += MediaGridView.gridHeight(for: media, width: width)
+            h += MediaGridView.gridHeight(for: media, width: width, layout: L)
         }
 
         if let text = content.text, !text.isEmpty {
-            if h > 0 { h += 4 }
+            if h > 0 { h += L.mixedContentSpacing }
             h += textHeight(text, font: L.messageFont, width: width)
         }
 
@@ -175,7 +175,7 @@ enum MessageSizeCalculator {
         var total: CGFloat = 0
         for reaction in reactions {
             let text = "\(reaction.emoji) \(reaction.count)"
-            let w = textWidth(text, font: L.reactionFont) + 16
+            let w = textWidth(text, font: L.reactionFont) + L.reactionChipPadding * 2
             total += w + L.reactionChipSpacing
         }
         return total - L.reactionChipSpacing
@@ -186,10 +186,10 @@ enum MessageSizeCalculator {
     static func pollHeight(_ poll: PollPayload, width: CGFloat, layout L: ChatLayout = ChatLayout()) -> CGFloat {
         let count = poll.options.count
         var h: CGFloat = textHeight(poll.question, font: L.pollQuestionFont, width: width)
-        h += 2 + L.pollSubtitleFont.lineHeight
+        h += L.bubbleSpacing + L.pollSubtitleFont.lineHeight
         h += L.pollHeaderSpacing
         h += CGFloat(count) * L.pollBarHeight + CGFloat(max(0, count - 1)) * L.pollOptionSpacing
-        h += 6 + L.pollVotesFont.lineHeight
+        h += L.pollHeaderSpacing + L.pollVotesFont.lineHeight
         return h
     }
 

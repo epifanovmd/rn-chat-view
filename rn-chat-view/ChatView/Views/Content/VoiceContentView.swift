@@ -21,6 +21,14 @@ final class VoiceContentView: UIView {
     private var isCached = false
     private var isPrefetching = false
     private var isFailed = false
+    private var currentLayout = ChatLayout()
+
+    // MARK: - Stored constraints
+
+    private var playButtonWidthConstraint: NSLayoutConstraint!
+    private var playButtonHeightConstraint: NSLayoutConstraint!
+    private var viewHeightConstraint: NSLayoutConstraint!
+    private var waveformHeightConstraint: NSLayoutConstraint!
 
     // MARK: - Init
 
@@ -38,7 +46,7 @@ final class VoiceContentView: UIView {
     // MARK: - Setup
 
     private func setup() {
-        let L = ChatLayout()
+        let L = currentLayout
         let btnSize = L.voicePlaySize
 
         // Play button
@@ -99,12 +107,17 @@ final class VoiceContentView: UIView {
         let waveH = btnSize - L.voiceDurationFont.lineHeight - 2
         let contentLeading: CGFloat = 10
 
+        playButtonWidthConstraint = playButton.widthAnchor.constraint(equalToConstant: btnSize)
+        playButtonHeightConstraint = playButton.heightAnchor.constraint(equalToConstant: btnSize)
+        viewHeightConstraint = heightAnchor.constraint(equalToConstant: btnSize)
+        waveformHeightConstraint = waveformView.heightAnchor.constraint(equalToConstant: waveH)
+
         NSLayoutConstraint.activate([
             playButton.leadingAnchor.constraint(equalTo: leadingAnchor),
             playButton.topAnchor.constraint(equalTo: topAnchor),
-            playButton.widthAnchor.constraint(equalToConstant: btnSize),
-            playButton.heightAnchor.constraint(equalToConstant: btnSize),
-            heightAnchor.constraint(equalToConstant: btnSize),
+            playButtonWidthConstraint,
+            playButtonHeightConstraint,
+            viewHeightConstraint,
 
             playIcon.centerXAnchor.constraint(equalTo: playButton.centerXAnchor),
             playIcon.centerYAnchor.constraint(equalTo: playButton.centerYAnchor),
@@ -112,7 +125,7 @@ final class VoiceContentView: UIView {
             waveformView.leadingAnchor.constraint(equalTo: playButton.trailingAnchor, constant: contentLeading),
             waveformView.trailingAnchor.constraint(equalTo: trailingAnchor),
             waveformView.topAnchor.constraint(equalTo: topAnchor),
-            waveformView.heightAnchor.constraint(equalToConstant: waveH),
+            waveformHeightConstraint,
 
             durationLabel.leadingAnchor.constraint(equalTo: waveformView.leadingAnchor),
             durationLabel.topAnchor.constraint(equalTo: waveformView.bottomAnchor, constant: 2),
@@ -121,11 +134,37 @@ final class VoiceContentView: UIView {
 
     // MARK: - Configure
 
-    func configure(voice: VoicePayload, isMine: Bool, theme: ChatTheme) {
+    func configure(voice: VoicePayload, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+        currentLayout = layout
+        let L = currentLayout
+        let btnSize = L.voicePlaySize
+
         voiceURL = voice.url
         voiceDuration = voice.duration
         currentTheme = theme
         isMineMessage = isMine
+
+        // Update layout-dependent values
+        playButton.layer.cornerRadius = btnSize / 2
+        durationLabel.font = L.voiceDurationFont
+
+        let waveH = btnSize - L.voiceDurationFont.lineHeight - 2
+        playButtonWidthConstraint.constant = btnSize
+        playButtonHeightConstraint.constant = btnSize
+        viewHeightConstraint.constant = btnSize
+        waveformHeightConstraint.constant = waveH
+
+        // Rebuild loading ring for new size
+        let inset: CGFloat = 4
+        let ringRadius = btnSize / 2 - inset
+        loadingRing.frame = CGRect(x: 0, y: 0, width: btnSize, height: btnSize)
+        loadingRing.path = UIBezierPath(
+            arcCenter: CGPoint(x: btnSize / 2, y: btnSize / 2),
+            radius: ringRadius,
+            startAngle: -.pi / 2,
+            endAngle: .pi * 1.5,
+            clockwise: true
+        ).cgPath
 
         accentColor = isMine ? theme.outgoingStatusRead : theme.voiceWaveformActive
         playButton.backgroundColor = accentColor
@@ -138,7 +177,8 @@ final class VoiceContentView: UIView {
             waveform: voice.waveform,
             activeColor: accentColor,
             inactiveColor: theme.voiceWaveformInactive,
-            progress: 0
+            progress: 0,
+            layout: L
         )
 
         // Check cache and prefetch
@@ -157,7 +197,7 @@ final class VoiceContentView: UIView {
     private func updateUI() {
         let state = VoicePlayer.shared.state
         let isMe = state.url == voiceURL
-        let L = ChatLayout()
+        let L = currentLayout
         let config = UIImage.SymbolConfiguration(pointSize: L.voicePlayIconSize, weight: .semibold)
         let errorConfig = UIImage.SymbolConfiguration(pointSize: L.voicePlayIconSize - 2, weight: .medium)
 
@@ -290,6 +330,7 @@ final class WaveformView: UIView, UIGestureRecognizerDelegate {
     private var didLockDirection = false
     private var isHorizontalPan = false
     private var isDimmed = false
+    private var currentLayout = ChatLayout()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -302,11 +343,12 @@ final class WaveformView: UIView, UIGestureRecognizerDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func configure(waveform: [Float], activeColor: UIColor, inactiveColor: UIColor, progress: Float) {
+    func configure(waveform: [Float], activeColor: UIColor, inactiveColor: UIColor, progress: Float, layout: ChatLayout = ChatLayout()) {
         self.waveform = waveform.isEmpty ? Array(repeating: 0.3, count: 40) : waveform
         self.activeColor = activeColor
         self.inactiveColor = inactiveColor
         self.progress = progress
+        self.currentLayout = layout
         setNeedsLayout()
     }
 
@@ -332,8 +374,8 @@ final class WaveformView: UIView, UIGestureRecognizerDelegate {
 
         guard bounds.width > 0, bounds.height > 0 else { return }
 
-        let barW = ChatLayout().voiceBarWidth
-        let spacing = ChatLayout().voiceBarSpacing
+        let barW = currentLayout.voiceBarWidth
+        let spacing = currentLayout.voiceBarSpacing
         let totalW = barW + spacing
         let count = Int(bounds.width / totalW)
         guard count > 0 else { return }

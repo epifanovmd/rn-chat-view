@@ -6,6 +6,7 @@ final class ReplyPreviewView: UIView {
     private let accentBar = UIView()
     private let senderLabel = UILabel()
     private let contentLabel = UILabel()
+    private var heightConstraint: NSLayoutConstraint!
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -15,27 +16,26 @@ final class ReplyPreviewView: UIView {
     required init?(coder: NSCoder) { fatalError() }
 
     private func setup() {
-        layer.cornerRadius = ChatLayout().replyCornerRadius
         clipsToBounds = true
 
         accentBar.translatesAutoresizingMaskIntoConstraints = false
         addSubview(accentBar)
 
-        senderLabel.font = ChatLayout().replySenderFont
         senderLabel.numberOfLines = 1
         senderLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         senderLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(senderLabel)
 
-        contentLabel.font = ChatLayout().replyFont
         contentLabel.numberOfLines = 1
         contentLabel.lineBreakMode = .byTruncatingTail
         contentLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         contentLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(contentLabel)
 
+        heightConstraint = heightAnchor.constraint(equalToConstant: ChatLayout().replyHeight)
+
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: ChatLayout().replyHeight),
+            heightConstraint,
             accentBar.leadingAnchor.constraint(equalTo: leadingAnchor),
             accentBar.topAnchor.constraint(equalTo: topAnchor),
             accentBar.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -48,11 +48,21 @@ final class ReplyPreviewView: UIView {
             contentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
         ])
 
+        applyLayout(ChatLayout())
+
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
         addGestureRecognizer(tap)
     }
 
-    func configure(reply: ReplyInfo, resolved: ReplyDisplayInfo?, isMine: Bool, theme: ChatTheme) {
+    private func applyLayout(_ L: ChatLayout) {
+        layer.cornerRadius = L.replyCornerRadius
+        heightConstraint.constant = L.replyHeight
+        senderLabel.font = L.replySenderFont
+        contentLabel.font = L.replyFont
+    }
+
+    func configure(reply: ReplyInfo, resolved: ReplyDisplayInfo?, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+        applyLayout(layout)
         backgroundColor = isMine ? theme.outgoingReplyBackground : theme.incomingReplyBackground
         accentBar.backgroundColor = isMine ? theme.outgoingReplyAccent : theme.incomingReplyAccent
 
@@ -69,7 +79,6 @@ final class ReplyPreviewView: UIView {
         }
         contentLabel.textColor = isMine ? theme.outgoingReplyText : theme.incomingReplyText
     }
-
 
     @objc private func tapped() { onTap?() }
 }
