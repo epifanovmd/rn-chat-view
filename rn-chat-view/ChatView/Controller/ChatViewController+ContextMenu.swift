@@ -13,12 +13,12 @@ extension ChatViewController {
         let config = ContextMenuConfiguration(
             id: msg.id,
             sourceView: messageCell.bubbleView,
-            emojis: contextMenuEmojis,
+            emojis: features.emojiReactions.map { ContextMenuEmoji(emoji: $0) },
             actions: msg.actions.map {
                 ContextMenuAction(id: $0.id, title: $0.title,
                                   systemImage: $0.systemImage, isDestructive: $0.isDestructive)
             },
-            snapshotCornerRadius: ChatLayout.current.bubbleCornerRadius
+            snapshotCornerRadius: layout.bubbleCornerRadius
         )
 
         let menuTheme: ContextMenuTheme = theme.isDark ? .dark : .light
@@ -56,7 +56,6 @@ extension ChatViewController: ContextMenuDelegate {
 
 extension ChatViewController {
 
-    /// Фиксирует текущий bottomInset. Вызвать СИНХРОННО до resignFirstResponder.
     func freezeCollectionBottomInset() {
         guard !isInsetFrozen else { return }
 
@@ -72,7 +71,6 @@ extension ChatViewController {
         }
     }
 
-    /// Восстанавливает нормальное поведение inset после закрытия меню.
     func restoreCollectionBottomInset() {
         if let token = kbHideObserver {
             NotificationCenter.default.removeObserver(token)

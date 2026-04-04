@@ -48,6 +48,7 @@ extension ChatViewController: MessageSectionDelegate {
     }
 
     func messageSectionDidLongPress(messageId: String, cell: UICollectionViewCell) {
+        guard features.contextMenuEnabled else { return }
         guard let msg = messageIndex[messageId] else { return }
         showContextMenu(for: msg, from: cell)
     }
@@ -93,7 +94,6 @@ extension ChatViewController {
         guard !newIDs.isEmpty else { return }
         visibleMessageIDs = ids
 
-        // Декремент счётчика непрочитанных (только внутренний режим)
         if !isExternalUnreadManagement {
             let readUnread = newIDs.intersection(unreadMessageIDs)
             if !readUnread.isEmpty {
@@ -111,6 +111,6 @@ extension ChatViewController {
             self.delegate?.chatMessagesDidAppear(ids: batch)
         }
         visibilityDebounceTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + ChatLayout.current.visibilityDebounceInterval, execute: task)
+        DispatchQueue.main.asyncAfter(deadline: .now() + layout.visibilityDebounceInterval, execute: task)
     }
 }

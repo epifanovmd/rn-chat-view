@@ -651,9 +651,11 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         setupDebugPanel()
 
         chatVC.delegate = self
-        chatVC.theme = .dark
-        chatVC.showsSenderName = true
-        chatVC.emojiReactionsList = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
+        chatVC.configuration = .default.modified {
+            $0.theme = .dark
+            $0.features.senderNameMode = .incomingOnly
+            $0.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
+        }
 
         addChild(chatVC)
         view.addSubview(chatVC.view)
@@ -682,14 +684,14 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
         debugPanel.onThemeChanged = { [weak self] theme in
             guard let self else { return }
-            self.chatVC.theme = theme
+            self.chatVC.configuration.theme = theme
             self.view.backgroundColor = theme.backgroundColor
             self.debugPanel.backgroundColor = theme.isDark ? .black : .systemBackground
         }
 
         debugPanel.onSenderNameChanged = { [weak self] show in
             guard let self else { return }
-            self.chatVC.showsSenderName = show
+            self.chatVC.configuration.features.senderNameMode = show ? .incomingOnly : .never
         }
 
         debugPanel.onRandomizePolls = { [weak self] in

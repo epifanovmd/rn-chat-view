@@ -3,15 +3,24 @@ import UIKit
 
 final class ChatViewController: UIViewController {
 
+    // MARK: - Public Configuration
+
+    /// Единая конфигурация: тема + layout + features.
+    var configuration: ChatConfiguration = .default {
+        didSet {
+            guard isViewLoaded else { return }
+            let diff = ConfigurationDiff(old: oldValue, new: configuration)
+            guard !diff.isEmpty else { return }
+            applyConfigurationDiff(diff)
+        }
+    }
+
     // MARK: - Public Properties
 
     weak var delegate: ChatViewControllerDelegate?
 
-    var theme: ChatTheme = .light { didSet { applyTheme() } }
     var hasMore = false
     var hasNewer = false
-    var topThreshold: CGFloat = 200
-    var bottomThreshold: CGFloat = 200
     var isLoading = false { didSet { updateEmptyState() } }
     var isLoadingTop = false {
         didSet { if oldValue != isLoadingTop, isViewLoaded { updateTopLoadingOverlay() } }
@@ -25,36 +34,70 @@ final class ChatViewController: UIViewController {
         s.hidesWhenStopped = true
         return s
     }()
-    var scrollToBottomThreshold: CGFloat = 150 { didSet { updateFABVisibility(animated: false) } }
-    var showsSenderName = false { didSet { if oldValue != showsSenderName, isViewLoaded { reloadWithCrossfade() } } }
-    var showsFloatingDate = true
+
     private(set) var isExternalUnreadManagement = false
     var unreadCount: Int = 0 {
         didSet { updateFABBadge() }
     }
     var unreadMessageIDs: Set<String> = []
 
-    /// Устанавливает unreadCount снаружи и переключает FAB в режим внешнего управления.
-    /// После вызова внутренняя логика (trackNewUnread, clearUnread при скрытии FAB,
-    /// автоматический scrollToBottom при нажатии) отключается.
     func setUnreadCount(_ count: Int) {
         isExternalUnreadManagement = true
         unreadCount = count
     }
 
-    var emojiReactionsList: [String] = [] {
-        didSet { contextMenuEmojis = emojiReactionsList.map { ContextMenuEmoji(emoji: $0) } }
-    }
-
     var collectionExtraInsetTop: CGFloat = 0 {
         didSet {
             guard isViewLoaded else { return }
-            floatingDateTopConstraint?.constant = ChatLayout.current.sectionSpacing + collectionExtraInsetTop
+            floatingDateTopConstraint?.constant = configuration.layout.sectionSpacing + collectionExtraInsetTop
             view.setNeedsLayout()
         }
     }
     var collectionExtraInsetBottom: CGFloat = 0 {
         didSet { guard isViewLoaded else { return }; view.setNeedsLayout() }
+    }
+
+    // MARK: - Convenience accessors
+
+    var theme: ChatTheme { configuration.theme }
+    var layout: ChatLayout { configuration.layout }
+    var features: ChatFeatures { configuration.features }
+
+    // MARK: - Backward Compatibility
+
+    var showsSenderName: Bool {
+        get {
+            switch configuration.features.senderNameMode {
+            case .never: return false
+            case .incomingOnly, .always: return true
+            }
+        }
+        set { configuration.features.senderNameMode = newValue ? .incomingOnly : .never }
+    }
+
+    var showsFloatingDate: Bool {
+        get { configuration.features.showFloatingDate }
+        set { configuration.features.showFloatingDate = newValue }
+    }
+
+    var scrollToBottomThreshold: CGFloat {
+        get { configuration.features.scrollToBottomThreshold }
+        set { configuration.features.scrollToBottomThreshold = newValue }
+    }
+
+    var topThreshold: CGFloat {
+        get { configuration.features.topLoadThreshold }
+        set { configuration.features.topLoadThreshold = newValue }
+    }
+
+    var bottomThreshold: CGFloat {
+        get { configuration.features.bottomLoadThreshold }
+        set { configuration.features.bottomLoadThreshold = newValue }
+    }
+
+    var emojiReactionsList: [String] {
+        get { configuration.features.emojiReactions }
+        set { configuration.features.emojiReactions = newValue }
     }
 
     // MARK: - Initial Scroll
@@ -71,7 +114,7 @@ final class ChatViewController: UIViewController {
 
     // MARK: - IGListKit
 
-    var collectionView: ChatCollectionView!
+    private(set) var collectionView: ChatCollectionView!
     var adapter: ListAdapter!
 
     // MARK: - UI Components
@@ -84,6 +127,7 @@ final class ChatViewController: UIViewController {
     var fabBlurView: UIVisualEffectView!
     let fabArrow = UIImageView()
     let fabBadge = PaddedLabel(hPad: 6)
+    private let inputBarBackground = UIView()
 
     // MARK: - Floating Date
 
@@ -93,10 +137,6 @@ final class ChatViewController: UIViewController {
     private var floatingDateHideTask: DispatchWorkItem?
     private var currentFloatingDate: String?
 
-    // MARK: - Context Menu
-
-    var contextMenuEmojis: [ContextMenuEmoji] = []
-
     // MARK: - Audio
 
     let voiceRecorder = VoiceRecorder()
@@ -104,7 +144,6 @@ final class ChatViewController: UIViewController {
     // MARK: - Constraints
 
     var inputBarKeyboardConstraint: NSLayoutConstraint?
-    private let inputBarBackground = UIView()
 
     // MARK: - Scroll State
 
@@ -124,7 +163,7 @@ final class ChatViewController: UIViewController {
 
     var savedOffsetForAppend: CGPoint?
 
-    // MARK: - Keyboard Freeze (контекстное меню)
+    // MARK: - Keyboard Freeze
 
     var isInsetFrozen = false
     var frozenBottomInset: CGFloat?
@@ -171,12 +210,12 @@ final class ChatViewController: UIViewController {
     // MARK: - Setup Collection View
 
     private func setupCollectionView() {
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .vertical
-        layout.minimumLineSpacing = 0
-        layout.minimumInteritemSpacing = 0
+        let flowLayout = UICollectionViewFlowLayout()
+        flowLayout.scrollDirection = .vertical
+        flowLayout.minimumLineSpacing = 0
+        flowLayout.minimumInteritemSpacing = 0
 
-        collectionView = ChatCollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView = ChatCollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .clear
         collectionView.keyboardDismissMode = .interactive
         collectionView.contentInsetAdjustmentBehavior = .never
@@ -218,7 +257,7 @@ final class ChatViewController: UIViewController {
         view.addSubview(emptyContainer)
 
         emptyLabel.text = NSLocalizedString("chat.empty", value: "Сообщений пока нет.\nНапишите первым!", comment: "")
-        emptyLabel.font = ChatLayout.current.emptyStateFont
+        emptyLabel.font = layout.emptyStateFont
         emptyLabel.textAlignment = .center
         emptyLabel.numberOfLines = 0
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -235,7 +274,7 @@ final class ChatViewController: UIViewController {
             emptyContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             emptyLabel.centerXAnchor.constraint(equalTo: emptyContainer.centerXAnchor),
             emptyLabel.centerYAnchor.constraint(equalTo: emptyContainer.centerYAnchor),
-            emptyLabel.leadingAnchor.constraint(equalTo: emptyContainer.leadingAnchor, constant: ChatLayout.current.emptyStatePadding),
+            emptyLabel.leadingAnchor.constraint(equalTo: emptyContainer.leadingAnchor, constant: layout.emptyStatePadding),
             centerSpinner.centerXAnchor.constraint(equalTo: emptyContainer.centerXAnchor),
             centerSpinner.centerYAnchor.constraint(equalTo: emptyContainer.centerYAnchor),
         ])
@@ -244,7 +283,6 @@ final class ChatViewController: UIViewController {
     // MARK: - Setup Input Bar
 
     private func setupInputBar() {
-        // Фон под inputBar — продлевается до самого низа (за safe area)
         inputBarBackground.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(inputBarBackground)
 
@@ -288,14 +326,21 @@ final class ChatViewController: UIViewController {
     // MARK: - Setup FAB
 
     private func setupFAB() {
-        let size = InputBarLayout.current.buttonSize
+        let L = layout
+        let IB = InputBarLayout.current
+        let size = IB.buttonSize
+
         fabButton.translatesAutoresizingMaskIntoConstraints = false
         fabButton.layer.cornerRadius = size / 2
-        fabButton.layer.borderWidth = InputBarLayout.current.borderWidth
+        fabButton.layer.borderWidth = IB.borderWidth
         fabButton.alpha = 0
         fabButton.isUserInteractionEnabled = false
         fabButton.addTarget(self, action: #selector(fabTapped), for: .touchUpInside)
         view.addSubview(fabButton)
+
+        if !features.showFab {
+            fabButton.isHidden = true
+        }
 
         let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
         fabArrow.image = UIImage(systemName: "chevron.down", withConfiguration: config)
@@ -304,22 +349,19 @@ final class ChatViewController: UIViewController {
         fabArrow.isUserInteractionEnabled = false
         fabButton.addSubview(fabArrow)
 
-        // Badge
-        fabBadge.font = ChatLayout.current.fabBadgeFont
+        fabBadge.font = L.fabBadgeFont
         fabBadge.textColor = theme.fabBadgeTextColor
         fabBadge.backgroundColor = theme.fabBadgeBackground
         fabBadge.textAlignment = .center
-        fabBadge.layer.cornerRadius = ChatLayout.current.fabBadgeCornerRadius
+        fabBadge.layer.cornerRadius = L.fabBadgeCornerRadius
         fabBadge.layer.masksToBounds = true
         fabBadge.translatesAutoresizingMaskIntoConstraints = false
         fabBadge.isHidden = true
         fabBadge.isUserInteractionEnabled = false
         view.addSubview(fabBadge)
 
-        // Align FAB above right button — anchor to inputBar.bottom offset by padding+buttonHeight+margin
-        let IB = InputBarLayout.current
         let hPad = IB.barHPad
-        let bottomOffset = IB.barVPad + size + ChatLayout.current.fabMargin
+        let bottomOffset = IB.barVPad + size + L.fabMargin
         NSLayoutConstraint.activate([
             fabButton.widthAnchor.constraint(equalToConstant: size),
             fabButton.heightAnchor.constraint(equalToConstant: size),
@@ -329,50 +371,52 @@ final class ChatViewController: UIViewController {
             fabArrow.centerYAnchor.constraint(equalTo: fabButton.centerYAnchor),
             fabBadge.centerXAnchor.constraint(equalTo: fabButton.leadingAnchor, constant: 4),
             fabBadge.centerYAnchor.constraint(equalTo: fabButton.topAnchor, constant: 4),
-            fabBadge.heightAnchor.constraint(equalToConstant: ChatLayout.current.fabBadgeHeight),
-            fabBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: ChatLayout.current.fabBadgeMinWidth),
+            fabBadge.heightAnchor.constraint(equalToConstant: L.fabBadgeHeight),
+            fabBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: L.fabBadgeMinWidth),
         ])
     }
 
-    func rebuildFABBlur() {
-        // No longer using blur — FAB uses same solid bg as input buttons
-    }
+    func rebuildFABBlur() {}
 
     // MARK: - Setup Floating Date
 
     private func setupFloatingDate() {
+        let L = layout
         floatingDatePill.translatesAutoresizingMaskIntoConstraints = false
-        floatingDatePill.layer.cornerRadius = ChatLayout.current.dateSeparatorCornerRadius
+        floatingDatePill.layer.cornerRadius = L.dateSeparatorCornerRadius
         floatingDatePill.alpha = 0
         view.addSubview(floatingDatePill)
 
-        floatingDateLabel.font = ChatLayout.current.dateSeparatorFont
+        floatingDateLabel.font = L.dateSeparatorFont
         floatingDateLabel.textAlignment = .center
         floatingDateLabel.translatesAutoresizingMaskIntoConstraints = false
         floatingDatePill.addSubview(floatingDateLabel)
 
+        if !features.showFloatingDate {
+            floatingDatePill.isHidden = true
+        }
+
         let topC = floatingDatePill.topAnchor.constraint(
             equalTo: view.safeAreaLayoutGuide.topAnchor,
-            constant: ChatLayout.current.sectionSpacing + collectionExtraInsetTop
+            constant: L.sectionSpacing + collectionExtraInsetTop
         )
         floatingDateTopConstraint = topC
 
         NSLayoutConstraint.activate([
             floatingDatePill.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             topC,
-            floatingDateLabel.topAnchor.constraint(equalTo: floatingDatePill.topAnchor, constant: ChatLayout.current.dateSeparatorVPad),
-            floatingDateLabel.bottomAnchor.constraint(equalTo: floatingDatePill.bottomAnchor, constant: -ChatLayout.current.dateSeparatorVPad),
-            floatingDateLabel.leadingAnchor.constraint(equalTo: floatingDatePill.leadingAnchor, constant: ChatLayout.current.dateSeparatorHPad),
-            floatingDateLabel.trailingAnchor.constraint(equalTo: floatingDatePill.trailingAnchor, constant: -ChatLayout.current.dateSeparatorHPad),
+            floatingDateLabel.topAnchor.constraint(equalTo: floatingDatePill.topAnchor, constant: L.dateSeparatorVPad),
+            floatingDateLabel.bottomAnchor.constraint(equalTo: floatingDatePill.bottomAnchor, constant: -L.dateSeparatorVPad),
+            floatingDateLabel.leadingAnchor.constraint(equalTo: floatingDatePill.leadingAnchor, constant: L.dateSeparatorHPad),
+            floatingDateLabel.trailingAnchor.constraint(equalTo: floatingDatePill.trailingAnchor, constant: -L.dateSeparatorHPad),
         ])
     }
 
     func updateFloatingDate() {
-        guard showsFloatingDate, !messages.isEmpty else { hideFloatingDate(); return }
+        guard features.showFloatingDate, !messages.isEmpty else { hideFloatingDate(); return }
 
-        let spacing = ChatLayout.current.sectionSpacing
+        let spacing = layout.sectionSpacing
 
-        // Используем кешированные индексы разделителей дат
         struct DateInfo {
             let groupDate: String
             let minY: CGFloat
@@ -388,14 +432,12 @@ final class ChatViewController: UIViewController {
 
         guard !dateSections.isEmpty else { return }
 
-        // Позиция pill в координатах view
         let pillRestY = view.safeAreaLayoutGuide.layoutFrame.minY + spacing + collectionExtraInsetTop
         let pillH = floatingDatePill.bounds.height > 0
             ? floatingDatePill.bounds.height
-            : ChatLayout.current.dateSeparatorFont.lineHeight + ChatLayout.current.dateSeparatorVPad * 2
+            : layout.dateSeparatorFont.lineHeight + layout.dateSeparatorVPad * 2
         let pillBottom = pillRestY + pillH
 
-        // Текущая дата — последняя, чей низ ушёл выше pill + spacing (ячейка полностью за pill)
         var currentDate: String?
         var currentDatePassed = false
         var nextInfo: DateInfo?
@@ -408,7 +450,6 @@ final class ChatViewController: UIViewController {
             }
         }
 
-        // Если ни одна дата ещё не прошла pill — ячейка видна, pill не нужен
         if !currentDatePassed {
             currentFloatingDate = nil
             hideFloatingDate()
@@ -417,11 +458,10 @@ final class ChatViewController: UIViewController {
 
         guard let groupDate = currentDate else { return }
 
-        // Выталкивание: начинается когда верх следующей даты на расстоянии spacing от pill bottom
         if let next = nextInfo {
             let triggerY = pillBottom + spacing
             if next.minY < triggerY {
-                let pushOffset = next.minY - triggerY  // от 0 до -(pillH + 2*spacing)
+                let pushOffset = next.minY - triggerY
                 floatingDatePill.transform = CGAffineTransform(translationX: 0, y: pushOffset)
             } else {
                 floatingDatePill.transform = .identity
@@ -430,20 +470,19 @@ final class ChatViewController: UIViewController {
             floatingDatePill.transform = .identity
         }
 
-        // Обновляем текст — после push-off fade in
         let dateDidChange = groupDate != currentFloatingDate
         if dateDidChange {
             currentFloatingDate = groupDate
             floatingDateLabel.text = DateHelper.shared.sectionTitle(from: groupDate)
             floatingDatePill.transform = .identity
-            floatingDatePill.alpha = 0  // showFloatingDate() сделает fade-in
+            floatingDatePill.alpha = 0
         }
 
         showFloatingDate()
     }
 
     private func showFloatingDate() {
-        let L = ChatLayout.current
+        let L = layout
         floatingDateHideTask?.cancel()
         if floatingDatePill.alpha < 1 {
             UIView.animate(withDuration: L.floatingDateShowDuration) { self.floatingDatePill.alpha = 1 }
@@ -458,7 +497,7 @@ final class ChatViewController: UIViewController {
 
     private func hideFloatingDate() {
         floatingDateHideTask?.cancel()
-        UIView.animate(withDuration: ChatLayout.current.floatingDateHideDuration) {
+        UIView.animate(withDuration: layout.floatingDateHideDuration) {
             self.floatingDatePill.alpha = 0
             self.floatingDatePill.transform = .identity
         }
@@ -481,6 +520,37 @@ final class ChatViewController: UIViewController {
         floatingDatePill.backgroundColor = theme.dateSeparatorBackground
         floatingDateLabel.textColor = theme.dateSeparatorText
         reloadWithCrossfade()
+    }
+
+    // MARK: - Configuration Diff
+
+    private func applyConfigurationDiff(_ diff: ConfigurationDiff) {
+        if diff.fabChanged {
+            fabButton.isHidden = !features.showFab
+            if !features.showFab {
+                fabButton.alpha = 0; fabBadge.alpha = 0; isFabVisible = false
+            } else {
+                updateFABVisibility(animated: true)
+            }
+        }
+        if diff.floatingDateChanged {
+            floatingDatePill.isHidden = !features.showFloatingDate
+            if !features.showFloatingDate { hideFloatingDate() }
+        }
+        if diff.inputBarVisibilityChanged {
+            inputBar.isHidden = !features.showInputBar
+            inputBarBackground.isHidden = !features.showInputBar
+            inputBar.leftButton.isHidden = !features.showAttachButton
+            inputBar.voiceRecordingEnabled = features.showVoiceRecording
+            updateCollectionInsets()
+        }
+        if diff.themeChanged { applyTheme() }
+        if diff.layoutChanged || diff.cellAffectingChanged { reloadWithCrossfade() }
+        if diff.dateSeparatorsChanged {
+            rebuildListItems()
+            adapter.performUpdates(animated: false)
+        }
+        if diff.scrollThresholdsChanged { updateFABVisibility(animated: false) }
     }
 
     private func updateTopLoadingOverlay() {
@@ -561,16 +631,12 @@ final class ChatViewController: UIViewController {
         }
     }
 
-    // MARK: - Update Handlers
-
     private func handlePrepend(oldFirstId: String?, count: Int) {
         collectionView.prePrependContentHeight = collectionView.contentSize.height
         collectionView.prePrependContentOffset = collectionView.contentOffset.y
         collectionView.needsPrependCompensation = true
-
         adapter.performUpdates(animated: false) { [weak self] _ in
-            guard let self else { return }
-            self.finalizeUpdate(count: count, animated: false)
+            self?.finalizeUpdate(count: count, animated: false)
         }
     }
 
@@ -592,8 +658,7 @@ final class ChatViewController: UIViewController {
             }
             savedOffsetForAppend = collectionView.contentOffset
             adapter.performUpdates(animated: false) { [weak self] _ in
-                guard let self else { return }
-                self.finalizeUpdate(count: newMessages.count, animated: false)
+                self?.finalizeUpdate(count: newMessages.count, animated: false)
             }
         }
     }
@@ -615,7 +680,6 @@ final class ChatViewController: UIViewController {
     private func handleContentUpdate(count: Int) {
         let shouldScroll = pendingScrollToBottom
         if shouldScroll { pendingScrollToBottom = false }
-
         adapter.performUpdates(animated: !shouldScroll) { [weak self] _ in
             guard let self else { return }
             if shouldScroll { self.scrollToBottom(animated: true) }
@@ -649,10 +713,11 @@ final class ChatViewController: UIViewController {
     private func rebuildListItems() {
         var items: [ListDiffable] = []
         var dateSeps: [(index: Int, item: DateSeparatorListItem)] = []
+        let showSeps = features.showDateSeparators
 
         var currentGroup: String?
         for msg in messages {
-            if msg.groupDate != currentGroup {
+            if showSeps, msg.groupDate != currentGroup {
                 currentGroup = msg.groupDate
                 let sep = DateSeparatorListItem(groupDate: msg.groupDate)
                 dateSeps.append((index: items.count, item: sep))
@@ -661,7 +726,7 @@ final class ChatViewController: UIViewController {
             items.append(MessageListItem(message: msg))
         }
 
-        if isLoadingBottom {
+        if isLoadingBottom && features.showBottomLoadingIndicator {
             items.append(LoadingListItem(position: .bottom))
         }
 
@@ -701,7 +766,6 @@ final class ChatViewController: UIViewController {
 
         collectionView.scrollToItem(at: IndexPath(item: 0, section: sectionIndex),
                                      at: scrollPos, animated: animated)
-
         if !animated { isProgrammaticScroll = false }
 
         if highlight {
@@ -744,10 +808,11 @@ final class ChatViewController: UIViewController {
 
     func isNearBottom() -> Bool {
         guard collectionView.contentSize.height > 0 else { return true }
-        return distanceFromBottom() <= scrollToBottomThreshold
+        return distanceFromBottom() <= features.scrollToBottomThreshold
     }
 
     func updateFABVisibility(animated: Bool) {
+        guard features.showFab else { return }
         let shouldShow = !isNearBottom() && !messages.isEmpty
         guard shouldShow != isFabVisible else { return }
         isFabVisible = shouldShow
@@ -773,6 +838,10 @@ final class ChatViewController: UIViewController {
     }
 
     func updateEmptyState() {
+        guard features.showEmptyState else {
+            emptyContainer.isHidden = true
+            return
+        }
         let isEmpty = messages.isEmpty
         emptyContainer.isHidden = !isEmpty
         if isEmpty && isLoading {
@@ -790,17 +859,14 @@ final class ChatViewController: UIViewController {
         guard inputBar != nil, inputBar.frame.height > 0, view.bounds.height > 0 else { return }
 
         let safeTop = view.safeAreaInsets.top
-
-        // Top inset: safe area + extra
         let newTop = safeTop + collectionExtraInsetTop
         if abs(cv.contentInset.top - newTop) > 0.5 {
             cv.contentInset.top = newTop
             cv.verticalScrollIndicatorInsets.top = collectionExtraInsetTop
         }
 
-        // Bottom inset: inputBar zone + extra
         let inputBarZone = view.bounds.height - inputBar.frame.minY
-        let newBottom = inputBarZone + ChatLayout.current.collectionBottomPadding + collectionExtraInsetBottom
+        let newBottom = inputBarZone + layout.collectionBottomPadding + collectionExtraInsetBottom
         let newIndicatorBottom = max(0, inputBarZone - view.safeAreaInsets.bottom)
         let oldBottom = cv.contentInset.bottom
         guard abs(oldBottom - newBottom) > 0.5 else { return }
@@ -819,28 +885,19 @@ final class ChatViewController: UIViewController {
     }
 
     @objc func dismissKeyboard() { view.endEditing(true) }
-    @objc func fabTapped() {
-        delegate?.chatDidTapFAB()
-    }
+    @objc func fabTapped() { delegate?.chatDidTapFAB() }
 }
 
 // MARK: - PaddedLabel
 
 final class PaddedLabel: UILabel {
     private let hPad: CGFloat
-
-    init(hPad: CGFloat) {
-        self.hPad = hPad
-        super.init(frame: .zero)
-    }
-
+    init(hPad: CGFloat) { self.hPad = hPad; super.init(frame: .zero) }
     required init?(coder: NSCoder) { fatalError() }
-
     override var intrinsicContentSize: CGSize {
         let size = super.intrinsicContentSize
         return CGSize(width: size.width + hPad * 2, height: size.height)
     }
-
     override func drawText(in rect: CGRect) {
         super.drawText(in: rect.insetBy(dx: hPad, dy: 0))
     }

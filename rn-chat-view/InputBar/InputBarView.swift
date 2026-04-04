@@ -31,6 +31,22 @@ final class InputBarView: UIView {
     var textViewHeightConstraint: NSLayoutConstraint!
     private var hasText = false
 
+    /// Включена ли запись голосовых. Если false — кнопка mic не показывается, только send.
+    var voiceRecordingEnabled: Bool = true {
+        didSet {
+            guard oldValue != voiceRecordingEnabled else { return }
+            if voiceRecordingEnabled {
+                resetRightButtonToMic()
+                updateRightButton()
+            } else {
+                // Убираем mic, показываем send всегда
+                rightButton.isHidden = true
+                internalSendButton.alpha = 1
+                internalSendButton.transform = .identity
+            }
+        }
+    }
+
     // MARK: - Init
 
     override init(frame: CGRect) {

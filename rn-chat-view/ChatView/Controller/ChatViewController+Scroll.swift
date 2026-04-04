@@ -5,7 +5,7 @@ import UIKit
 extension ChatViewController: UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let now = CACurrentMediaTime()
-        if now - lastScrollEventTime >= ChatLayout.current.scrollThrottleInterval {
+        if now - lastScrollEventTime >= layout.scrollThrottleInterval {
             lastScrollEventTime = now
             delegate?.chatDidScroll(offset: scrollView.contentOffset)
         }
@@ -14,11 +14,11 @@ extension ChatViewController: UIScrollViewDelegate {
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        if offset < topThreshold && hasMore && !isLoadingTop && !isInitialScrollProtected {
+        if offset < features.topLoadThreshold && hasMore && !isLoadingTop && !isInitialScrollProtected {
             delegate?.chatDidReachTop(distance: offset)
         }
 
-        if contentH - offset - frameH < bottomThreshold && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !isInitialScrollProtected {
+        if contentH - offset - frameH < features.bottomLoadThreshold && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !isInitialScrollProtected {
             isLoadingNewerActive = true
             delegate?.chatDidReachBottom(distance: contentH - offset - frameH)
         }

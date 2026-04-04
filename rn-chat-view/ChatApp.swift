@@ -15,7 +15,7 @@ struct ChatApp: App {
 
     var body: some Scene {
         WindowGroup {
-            DemoTabView()
+            DemoChatView()
                 .ignoresSafeArea()
         }
     }
@@ -23,23 +23,11 @@ struct ChatApp: App {
 
 // MARK: - Tab Bar
 
-struct DemoTabView: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UITabBarController {
-        let tab = UITabBarController()
-        tab.tabBar.isTranslucent = true
-
+struct DemoChatView: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
         let chatDemo = ChatDemoViewController()
-        chatDemo.tabBarItem = UITabBarItem(title: "Чат", image: UIImage(systemName: "bubble.left.fill"), tag: 0)
-
-        let paginationDemo = PaginationDemoViewController()
-        paginationDemo.tabBarItem = UITabBarItem(title: "Пагинация", image: UIImage(systemName: "arrow.up.arrow.down"), tag: 1)
-
-        let liveDemo = LiveChatDemoViewController()
-        liveDemo.tabBarItem = UITabBarItem(title: "Живой чат", image: UIImage(systemName: "bolt.fill"), tag: 2)
-
-        tab.viewControllers = [chatDemo, paginationDemo, liveDemo]
-        return tab
+        return chatDemo
     }
 
-    func updateUIViewController(_ vc: UITabBarController, context: Context) {}
+    func updateUIViewController(_ vc: UIViewController, context: Context) {}
 }

@@ -1,6 +1,6 @@
 import UIKit
 
-// MARK: - ChatInputBarDelegate
+// MARK: - InputBarDelegate
 
 extension ChatViewController: InputBarDelegate {
     func inputBarDidSend(text: String, replyToId: String?) {
@@ -33,13 +33,11 @@ extension ChatViewController: InputBarDelegate {
 
     func inputBarRecordingStateChanged(isRecording: Bool) {
         if isRecording {
-            // Hide FAB when recording
             UIView.animate(withDuration: 0.2) {
                 self.fabButton.alpha = 0
                 self.fabBadge.alpha = 0
             }
         } else {
-            // Restore FAB visibility
             updateFABVisibility(animated: true)
         }
     }
