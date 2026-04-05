@@ -60,11 +60,11 @@ extension ChatViewController {
             case .dateSeparator(let gd):
                 let key = "date_\(gd)"
                 let h: CGFloat
-                if let cached = sizeCache[key] {
-                    h = cached.height
+                if let cached = sizeCache.height(forKey: key, width: width) {
+                    h = cached
                 } else {
                     let hh = contentFactory.dateSeparatorHeight(layout: layout)
-                    sizeCache[key] = CGSize(width: width, height: hh)
+                    sizeCache.set(height: hh, forKey: key, width: width)
                     h = hh
                 }
                 result.append(RowLayoutInfo(height: h, topInset: layout.sectionSpacing, bottomInset: layout.sectionSpacing))
@@ -80,7 +80,7 @@ extension ChatViewController {
 
     /// Compute height for a single message. Uses `sizeCache` for O(1) lookups.
     func computeMessageHeight(forId id: String, width: CGFloat) -> CGFloat {
-        if let cached = sizeCache[id] { return cached.height }
+        if let cached = sizeCache.height(forKey: id, width: width) { return cached }
         guard let msg = messageIndex[id] else { return layout.cellMinHeight }
         let showName = features.senderNameMode != .never
         let height = MessageSizeCalculator.cellHeight(
@@ -92,7 +92,7 @@ extension ChatViewController {
             factory: contentFactory
         )
         let h = max(height, layout.cellMinHeight)
-        sizeCache[id] = CGSize(width: width, height: h)
+        sizeCache.set(height: h, forKey: id, width: width)
         return h
     }
 
@@ -107,5 +107,23 @@ extension ChatViewController {
         rows = buildRows(from: messages)
         chatLayout.rowLayoutData = computeLayoutData()
         collectionView.reloadData()
+    }
+
+    // MARK: - Internal State Mutation (used by MessageUpdateHandler)
+
+    func setMessages(_ newMessages: [ChatMessage]) {
+        messages = newMessages
+    }
+
+    func setRows(_ newRows: [ChatRow]) {
+        rows = newRows
+    }
+
+    func invalidateSizeCache(forKey key: String) {
+        sizeCache.invalidate(forKey: key)
+    }
+
+    func applyLayoutData(_ data: [RowLayoutInfo]) {
+        chatLayout.rowLayoutData = data
     }
 }

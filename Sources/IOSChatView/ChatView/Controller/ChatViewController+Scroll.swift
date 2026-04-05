@@ -68,13 +68,7 @@ extension ChatViewController {
         guard !newIDs.isEmpty else { return }
         visibleMessageIDs = ids
 
-        if !isExternalUnreadManagement {
-            let readUnread = newIDs.intersection(unreadMessageIDs)
-            if !readUnread.isEmpty {
-                unreadMessageIDs.subtract(readUnread)
-                unreadCount = unreadMessageIDs.count
-            }
-        }
+        unreadManager.markAsRead(newIDs)
 
         pendingVisibleIDs.formUnion(newIDs)
         visibilityDebounceTask?.cancel()

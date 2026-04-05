@@ -29,7 +29,7 @@ final class MessageUpdateHandler {
         let oldCount    = vc.messages.count
 
         // Update model
-        vc.messages = newMessages
+        vc.setMessages(newMessages)
         vc.rebuildMessageIndex()
 
         // Build target row array
@@ -58,8 +58,8 @@ final class MessageUpdateHandler {
 
     /// First batch of messages — reload + scroll to bottom.
     private func applyInitial(vc: ChatViewController, newRows: [ChatRow]) {
-        vc.rows = newRows
-        vc.chatLayout.rowLayoutData = vc.computeLayoutData()
+        vc.setRows(newRows)
+        vc.applyLayoutData(vc.computeLayoutData())
         vc.collectionView.reloadData()
 
         // Defer scroll — content insets may not be final yet on first layout pass.
@@ -80,10 +80,10 @@ final class MessageUpdateHandler {
     /// Older messages inserted at the top — reload + offset compensation.
     private func applyPrepend(vc: ChatViewController, newRows: [ChatRow]) {
         let oldRowCount = vc.rows.count
-        vc.rows = newRows
+        vc.setRows(newRows)
 
         let layoutData = vc.computeLayoutData()
-        vc.chatLayout.rowLayoutData = layoutData
+        vc.applyLayoutData(layoutData)
 
         // Sum heights of prepended rows to compute scroll compensation.
         let insertedCount = newRows.count - oldRowCount
@@ -117,8 +117,8 @@ final class MessageUpdateHandler {
         }
 
         let savedOffset = vc.collectionView.contentOffset
-        vc.rows = newRows
-        vc.chatLayout.rowLayoutData = vc.computeLayoutData()
+        vc.setRows(newRows)
+        vc.applyLayoutData(vc.computeLayoutData())
         vc.collectionView.reloadData()
         vc.collectionView.layoutIfNeeded()
 
@@ -132,7 +132,7 @@ final class MessageUpdateHandler {
         vc.flushPendingMessages()
     }
 
-    /// Content change (edit, delete, reorder, reactions, polls).
+    /// Content change (edit, delete, reorder, reactions).
     ///
     /// For pure content updates (same row count, same structure) — reconfigures
     /// visible cells in-place without dequeue, preserving the view hierarchy
@@ -150,7 +150,7 @@ final class MessageUpdateHandler {
         let changeset = StagedChangeset(source: vc.rows, target: newRows)
 
         guard !changeset.isEmpty else {
-            vc.rows = newRows
+            vc.setRows(newRows)
             return
         }
 
@@ -164,14 +164,8 @@ final class MessageUpdateHandler {
             let changedIDs = findChangedMessageIDs(oldRows: vc.rows, newRows: newRows)
 
             // Update model
-            vc.rows = newRows
-            vc.chatLayout.rowLayoutData = vc.computeLayoutData()
-
-            // Build index: messageID → new ChatMessage
-            var newMessageByID: [String: ChatMessage] = [:]
-            for row in newRows {
-                if case .message(let msg) = row { newMessageByID[msg.id] = msg }
-            }
+            vc.setRows(newRows)
+            vc.applyLayoutData(vc.computeLayoutData())
 
             // Reconfigure visible cells in-place
             for cell in vc.collectionView.visibleCells {
@@ -191,14 +185,14 @@ final class MessageUpdateHandler {
             // Structural change — use DifferenceKit
             vc.collectionView.reload(using: changeset) { [weak vc] data in
                 guard let vc else { return }
-                vc.rows = data
-                vc.chatLayout.rowLayoutData = vc.computeLayoutData()
+                vc.setRows(data)
+                vc.applyLayoutData(vc.computeLayoutData())
             }
 
             // Safety: if DifferenceKit left rows in intermediate state, force final.
-            if vc.rows.count != newRows.count {
-                vc.rows = newRows
-                vc.chatLayout.rowLayoutData = vc.computeLayoutData()
+            if vc.rows != newRows {
+                vc.setRows(newRows)
+                vc.applyLayoutData(vc.computeLayoutData())
                 vc.collectionView.reloadData()
             }
 
@@ -257,7 +251,7 @@ final class MessageUpdateHandler {
         for row in newRows {
             guard case .message(let msg) = row else { continue }
             if let old = oldById[msg.id], !row.isContentEqual(to: old) {
-                vc.sizeCache.removeValue(forKey: msg.id)
+                vc.invalidateSizeCache(forKey: msg.id)
             }
         }
     }

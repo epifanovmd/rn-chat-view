@@ -10,14 +10,14 @@ public final class ChatViewController: UIViewController {
     public var layout: ChatLayout = ChatLayout() {
         didSet {
             guard isViewLoaded, !isBatchUpdate else { return }
-            sizeCache.removeAll()
+            sizeCache.invalidateAll()
             reloadWithCrossfade()
         }
     }
     public var features: ChatFeatures = ChatFeatures() {
         didSet {
             guard isViewLoaded, !isBatchUpdate else { return }
-            sizeCache.removeAll()
+            sizeCache.invalidateAll()
             applyFeatureChanges(from: oldValue)
         }
     }
@@ -30,7 +30,7 @@ public final class ChatViewController: UIViewController {
         let oldFeatures = features
         block()
         isBatchUpdate = false
-        sizeCache.removeAll()
+        sizeCache.invalidateAll()
         applyTheme()
         applyFeatureChanges(from: oldFeatures)
     }
@@ -56,15 +56,12 @@ public final class ChatViewController: UIViewController {
         return s
     }()
 
-    public private(set) var isExternalUnreadManagement = false
-    public var unreadCount: Int = 0 {
-        didSet { fabManager.updateBadge(unreadCount: unreadCount) }
-    }
-    var unreadMessageIDs: Set<String> = []
+    let unreadManager = UnreadManager()
+
+    public var unreadCount: Int { unreadManager.count }
 
     public func setUnreadCount(_ count: Int) {
-        isExternalUnreadManagement = true
-        unreadCount = count
+        unreadManager.setExternalCount(count)
     }
 
     public var collectionExtraInsetTop: CGFloat = 0 {
@@ -80,24 +77,20 @@ public final class ChatViewController: UIViewController {
 
     // MARK: - Initial Scroll
 
-    public var isInitialScrollProtected = false
+    var isInitialScrollProtected = false
     public var pendingScrollMessageId: String?
 
-    // MARK: - Data
+    // MARK: - Data (internal — mutated by extensions, read by MessageUpdateHandler/DataSource)
 
     public internal(set) var messages: [ChatMessage] = []
-    public internal(set) var messageIndex: [String: ChatMessage] = [:]
-    /// O(1) lookup: messageId → row index
+    var messageIndex: [String: ChatMessage] = [:]
     var rowIndexCache: [String: Int] = [:]
-    /// Cached date separator info for floating date manager
     var cachedDateSeparators: [(rowIndex: Int, groupDate: String)] = []
-    /// Flat row array — the single source of truth for the collection view
     var rows: [ChatRow] = []
 
     // MARK: - Size Cache
 
-    /// Cache of computed cell sizes keyed by message ID or groupDate
-    var sizeCache: [String: CGSize] = [:]
+    var sizeCache = SizeCache()
 
     // MARK: - Collection View + Data Source
 
@@ -128,16 +121,16 @@ public final class ChatViewController: UIViewController {
     var pendingHighlightId: String?
     var isUserDragging = false
     var lastKnownMessageCount = 0
-    public var pendingScrollToBottom = false
-    public var isLoadingNewerActive = false
+    var pendingScrollToBottom = false
+    var isLoadingNewerActive = false
 
     // MARK: - Keyboard Freeze
 
-    var isInsetFrozen = false
-    var frozenBottomInset: CGFloat?
-    var keyboardWasVisible = false
-    var kbHideObserver: Any?
-    var kbShowObserver: Any?
+    lazy var keyboardFreezeManager = KeyboardFreezeManager(
+        collectionView: collectionView,
+        inputBar: inputBar,
+        onThaw: { [weak self] in self?.updateCollectionInsets() }
+    )
 
     // MARK: - Lifecycle
 
@@ -150,6 +143,9 @@ public final class ChatViewController: UIViewController {
         setupInputBar()
         emptyStateManager.setup(in: view, inputBar: inputBar, factory: contentFactory, layout: layout, theme: theme)
         emptyStateManager.onTap = { [weak self] in self?.view.endEditing(true) }
+        unreadManager.onCountChanged = { [weak self] count in
+            self?.fabManager.updateBadge(unreadCount: count)
+        }
         setupFAB()
         setupFloatingDate()
         applyTheme()
@@ -169,8 +165,6 @@ public final class ChatViewController: UIViewController {
         floatingDateManager.cancelPendingTasks()
         visibilityDebounceTask?.cancel()
         pendingLoadingRebuild?.cancel()
-        if let token = kbHideObserver { NotificationCenter.default.removeObserver(token) }
-        if let token = kbShowObserver { NotificationCenter.default.removeObserver(token) }
     }
 
     // MARK: - Setup Collection View
@@ -263,7 +257,7 @@ public final class ChatViewController: UIViewController {
         collectionView.backgroundColor = .clear
         inputBar.applyTheme(theme.isDark ? .dark : .light)
         floatingDateManager.applyTheme(theme)
-        sizeCache.removeAll()
+        sizeCache.invalidateAll()
         reloadWithCrossfade()
     }
 
@@ -344,7 +338,7 @@ public final class ChatViewController: UIViewController {
     }
 
     private func reloadWithCrossfade() {
-        sizeCache.removeAll()
+        sizeCache.invalidateAll()
         rows = buildRows(from: messages)
         chatLayout.rowLayoutData = computeLayoutData()
         UIView.transition(with: collectionView, duration: 0.25, options: .transitionCrossDissolve) {
@@ -377,18 +371,11 @@ public final class ChatViewController: UIViewController {
     }
 
     func trackNewUnread(newMessages: [ChatMessage], oldCount: Int) {
-        guard !isExternalUnreadManagement else { return }
-        let delta = newMessages.count - oldCount
-        guard delta > 0 else { return }
-        let newIDs = newMessages.suffix(delta).filter { !$0.isMine }.map { $0.id }
-        guard !newIDs.isEmpty else { return }
-        unreadMessageIDs.formUnion(newIDs)
-        unreadCount = unreadMessageIDs.count
+        unreadManager.trackAppended(newMessages: newMessages, oldCount: oldCount)
     }
 
     public func clearUnread() {
-        unreadMessageIDs.removeAll()
-        unreadCount = 0
+        unreadManager.clearAll()
     }
 
 
@@ -469,7 +456,7 @@ public final class ChatViewController: UIViewController {
     func updateFABVisibility(animated: Bool) {
         guard features.showFab else { return }
         fabManager.updateVisibility(isNearBottom: isNearBottom(), hasMessages: !messages.isEmpty, animated: animated)
-        fabManager.updateBadge(unreadCount: unreadCount)
+        fabManager.updateBadge(unreadCount: unreadManager.count)
     }
 
     func updateEmptyState() {
@@ -487,7 +474,7 @@ public final class ChatViewController: UIViewController {
     }
 
     func updateCollectionInsets() {
-        guard !isInsetFrozen else { return }
+        guard !keyboardFreezeManager.isInsetFrozen else { return }
         guard let cv = collectionView else { return }
         guard inputBar != nil, inputBar.frame.height > 0, view.bounds.height > 0 else { return }
 

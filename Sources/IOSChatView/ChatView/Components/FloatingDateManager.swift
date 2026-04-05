@@ -15,7 +15,7 @@ public final class FloatingDateManager {
     private var currentDate: String?
     private var layout = ChatLayout()
     private var theme: ChatTheme = .light
-    private var factory: ChatContentFactory = DefaultChatContentFactory()
+    private weak var factory: ChatContentFactory?
 
     // MARK: - Setup
 
@@ -86,7 +86,7 @@ public final class FloatingDateManager {
         let pillRestY = parentView.safeAreaLayoutGuide.layoutFrame.minY + spacing + extraInsetTop
         let pillH = container.bounds.height > 0
             ? container.bounds.height
-            : factory.dateSeparatorHeight(layout: layout)
+            : factory?.dateSeparatorHeight(layout: layout) ?? 24
         let pillBottom = pillRestY + pillH
 
         var foundDate: String?
@@ -134,7 +134,7 @@ public final class FloatingDateManager {
 
     private func rebuildContent(title: String) {
         contentView?.removeFromSuperview()
-        let view = factory.floatingDateView(title: title, theme: theme, layout: layout)
+        guard let view = factory?.floatingDateView(title: title, theme: theme, layout: layout) else { return }
         view.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(view)
         NSLayoutConstraint.activate([

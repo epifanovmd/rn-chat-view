@@ -267,35 +267,33 @@ public final class MessageBubbleView: UIView {
         currentMessage = message
     }
 
-    /// Checks if the structural shape of the bubble is the same (can skip full rebuild).
-    private func canReconfigureInPlace(from old: ChatMessage, to new: ChatMessage, showSenderName: Bool, features: ChatFeatures) -> Bool {
-        // Same message ID
-        guard old.id == new.id else { return false }
-        // Same media type case
-        guard mediaCaseTag(old.content.content) == mediaCaseTag(new.content.content) else { return false }
-        // Same text presence
-        guard (old.content.text != nil) == (new.content.text != nil) else { return false }
-        // Same forwarded status
-        let oldFwd = features.showForwardedMark && old.forwardedFrom != nil
-        let newFwd = features.showForwardedMark && new.forwardedFrom != nil
-        guard oldFwd == newFwd else { return false }
-        // Same reply presence
-        let oldReply = features.showReplyPreview && old.reply != nil
-        let newReply = features.showReplyPreview && new.reply != nil
-        guard oldReply == newReply else { return false }
-        // Same sender name presence
-        let oldName = showSenderName && old.senderName != nil && !old.isMine
-        let newName = showSenderName && new.senderName != nil && !new.isMine
-        guard oldName == newName else { return false }
-        // Same emoji-only status
-        let oldEmoji = old.content.content == nil && EmojiHelper.emojiOnlyCount(old.content.text) != nil
-        let newEmoji = new.content.content == nil && EmojiHelper.emojiOnlyCount(new.content.text) != nil
-        guard oldEmoji == newEmoji else { return false }
-        return true
+    /// Structural fingerprint of a bubble — captures everything that affects the view hierarchy.
+    /// Same fingerprint = safe to reconfigure in-place. Different = full rebuild needed.
+    private struct BubbleStructure: Equatable {
+        let messageId: String
+        let contentTypeID: String   // "" if no content
+        let hasText: Bool
+        let isForwarded: Bool
+        let hasReply: Bool
+        let hasSenderName: Bool
+        let isEmojiOnly: Bool
     }
 
-    private func mediaCaseTag(_ media: AnyChatContent?) -> String {
-        media?.contentTypeID ?? ""
+    private func bubbleStructure(for msg: ChatMessage, showSenderName: Bool, features: ChatFeatures) -> BubbleStructure {
+        BubbleStructure(
+            messageId: msg.id,
+            contentTypeID: msg.content.content?.contentTypeID ?? "",
+            hasText: msg.content.text != nil,
+            isForwarded: features.showForwardedMark && msg.forwardedFrom != nil,
+            hasReply: features.showReplyPreview && msg.reply != nil,
+            hasSenderName: showSenderName && msg.senderName != nil && !msg.isMine,
+            isEmojiOnly: msg.content.content == nil && EmojiHelper.emojiOnlyCount(msg.content.text) != nil
+        )
+    }
+
+    private func canReconfigureInPlace(from old: ChatMessage, to new: ChatMessage, showSenderName: Bool, features: ChatFeatures) -> Bool {
+        bubbleStructure(for: old, showSenderName: showSenderName, features: features) ==
+        bubbleStructure(for: new, showSenderName: showSenderName, features: features)
     }
 
     /// Reconfigure the content view in-place via the factory.
