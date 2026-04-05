@@ -56,10 +56,23 @@ final class InputBarReplyPanel: UIView {
         addSubview(separator)
 
         let sp = L.inputReplySpacing
+
+        // Vertical constraints that touch top/bottom use high priority
+        // so they yield to heightConstraint (required) when panel is collapsed to 0.
+        let accentTop = accentBar.topAnchor.constraint(equalTo: topAnchor, constant: sp - 2)
+        let accentBottom = accentBar.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -(sp - 4))
+        let senderTop = senderLabel.topAnchor.constraint(equalTo: topAnchor, constant: sp - 3)
+        let sepBottom = separator.bottomAnchor.constraint(equalTo: bottomAnchor)
+        let sepHeight = separator.heightAnchor.constraint(equalToConstant: L.inputSeparatorHeight)
+
+        for c in [accentTop, accentBottom, senderTop, sepBottom, sepHeight] {
+            c.priority = .defaultHigh
+        }
+
         NSLayoutConstraint.activate([
             accentBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: sp + 2),
-            accentBar.topAnchor.constraint(equalTo: topAnchor, constant: sp - 2),
-            accentBar.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -(sp - 4)),
+            accentTop,
+            accentBottom,
             accentBar.widthAnchor.constraint(equalToConstant: L.inputReplyAccentWidth),
 
             iconView.leadingAnchor.constraint(equalTo: accentBar.trailingAnchor, constant: sp - 2),
@@ -67,7 +80,7 @@ final class InputBarReplyPanel: UIView {
             iconView.widthAnchor.constraint(equalToConstant: L.inputReplyIconSize + 2),
 
             senderLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: sp / 2),
-            senderLabel.topAnchor.constraint(equalTo: topAnchor, constant: sp - 3),
+            senderTop,
             senderLabel.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -sp / 2),
 
             textLabel.leadingAnchor.constraint(equalTo: senderLabel.leadingAnchor),
@@ -81,8 +94,8 @@ final class InputBarReplyPanel: UIView {
 
             separator.leadingAnchor.constraint(equalTo: leadingAnchor, constant: sp),
             separator.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -sp),
-            separator.bottomAnchor.constraint(equalTo: bottomAnchor),
-            separator.heightAnchor.constraint(equalToConstant: L.inputSeparatorHeight),
+            sepBottom,
+            sepHeight,
         ])
     }
 

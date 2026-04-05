@@ -10,18 +10,22 @@ extension ChatViewController: UICollectionViewDelegate {
             delegate?.chatDidScroll(offset: scrollView.contentOffset)
         }
 
-        // Don't trigger pagination during batch updates
-
+        // Don't trigger pagination when empty or during initial scroll protection
+        guard !messages.isEmpty, !isInitialScrollProtected else {
+            updateFABVisibility(animated: true)
+            updateFloatingDate()
+            return
+        }
 
         let offset = scrollView.contentOffset.y
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        if offset < features.topLoadThreshold && hasMore && !isLoadingTop && !isInitialScrollProtected {
+        if offset < features.topLoadThreshold && hasMore && !isLoadingTop {
             delegate?.chatDidReachTop(distance: offset)
         }
 
-        if contentH - offset - frameH < features.bottomLoadThreshold && hasNewer && !isLoadingBottom && !isLoadingNewerActive && !isInitialScrollProtected {
+        if contentH - offset - frameH < features.bottomLoadThreshold && hasNewer && !isLoadingBottom && !isLoadingNewerActive {
             isLoadingNewerActive = true
             delegate?.chatDidReachBottom(distance: contentH - offset - frameH)
         }
