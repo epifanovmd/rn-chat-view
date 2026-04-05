@@ -5,8 +5,8 @@ final class FloatingDateManager {
 
     // MARK: - Views
 
-    private let pill = UIView()
-    private let label = UILabel()
+    private let container = UIView()
+    private var contentView: UIView?
     private var topConstraint: NSLayoutConstraint?
 
     // MARK: - State
@@ -14,45 +14,36 @@ final class FloatingDateManager {
     private var hideTask: DispatchWorkItem?
     private var currentDate: String?
     private var layout = ChatLayout()
+    private var theme: ChatTheme = .light
+    private var factory: ChatContentFactory = DefaultChatContentFactory()
 
     // MARK: - Setup
 
-    func setup(in parentView: UIView, safeAreaGuide: UILayoutGuide, layout: ChatLayout, theme: ChatTheme, extraInsetTop: CGFloat) {
+    func setup(in parentView: UIView, safeAreaGuide: UILayoutGuide, layout: ChatLayout, theme: ChatTheme, extraInsetTop: CGFloat, factory: ChatContentFactory) {
         self.layout = layout
-        let L = layout
+        self.theme = theme
+        self.factory = factory
 
-        pill.translatesAutoresizingMaskIntoConstraints = false
-        pill.layer.cornerRadius = L.dateSeparatorCornerRadius
-        pill.alpha = 0
-        parentView.addSubview(pill)
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.alpha = 0
+        parentView.addSubview(container)
 
-        label.font = L.dateSeparatorFont
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        pill.addSubview(label)
-
-        let topC = pill.topAnchor.constraint(
+        let topC = container.topAnchor.constraint(
             equalTo: safeAreaGuide.topAnchor,
-            constant: L.sectionSpacing + extraInsetTop
+            constant: layout.sectionSpacing + extraInsetTop
         )
         topConstraint = topC
 
         NSLayoutConstraint.activate([
-            pill.centerXAnchor.constraint(equalTo: parentView.centerXAnchor),
+            container.centerXAnchor.constraint(equalTo: parentView.centerXAnchor),
             topC,
-            label.topAnchor.constraint(equalTo: pill.topAnchor, constant: L.dateSeparatorVPad),
-            label.bottomAnchor.constraint(equalTo: pill.bottomAnchor, constant: -L.dateSeparatorVPad),
-            label.leadingAnchor.constraint(equalTo: pill.leadingAnchor, constant: L.dateSeparatorHPad),
-            label.trailingAnchor.constraint(equalTo: pill.trailingAnchor, constant: -L.dateSeparatorHPad),
         ])
-
-        applyTheme(theme)
     }
 
     // MARK: - Configuration
 
     func setHidden(_ hidden: Bool) {
-        pill.isHidden = hidden
+        container.isHidden = hidden
         if hidden { hide() }
     }
 
@@ -61,8 +52,10 @@ final class FloatingDateManager {
     }
 
     func applyTheme(_ theme: ChatTheme) {
-        pill.backgroundColor = theme.dateSeparatorBackground
-        label.textColor = theme.dateSeparatorText
+        self.theme = theme
+        if let date = currentDate {
+            rebuildContent(title: DateHelper.shared.sectionTitle(from: date))
+        }
     }
 
     // MARK: - Update
@@ -91,9 +84,9 @@ final class FloatingDateManager {
         guard !dateSections.isEmpty else { return }
 
         let pillRestY = parentView.safeAreaLayoutGuide.layoutFrame.minY + spacing + extraInsetTop
-        let pillH = pill.bounds.height > 0
-            ? pill.bounds.height
-            : layout.dateSeparatorFont.lineHeight + layout.dateSeparatorVPad * 2
+        let pillH = container.bounds.height > 0
+            ? container.bounds.height
+            : factory.dateSeparatorHeight(layout: layout)
         let pillBottom = pillRestY + pillH
 
         var foundDate: String?
@@ -119,34 +112,50 @@ final class FloatingDateManager {
         if let next = nextInfo {
             let triggerY = pillBottom + spacing
             if next.minY < triggerY {
-                pill.transform = CGAffineTransform(translationX: 0, y: next.minY - triggerY)
+                container.transform = CGAffineTransform(translationX: 0, y: next.minY - triggerY)
             } else {
-                pill.transform = .identity
+                container.transform = .identity
             }
         } else {
-            pill.transform = .identity
+            container.transform = .identity
         }
 
         if groupDate != currentDate {
             currentDate = groupDate
-            label.text = DateHelper.shared.sectionTitle(from: groupDate)
-            pill.transform = .identity
-            pill.alpha = 0
+            rebuildContent(title: DateHelper.shared.sectionTitle(from: groupDate))
+            container.transform = .identity
+            container.alpha = 0
         }
 
         show()
+    }
+
+    // MARK: - Content
+
+    private func rebuildContent(title: String) {
+        contentView?.removeFromSuperview()
+        let view = factory.floatingDateView(title: title, theme: theme, layout: layout)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(view)
+        NSLayoutConstraint.activate([
+            view.topAnchor.constraint(equalTo: container.topAnchor),
+            view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            view.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        contentView = view
     }
 
     // MARK: - Show / Hide
 
     private func show() {
         hideTask?.cancel()
-        if pill.alpha < 1 {
-            UIView.animate(withDuration: layout.floatingDateShowDuration) { self.pill.alpha = 1 }
+        if container.alpha < 1 {
+            UIView.animate(withDuration: layout.floatingDateShowDuration) { self.container.alpha = 1 }
         }
         let task = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            UIView.animate(withDuration: self.layout.floatingDateHideDuration) { self.pill.alpha = 0 }
+            UIView.animate(withDuration: self.layout.floatingDateHideDuration) { self.container.alpha = 0 }
         }
         hideTask = task
         DispatchQueue.main.asyncAfter(deadline: .now() + layout.floatingDateHideDelay, execute: task)
@@ -155,8 +164,8 @@ final class FloatingDateManager {
     func hide() {
         hideTask?.cancel()
         UIView.animate(withDuration: layout.floatingDateHideDuration) {
-            self.pill.alpha = 0
-            self.pill.transform = .identity
+            self.container.alpha = 0
+            self.container.transform = .identity
         }
     }
 

@@ -109,6 +109,7 @@ enum MessageMedia: Equatable, Hashable {
     case voice(VoicePayload)
     case poll(PollPayload)
     case files([FilePayload])
+    case custom(type: String, payload: AnyHashable)
 }
 
 // MARK: - Message Content

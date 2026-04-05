@@ -6,6 +6,7 @@ final class DateSeparatorSectionController: ListSectionController {
 
     var theme: ChatTheme = .light
     var layout: ChatLayout = ChatLayout()
+    var factory: ChatContentFactory = DefaultChatContentFactory()
 
     override init() {
         super.init()
@@ -17,14 +18,15 @@ final class DateSeparatorSectionController: ListSectionController {
     override func sizeForItem(at index: Int) -> CGSize {
         guard let ctx = collectionContext else { return .zero }
         inset = UIEdgeInsets(top: layout.sectionSpacing, left: 0, bottom: layout.sectionSpacing, right: 0)
-        let height: CGFloat = layout.dateSeparatorFont.lineHeight + layout.dateSeparatorVPad * 2
+        let height = factory.dateSeparatorHeight(layout: layout)
         return CGSize(width: ctx.containerSize.width, height: height)
     }
 
     override func cellForItem(at index: Int) -> UICollectionViewCell {
         guard let ctx = collectionContext else { fatalError() }
         let cell = ctx.dequeueReusableCell(of: DateSeparatorCell.self, for: self, at: index) as! DateSeparatorCell
-        cell.configure(title: item.title, theme: theme, layout: layout)
+        let view = factory.dateSeparatorView(title: item.title, theme: theme, layout: layout)
+        cell.configure(view: view)
         return cell
     }
 

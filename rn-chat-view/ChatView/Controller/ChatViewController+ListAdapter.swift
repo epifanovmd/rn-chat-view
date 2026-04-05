@@ -30,6 +30,7 @@ extension ChatViewController: ListAdapterDataSource {
             let sc = DateSeparatorSectionController()
             sc.theme = theme
             sc.layout = layout
+            sc.factory = contentFactory
             return sc
         }
         if object is LoadingListItem {

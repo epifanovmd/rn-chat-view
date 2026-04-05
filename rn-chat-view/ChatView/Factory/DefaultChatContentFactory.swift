@@ -46,6 +46,14 @@ class DefaultChatContentFactory: ChatContentFactory {
                 stack.addArrangedSubview(view)
             }
             return stack
+
+        case .custom(let type, _):
+            let label = UILabel()
+            label.text = "[\(type)]"
+            label.font = layout.messageFont
+            label.textColor = .secondaryLabel
+            label.textAlignment = .center
+            return label
         }
     }
 
@@ -64,6 +72,8 @@ class DefaultChatContentFactory: ChatContentFactory {
         case .files(let items):
             let rowH = L.fileIconSize + L.filePadding * 2
             return rowH * CGFloat(items.count) + L.fileRowSpacing * CGFloat(max(0, items.count - 1))
+        case .custom:
+            return L.messageFont.lineHeight + L.bubbleVPad * 2
         }
     }
 
@@ -203,5 +213,40 @@ class DefaultChatContentFactory: ChatContentFactory {
         label.text = "Переслано от \(from)"
         label.textColor = isMine ? theme.outgoingForwardedLabel : theme.incomingForwardedLabel
         return label
+    }
+
+    // MARK: - Date Separator
+
+    func dateSeparatorView(title: String, theme: ChatTheme, layout: ChatLayout) -> UIView {
+        let pill = UIView()
+        pill.backgroundColor = theme.dateSeparatorBackground
+        pill.layer.cornerRadius = layout.dateSeparatorCornerRadius
+
+        let label = UILabel()
+        label.text = title
+        label.font = layout.dateSeparatorFont
+        label.textColor = theme.dateSeparatorText
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        pill.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: pill.topAnchor, constant: layout.dateSeparatorVPad),
+            label.bottomAnchor.constraint(equalTo: pill.bottomAnchor, constant: -layout.dateSeparatorVPad),
+            label.leadingAnchor.constraint(equalTo: pill.leadingAnchor, constant: layout.dateSeparatorHPad),
+            label.trailingAnchor.constraint(equalTo: pill.trailingAnchor, constant: -layout.dateSeparatorHPad),
+        ])
+
+        return pill
+    }
+
+    func dateSeparatorHeight(layout: ChatLayout) -> CGFloat {
+        layout.dateSeparatorFont.lineHeight + layout.dateSeparatorVPad * 2
+    }
+
+    // MARK: - Floating Date
+
+    func floatingDateView(title: String, theme: ChatTheme, layout: ChatLayout) -> UIView {
+        dateSeparatorView(title: title, theme: theme, layout: layout)
     }
 }

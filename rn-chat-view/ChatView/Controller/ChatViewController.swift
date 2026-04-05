@@ -231,7 +231,8 @@ final class ChatViewController: UIViewController {
             safeAreaGuide: view.safeAreaLayoutGuide,
             layout: layout,
             theme: theme,
-            extraInsetTop: collectionExtraInsetTop
+            extraInsetTop: collectionExtraInsetTop,
+            factory: contentFactory
         )
         if !features.showFloatingDate {
             floatingDateManager.setHidden(true)

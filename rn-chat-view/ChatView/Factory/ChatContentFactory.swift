@@ -100,4 +100,25 @@ protocol ChatContentFactory: AnyObject {
         theme: ChatTheme,
         layout: ChatLayout
     ) -> UIView
+
+    // MARK: - Date Separator
+
+    /// Create the date separator cell content (e.g. "Today", "Yesterday").
+    func dateSeparatorView(
+        title: String,
+        theme: ChatTheme,
+        layout: ChatLayout
+    ) -> UIView
+
+    /// Calculate the height of the date separator.
+    func dateSeparatorHeight(layout: ChatLayout) -> CGFloat
+
+    // MARK: - Floating Date
+
+    /// Create the floating date pill shown during scrolling.
+    func floatingDateView(
+        title: String,
+        theme: ChatTheme,
+        layout: ChatLayout
+    ) -> UIView
 }
