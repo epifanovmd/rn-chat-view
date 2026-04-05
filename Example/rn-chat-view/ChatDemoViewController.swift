@@ -516,6 +516,7 @@ private final class DebugPanelView: UIView {
     var onToggleChanged: ((String, Bool) -> Void)?
     var onThemeChanged: ((ChatTheme) -> Void)?
     var onRandomizePolls: (() -> Void)?
+    var onShuffleMessages: (() -> Void)?
     var onClearData: (() -> Void)?
 
     private let scrollView = UIScrollView()
@@ -602,6 +603,12 @@ private final class DebugPanelView: UIView {
             self?.onRandomizePolls?()
         }
         stackView.addArrangedSubview(pollsItem)
+
+        // Shuffle button
+        let shuffleItem = makeButtonItem(title: "Shuffle", icon: "🔀") { [weak self] in
+            self?.onShuffleMessages?()
+        }
+        stackView.addArrangedSubview(shuffleItem)
 
         // Clear data button
         let clearItem = makeButtonItem(title: "Clear", icon: "🗑") { [weak self] in
@@ -907,6 +914,10 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
         debugPanel.onRandomizePolls = { [weak self] in
             self?.randomizePolls()
+        }
+
+        debugPanel.onShuffleMessages = { [weak self] in
+            self?.shuffleMessages()
         }
 
         debugPanel.onClearData = { [weak self] in
@@ -1346,6 +1357,80 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
                 forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
                 isEdited: msg.isEdited, actions: msg.actions
             )
+        }
+        chatVC.updateMessages(msgs)
+    }
+
+    private func shuffleMessages() {
+        var msgs = chatVC.messages
+        guard msgs.count > 1 else { return }
+
+        // Shuffle order of some messages
+        let swapCount = min(msgs.count / 3, Int.random(in: 2...6))
+        for _ in 0..<swapCount {
+            let a = Int.random(in: 0..<msgs.count)
+            let b = Int.random(in: 0..<msgs.count)
+            if a != b { msgs.swapAt(a, b) }
+        }
+
+        // Randomly apply several content mutations
+        let mutations = Int.random(in: 1...4)
+        for _ in 0..<mutations {
+            let op = Int.random(in: 0...3)
+            switch op {
+            case 0 where msgs.count > 3:
+                // Delete random message
+                let idx = Int.random(in: 0..<msgs.count)
+                msgs.remove(at: idx)
+
+            case 1:
+                // Edit random message text
+                let idx = Int.random(in: 0..<msgs.count)
+                let msg = msgs[idx]
+                let texts = [
+                    "Отредактировано! 📝",
+                    "Новый текст после shuffle",
+                    "Lorem ipsum dolor sit amet",
+                    "Короткий",
+                    "Очень длинный текст сообщения который должен занимать несколько строк в бабле чата и проверять что размеры правильно пересчитываются при редактировании 🔄",
+                ]
+                msgs[idx] = ChatMessage(
+                    id: msg.id,
+                    content: MessageContent(text: texts.randomElement()!, media: msg.content.media),
+                    timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
+                    groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
+                    forwardedFrom: msg.forwardedFrom,
+                    reactions: msg.reactions, isEdited: true, actions: msg.actions
+                )
+
+            case 2:
+                // Toggle reactions on random message
+                let idx = Int.random(in: 0..<msgs.count)
+                let msg = msgs[idx]
+                let emojis = ["👍", "❤️", "😂", "🔥", "👀", "🎉"]
+                let newReactions = (0..<Int.random(in: 0...3)).map {
+                    Reaction(emoji: emojis[$0 % emojis.count], count: Int.random(in: 1...10), isMine: Bool.random())
+                }
+                msgs[idx] = ChatMessage(
+                    id: msg.id, content: msg.content, timestamp: msg.timestamp,
+                    senderName: msg.senderName, isMine: msg.isMine, groupDate: msg.groupDate,
+                    status: msg.status, reply: msg.reply, forwardedFrom: msg.forwardedFrom,
+                    reactions: newReactions, isEdited: msg.isEdited, actions: msg.actions
+                )
+
+            default:
+                // Change status of random message
+                let idx = Int.random(in: 0..<msgs.count)
+                let msg = msgs[idx]
+                let statuses: [MessageStatus] = [.sending, .sent, .delivered, .read]
+                msgs[idx] = ChatMessage(
+                    id: msg.id, content: msg.content, timestamp: msg.timestamp,
+                    senderName: msg.senderName, isMine: msg.isMine, groupDate: msg.groupDate,
+                    status: statuses.randomElement()!, reply: msg.reply,
+                    forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
+                    isEdited: msg.isEdited, actions: msg.actions
+                )
+            }
         }
         chatVC.updateMessages(msgs)
     }

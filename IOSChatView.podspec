@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
   s.summary      = "Production-ready iOS chat UI component library"
   s.description  = <<-DESC
     A fully customizable, high-performance chat UI library for iOS.
-    Built with UIKit + IGListKit. Supports text, images, video, voice messages,
+    Built with UIKit + DiffableDataSource. Supports text, images, video, voice messages,
     polls, files, reactions, replies, forwarded messages, and custom content types.
     Designed for integration with React Native via bridge.
   DESC
@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/epifanovmd/rn-chat-view.git", :tag => s.version.to_s }
   s.source_files = "Sources/IOSChatView/**/*.swift"
 
-  s.dependency "IGListKit", "~> 5.0"
-
   s.frameworks   = "UIKit", "AVFoundation", "AudioToolbox"
+
+  s.dependency "DifferenceKit", "~> 1.3"
 end

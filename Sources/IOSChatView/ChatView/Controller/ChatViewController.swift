@@ -1,4 +1,3 @@
-import IGListKit
 import UIKit
 
 public final class ChatViewController: UIViewController {
@@ -9,10 +8,18 @@ public final class ChatViewController: UIViewController {
         didSet { guard isViewLoaded, !isBatchUpdate else { return }; applyTheme() }
     }
     public var layout: ChatLayout = ChatLayout() {
-        didSet { guard isViewLoaded, !isBatchUpdate else { return }; reloadWithCrossfade() }
+        didSet {
+            guard isViewLoaded, !isBatchUpdate else { return }
+            sizeCache.removeAll()
+            reloadWithCrossfade()
+        }
     }
     public var features: ChatFeatures = ChatFeatures() {
-        didSet { guard isViewLoaded, !isBatchUpdate else { return }; applyFeatureChanges(from: oldValue) }
+        didSet {
+            guard isViewLoaded, !isBatchUpdate else { return }
+            sizeCache.removeAll()
+            applyFeatureChanges(from: oldValue)
+        }
     }
 
     private var isBatchUpdate = false
@@ -23,6 +30,7 @@ public final class ChatViewController: UIViewController {
         let oldFeatures = features
         block()
         isBatchUpdate = false
+        sizeCache.removeAll()
         applyTheme()
         applyFeatureChanges(from: oldFeatures)
     }
@@ -48,7 +56,7 @@ public final class ChatViewController: UIViewController {
         return s
     }()
 
-    private(set) var isExternalUnreadManagement = false
+    public private(set) var isExternalUnreadManagement = false
     public var unreadCount: Int = 0 {
         didSet { fabManager.updateBadge(unreadCount: unreadCount) }
     }
@@ -77,17 +85,24 @@ public final class ChatViewController: UIViewController {
 
     // MARK: - Data
 
-    public private(set) var messages: [ChatMessage] = []
-    public private(set) var messageIndex: [String: ChatMessage] = [:]
-    private(set) var listItems: [ListDiffable] = []
-    private(set) var cachedDateSeparators: [(index: Int, item: DateSeparatorListItem)] = []
-    /// O(1) lookup: messageId → section index in listItems
-    private var sectionIndexCache: [String: Int] = [:]
+    public internal(set) var messages: [ChatMessage] = []
+    public internal(set) var messageIndex: [String: ChatMessage] = [:]
+    /// O(1) lookup: messageId → row index
+    var rowIndexCache: [String: Int] = [:]
+    /// Cached date separator info for floating date manager
+    var cachedDateSeparators: [(rowIndex: Int, groupDate: String)] = []
+    /// Flat row array — the single source of truth for the collection view
+    var rows: [ChatRow] = []
 
-    // MARK: - IGListKit
+    // MARK: - Size Cache
 
-    private(set) var collectionView: ChatCollectionView!
-    var adapter: ListAdapter!
+    /// Cache of computed cell sizes keyed by message ID or groupDate
+    var sizeCache: [String: CGSize] = [:]
+
+    // MARK: - Collection View + Data Source
+
+    public private(set) var collectionView: UICollectionView!
+    private var dataSource: ChatDataSource!
 
     // MARK: - UI Components
 
@@ -131,7 +146,7 @@ public final class ChatViewController: UIViewController {
         view.backgroundColor = .clear
         isInitialScrollProtected = true
         setupCollectionView()
-        setupAdapter()
+        setupDataSource()
         setupInputBar()
         emptyStateManager.setup(in: view, inputBar: inputBar, layout: layout, theme: theme)
         emptyStateManager.onTap = { [weak self] in self?.view.endEditing(true) }
@@ -160,13 +175,12 @@ public final class ChatViewController: UIViewController {
 
     // MARK: - Setup Collection View
 
-    private func setupCollectionView() {
-        let flowLayout = UICollectionViewFlowLayout()
-        flowLayout.scrollDirection = .vertical
-        flowLayout.minimumLineSpacing = 0
-        flowLayout.minimumInteritemSpacing = 0
+    private(set) var chatLayout: ChatCollectionViewLayout!
 
-        collectionView = ChatCollectionView(frame: .zero, collectionViewLayout: flowLayout)
+    private func setupCollectionView() {
+        chatLayout = ChatCollectionViewLayout()
+
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: chatLayout)
         collectionView.backgroundColor = .clear
         collectionView.keyboardDismissMode = .interactive
         collectionView.contentInsetAdjustmentBehavior = .never
@@ -174,6 +188,8 @@ public final class ChatViewController: UIViewController {
         collectionView.isPrefetchingEnabled = false
         collectionView.clipsToBounds = true
         collectionView.translatesAutoresizingMaskIntoConstraints = false
+        // Set delegate BEFORE creating dataSource — required for FlowLayout + ScrollView delegate
+        collectionView.delegate = self
         view.addSubview(collectionView)
 
         NSLayoutConstraint.activate([
@@ -188,15 +204,14 @@ public final class ChatViewController: UIViewController {
         collectionView.addGestureRecognizer(tap)
     }
 
-    // MARK: - Setup Adapter
+    // MARK: - Setup DataSource
 
-    private func setupAdapter() {
-        let updater = ListAdapterUpdater()
-        updater.allowsBackgroundDiffing = true
-        adapter = ListAdapter(updater: updater, viewController: self)
-        adapter.collectionView = collectionView
-        adapter.dataSource = self
-        adapter.scrollViewDelegate = self
+    private func setupDataSource() {
+        collectionView.register(MessageCell.self, forCellWithReuseIdentifier: MessageCell.reuseID)
+        collectionView.register(DateSeparatorCell.self, forCellWithReuseIdentifier: DateSeparatorCell.reuseID)
+        collectionView.register(LoadingCell.self, forCellWithReuseIdentifier: LoadingCell.reuseID)
+        dataSource = ChatDataSource(controller: self)
+        collectionView.dataSource = dataSource
     }
 
     // MARK: - Setup Input Bar
@@ -250,6 +265,7 @@ public final class ChatViewController: UIViewController {
         fabManager.applyTheme(theme)
         inputBar.applyTheme(theme.isDark ? .dark : .light)
         floatingDateManager.applyTheme(theme)
+        sizeCache.removeAll()
         reloadWithCrossfade()
     }
 
@@ -277,8 +293,7 @@ public final class ChatViewController: UIViewController {
             updateCollectionInsets()
         }
         if old.showDateSeparators != features.showDateSeparators {
-            rebuildListItems()
-            adapter.performUpdates(animated: false)
+            reloadAll()
         }
         if old.senderNameMode != features.senderNameMode
             || old.showMessageStatus != features.showMessageStatus
@@ -314,7 +329,7 @@ public final class ChatViewController: UIViewController {
 
     func hideFirstDateSeparator(_ hidden: Bool) {
         guard let first = cachedDateSeparators.first else { return }
-        let ip = IndexPath(item: 0, section: first.index)
+        let ip = IndexPath(item: first.rowIndex, section: 0)
         if let cell = collectionView.cellForItem(at: ip) as? DateSeparatorCell {
             cell.contentView.alpha = hidden ? 0 : 1
         }
@@ -324,16 +339,18 @@ public final class ChatViewController: UIViewController {
         pendingLoadingRebuild?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            self.rebuildListItems()
-            self.adapter.performUpdates(animated: false)
+            self.reloadAll()
         }
         pendingLoadingRebuild = work
         DispatchQueue.main.async(execute: work)
     }
 
     private func reloadWithCrossfade() {
+        sizeCache.removeAll()
+        rows = buildRows(from: messages)
+        chatLayout.rowLayoutData = computeLayoutData()
         UIView.transition(with: collectionView, duration: 0.25, options: .transitionCrossDissolve) {
-            self.adapter.reloadData(completion: nil)
+            self.collectionView.reloadData()
         }
     }
 
@@ -341,36 +358,18 @@ public final class ChatViewController: UIViewController {
 
     private lazy var messageUpdateHandler = MessageUpdateHandler(controller: self)
 
+    private var pendingMessages: [ChatMessage]?
+
     public func updateMessages(_ newMessages: [ChatMessage]) {
         pendingLoadingRebuild?.cancel()
         pendingLoadingRebuild = nil
         messageUpdateHandler.update(with: newMessages)
     }
 
-    /// Called by MessageUpdateHandler to apply new messages data.
-    func applyMessages(_ newMessages: [ChatMessage]) {
-        let oldCount = messages.count
-        messages = newMessages
-
-        // Incremental index update for append/prepend (common case)
-        if newMessages.count > oldCount {
-            let delta = newMessages.count - oldCount
-            // Check if it's a simple append
-            if oldCount > 0 && messages[oldCount - 1].id == messageIndex[messages[oldCount - 1].id]?.id {
-                // Append: add only new entries
-                for i in oldCount..<newMessages.count {
-                    messageIndex[newMessages[i].id] = newMessages[i]
-                }
-            } else {
-                // Prepend or reorder: rebuild
-                messageIndex = Dictionary(newMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
-            }
-        } else {
-            // Count decreased or same — full rebuild
-            messageIndex = Dictionary(newMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
-        }
-
-        rebuildListItems()
+    func flushPendingMessages() {
+        guard let pending = pendingMessages else { return }
+        pendingMessages = nil
+        updateMessages(pending)
     }
 
     func finalizeUpdate(count: Int, animated: Bool) {
@@ -394,36 +393,6 @@ public final class ChatViewController: UIViewController {
         unreadCount = 0
     }
 
-    // MARK: - Build List Items
-
-    private func rebuildListItems() {
-        var items: [ListDiffable] = []
-        items.reserveCapacity(messages.count + messages.count / 20 + 1)
-        var dateSeps: [(index: Int, item: DateSeparatorListItem)] = []
-        var sectionCache: [String: Int] = [:]
-        sectionCache.reserveCapacity(messages.count)
-        let showSeps = features.showDateSeparators
-
-        var currentGroup: String?
-        for msg in messages {
-            if showSeps, msg.groupDate != currentGroup {
-                currentGroup = msg.groupDate
-                let sep = DateSeparatorListItem(groupDate: msg.groupDate)
-                dateSeps.append((index: items.count, item: sep))
-                items.append(sep)
-            }
-            sectionCache[msg.id] = items.count
-            items.append(MessageListItem(message: msg))
-        }
-
-        if isLoadingBottom && features.showBottomLoadingIndicator {
-            items.append(LoadingListItem(position: .bottom))
-        }
-
-        listItems = items
-        cachedDateSeparators = dateSeps
-        sectionIndexCache = sectionCache
-    }
 
     // MARK: - Scroll
 
@@ -439,9 +408,9 @@ public final class ChatViewController: UIViewController {
     }
 
     public func scrollToMessage(id: String, position: String, animated: Bool, highlight: Bool) {
-        guard let sectionIndex = sectionIndexCache[id] else { return }
-        let totalSections = collectionView.numberOfSections
-        guard sectionIndex < totalSections else { return }
+        guard let rowIndex = rowIndexCache[id] else { return }
+        let totalItems = collectionView.numberOfItems(inSection: 0)
+        guard rowIndex < totalItems else { return }
 
         isProgrammaticScroll = true
         collectionView.layoutIfNeeded()
@@ -453,7 +422,7 @@ public final class ChatViewController: UIViewController {
         default: scrollPos = .centeredVertically
         }
 
-        collectionView.scrollToItem(at: IndexPath(item: 0, section: sectionIndex),
+        collectionView.scrollToItem(at: IndexPath(item: rowIndex, section: 0),
                                      at: scrollPos, animated: animated)
         if !animated { isProgrammaticScroll = false }
 
@@ -468,9 +437,10 @@ public final class ChatViewController: UIViewController {
     func performHighlight() {
         guard let id = pendingHighlightId else { return }
         pendingHighlightId = nil
-        guard let sectionIndex = sectionIndexCache[id] else { return }
-        let sc = adapter.sectionController(forSection: sectionIndex) as? MessageSectionController
-        sc?.highlightCell()
+        guard let rowIndex = rowIndexCache[id] else { return }
+        let ip = IndexPath(item: rowIndex, section: 0)
+        guard let cell = collectionView.cellForItem(at: ip) as? MessageCell else { return }
+        cell.playHighlight()
     }
 
     // MARK: - Input Mode
@@ -551,3 +521,4 @@ public final class ChatViewController: UIViewController {
 
     @objc func dismissKeyboard() { view.endEditing(true) }
 }
+

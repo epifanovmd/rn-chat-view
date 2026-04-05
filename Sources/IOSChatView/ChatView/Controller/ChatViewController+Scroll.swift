@@ -1,14 +1,17 @@
 import UIKit
 
-// MARK: - UIScrollViewDelegate
+// MARK: - UICollectionViewDelegate + UIScrollViewDelegate
 
-extension ChatViewController: UIScrollViewDelegate {
+extension ChatViewController: UICollectionViewDelegate {
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let now = CACurrentMediaTime()
         if now - lastScrollEventTime >= layout.scrollThrottleInterval {
             lastScrollEventTime = now
             delegate?.chatDidScroll(offset: scrollView.contentOffset)
         }
+
+        // Don't trigger pagination during batch updates
+
 
         let offset = scrollView.contentOffset.y
         let contentH = scrollView.contentSize.height
@@ -51,10 +54,10 @@ extension ChatViewController {
         let cells = Array(collectionView.visibleCells)
         for cell in cells {
             guard let indexPath = collectionView.indexPath(for: cell),
-                  indexPath.section < listItems.count,
-                  let msgItem = listItems[indexPath.section] as? MessageListItem,
-                  msgItem.message.status != .read else { continue }
-            ids.insert(msgItem.message.id)
+                  indexPath.item < rows.count,
+                  case .message(let msg) = rows[indexPath.item],
+                  msg.status != .read else { continue }
+            ids.insert(msg.id)
         }
 
         let newIDs = ids.subtracting(visibleMessageIDs)

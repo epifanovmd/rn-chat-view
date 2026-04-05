@@ -61,7 +61,7 @@ public final class FloatingDateManager {
     // MARK: - Update
 
     func update(
-        cachedSeparators: [(index: Int, item: DateSeparatorListItem)],
+        cachedSeparators: [(rowIndex: Int, groupDate: String)],
         collectionView: UICollectionView,
         parentView: UIView,
         extraInsetTop: CGFloat
@@ -75,10 +75,10 @@ public final class FloatingDateManager {
         }
         var dateSections: [DateInfo] = []
 
-        for (index, item) in cachedSeparators {
-            guard let attrs = collectionView.layoutAttributesForItem(at: IndexPath(item: 0, section: index)) else { continue }
+        for (rowIndex, groupDate) in cachedSeparators {
+            guard let attrs = collectionView.layoutAttributesForItem(at: IndexPath(item: rowIndex, section: 0)) else { continue }
             let f = collectionView.convert(attrs.frame, to: parentView)
-            dateSections.append(DateInfo(groupDate: item.groupDate, minY: f.minY, maxY: f.maxY))
+            dateSections.append(DateInfo(groupDate: groupDate, minY: f.minY, maxY: f.maxY))
         }
 
         guard !dateSections.isEmpty else { return }

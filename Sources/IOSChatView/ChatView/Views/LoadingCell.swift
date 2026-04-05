@@ -1,6 +1,7 @@
 import UIKit
 
 public final class LoadingCell: UICollectionViewCell {
+    static let reuseID = "LoadingCell"
     private let spinner = UIActivityIndicatorView(style: .medium)
 
     public override init(frame: CGRect) {

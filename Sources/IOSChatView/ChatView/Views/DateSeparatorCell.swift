@@ -1,6 +1,7 @@
 import UIKit
 
 public final class DateSeparatorCell: UICollectionViewCell {
+    public static let reuseID = "DateSeparatorCell"
     private var customView: UIView?
 
     public override init(frame: CGRect) {

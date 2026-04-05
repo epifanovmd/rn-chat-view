@@ -11,6 +11,7 @@ public final class PollContentView: UIView {
     private let votesLabel = UILabel()
     private let resultsLabel = UILabel()
     private var currentLayout = ChatLayout()
+    private var optionRows: [PollOptionRow] = []
 
     // MARK: - Stored constraints
 
@@ -85,7 +86,6 @@ public final class PollContentView: UIView {
         currentLayout = layout
         let L = currentLayout
 
-        // Update fonts and constraints from layout
         questionLabel.font = L.pollQuestionFont
         subtitleLabel.font = L.pollSubtitleFont
         optionsStack.spacing = L.pollOptionSpacing
@@ -103,13 +103,23 @@ public final class PollContentView: UIView {
         subtitleLabel.text = parts.joined(separator: " · ")
         subtitleLabel.textColor = theme.pollSubtitleColor
 
-        optionsStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        for option in poll.options {
+        // Reuse existing rows or create/remove as needed
+        let optionCount = poll.options.count
+        while optionRows.count < optionCount {
             let row = PollOptionRow()
-            let isSelected = poll.selectedOptionIds.contains(option.id)
-            row.configure(option: option, isSelected: isSelected, isMine: isMine, theme: theme, layout: L)
-            row.onTap = poll.isClosed ? nil : { [weak self] in self?.onOptionTap?(option.id) }
+            optionRows.append(row)
             optionsStack.addArrangedSubview(row)
+        }
+        while optionRows.count > optionCount {
+            let row = optionRows.removeLast()
+            row.removeFromSuperview()
+        }
+
+        for (i, option) in poll.options.enumerated() {
+            let row = optionRows[i]
+            let isSelected = poll.selectedOptionIds.contains(option.id)
+            row.update(option: option, isSelected: isSelected, isMine: isMine, theme: theme, layout: L, animated: window != nil)
+            row.onTap = poll.isClosed ? nil : { [weak self] in self?.onOptionTap?(option.id) }
         }
 
         votesLabel.text = "\(poll.totalVotes) голосов"
@@ -132,6 +142,7 @@ private final class PollOptionRow: UIView {
     private let percentLabel = UILabel()
     private var fillWidthConstraint: NSLayoutConstraint?
     private var currentLayout = ChatLayout()
+    private var isFirstConfigure = true
 
     // MARK: - Stored constraints
 
@@ -149,12 +160,11 @@ private final class PollOptionRow: UIView {
     private func setup() {
         let L = currentLayout
 
-        barBg.layer.cornerRadius = L.pollBarCornerRadius
         barBg.layer.masksToBounds = true
         barBg.translatesAutoresizingMaskIntoConstraints = false
         addSubview(barBg)
 
-        barFill.layer.cornerRadius = L.pollBarCornerRadius
+        barFill.layer.masksToBounds = true
         barFill.translatesAutoresizingMaskIntoConstraints = false
         barBg.addSubview(barFill)
 
@@ -194,39 +204,66 @@ private final class PollOptionRow: UIView {
         addGestureRecognizer(tap)
     }
 
-    func configure(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func update(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme, layout: ChatLayout, animated: Bool) {
         currentLayout = layout
         let L = currentLayout
 
-        // Update layout-dependent values
+        // Corner radius — always set immediately with disabled implicit animations
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         barBg.layer.cornerRadius = L.pollBarCornerRadius
         barFill.layer.cornerRadius = L.pollBarCornerRadius
+        CATransaction.commit()
+
+        // Layout constants
         heightConst.constant = L.pollBarHeight
         labelLeadingConstraint.constant = L.pollBarHPad
         percentTrailingConstraint.constant = -L.pollBarHPad
 
+        // Content
         label.text = option.text
         barBg.backgroundColor = theme.pollBarEmpty
-
-        if isSelected {
-            label.font = UIFont.systemFont(ofSize: L.pollOptionFont.pointSize, weight: .bold)
-            label.textColor = isMine ? theme.outgoingText : theme.incomingText
-            barFill.backgroundColor = theme.pollBarFilled.withAlphaComponent(0.5)
-            percentLabel.textColor = theme.pollBarFilled
-        } else {
-            label.font = L.pollOptionFont
-            label.textColor = (isMine ? theme.outgoingText : theme.incomingText).withAlphaComponent(0.8)
-            barFill.backgroundColor = theme.pollBarFilled.withAlphaComponent(0.1)
-            percentLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
-        }
-
         percentLabel.font = L.pollPercentFont
         percentLabel.text = "\(Int(option.percentage * 100))%"
 
+        // Style based on selection
+        let textColor: UIColor
+        let fillColor: UIColor
+        let pctColor: UIColor
+        if isSelected {
+            label.font = UIFont.systemFont(ofSize: L.pollOptionFont.pointSize, weight: .bold)
+            textColor = isMine ? theme.outgoingText : theme.incomingText
+            fillColor = theme.pollBarFilled.withAlphaComponent(0.5)
+            pctColor = theme.pollBarFilled
+        } else {
+            label.font = L.pollOptionFont
+            textColor = (isMine ? theme.outgoingText : theme.incomingText).withAlphaComponent(0.8)
+            fillColor = theme.pollBarFilled.withAlphaComponent(0.1)
+            pctColor = isMine ? theme.outgoingTime : theme.incomingTime
+        }
+
+        // Update fill width constraint
         fillWidthConstraint?.isActive = false
         let pct = max(0.02, option.percentage)
         fillWidthConstraint = barFill.widthAnchor.constraint(equalTo: barBg.widthAnchor, multiplier: pct)
         fillWidthConstraint?.isActive = true
+
+        // Animate changes if cell is already visible
+        let shouldAnimate = animated && !isFirstConfigure
+        isFirstConfigure = false
+
+        if shouldAnimate {
+            UIView.animate(withDuration: 0.35, delay: 0, options: .curveEaseInOut) {
+                self.label.textColor = textColor
+                self.barFill.backgroundColor = fillColor
+                self.percentLabel.textColor = pctColor
+                self.barBg.layoutIfNeeded()
+            }
+        } else {
+            label.textColor = textColor
+            barFill.backgroundColor = fillColor
+            percentLabel.textColor = pctColor
+        }
     }
 
     @objc private func tapped() { onTap?() }

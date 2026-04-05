@@ -13,14 +13,12 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/nicklama/IGListKit-spm.git", from: "5.0.0"),
+        .package(url: "https://github.com/ra1028/DifferenceKit.git", from: "1.3.0"),
     ],
     targets: [
         .target(
             name: "IOSChatView",
-            dependencies: [
-                .product(name: "IGListKit", package: "IGListKit-spm"),
-            ],
+            dependencies: ["DifferenceKit"],
             path: "Sources/IOSChatView"
         ),
     ]

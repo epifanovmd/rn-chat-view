@@ -1,6 +1,7 @@
 import UIKit
 
 public final class MessageCell: UICollectionViewCell {
+    public static let reuseID = "MessageCell"
 
     // MARK: - Callbacks
 

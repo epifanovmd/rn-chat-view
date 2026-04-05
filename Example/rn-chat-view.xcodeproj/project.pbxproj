@@ -17,6 +17,16 @@
 		DECBEC6C39920C6BEA089AC4 /* Pods-rn-chat-view.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-rn-chat-view.release.xcconfig"; path = "Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		1A9477362F7F041B001D82F5 /* rn-chat-view */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = "rn-chat-view";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		1A9477312F7F041B001D82F5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -65,14 +75,6 @@
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		1A9477362F7F041B001D82F5 /* rn-chat-view */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "rn-chat-view";
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXNativeTarget section */
 		1A9477332F7F041B001D82F5 /* rn-chat-view */ = {
@@ -172,13 +174,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
