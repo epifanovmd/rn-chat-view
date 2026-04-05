@@ -47,6 +47,33 @@ public final class EmptyStateManager: NSObject {
         ])
     }
 
+    // MARK: - Theme
+
+    func applyTheme(factory: ChatContentFactory, theme: ChatTheme, layout: ChatLayout) {
+        // Rebuild content views with new theme
+        contentView?.removeFromSuperview()
+        loadingView?.removeFromSuperview()
+
+        let content = factory.emptyStateView(theme: theme, layout: layout)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(content)
+        self.contentView = content
+
+        let loading = factory.emptyStateLoadingView(theme: theme, layout: layout)
+        loading.translatesAutoresizingMaskIntoConstraints = false
+        loading.isHidden = true
+        container.addSubview(loading)
+        self.loadingView = loading
+
+        NSLayoutConstraint.activate([
+            content.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            content.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            content.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor, constant: layout.emptyStatePadding),
+            loading.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            loading.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+    }
+
     // MARK: - Update
 
     func update(isEmpty: Bool, isLoading: Bool, showEmptyState: Bool) {

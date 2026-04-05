@@ -55,7 +55,7 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         setupCallbacks(cell, message: msg, vc: vc)
 
         let reply = resolveReply(for: msg, vc: vc)
-        let showName = vc.features.senderNameMode != .never
+        let showName = Self.shouldShowSenderName(for: msg, mode: vc.features.senderNameMode)
 
         cell.reconfigureInPlace(
             message: msg,
@@ -75,7 +75,7 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         setupCallbacks(cell, message: msg, vc: vc)
 
         let reply = resolveReply(for: msg, vc: vc)
-        let showName = vc.features.senderNameMode != .never
+        let showName = Self.shouldShowSenderName(for: msg, mode: vc.features.senderNameMode)
 
         cell.configure(
             message: msg,
@@ -107,6 +107,14 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         }
         cell.onReactionTap = { [weak vc] emoji in
             vc?.messageSectionDidTapReaction(messageId: msg.id, emoji: emoji)
+        }
+    }
+
+    static func shouldShowSenderName(for msg: ChatMessage, mode: ChatFeatures.SenderNameMode) -> Bool {
+        switch mode {
+        case .never: return false
+        case .incomingOnly: return !msg.isMine && msg.senderName != nil
+        case .always: return msg.senderName != nil
         }
     }
 

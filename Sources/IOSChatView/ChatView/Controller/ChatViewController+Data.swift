@@ -82,7 +82,7 @@ extension ChatViewController {
     func computeMessageHeight(forId id: String, width: CGFloat) -> CGFloat {
         if let cached = sizeCache.height(forKey: id, width: width) { return cached }
         guard let msg = messageIndex[id] else { return layout.cellMinHeight }
-        let showName = features.senderNameMode != .never
+        let showName = ChatDataSource.shouldShowSenderName(for: msg, mode: features.senderNameMode)
         let height = MessageSizeCalculator.cellHeight(
             for: msg,
             maxWidth: width,

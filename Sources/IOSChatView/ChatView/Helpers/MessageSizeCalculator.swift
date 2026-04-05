@@ -27,7 +27,7 @@ public enum MessageSizeCalculator {
         }
 
         var senderNameW: CGFloat = 0
-        if showSenderName, let name = msg.senderName, !msg.isMine {
+        if showSenderName, let name = msg.senderName {
             senderNameW = ChatTextMeasurer.width(name, font: L.senderNameFont) + L.bubbleHPad * 2
         }
 
@@ -93,7 +93,7 @@ public enum MessageSizeCalculator {
         let innerW = bw - L.bubbleHPad * 2 - forwardedInset
         var h: CGFloat = L.bubbleVPad
 
-        if showSenderName, msg.senderName != nil, !msg.isMine {
+        if showSenderName, msg.senderName != nil {
             h += L.senderNameFont.lineHeight + L.bubbleSpacing
         }
         if isForwarded {

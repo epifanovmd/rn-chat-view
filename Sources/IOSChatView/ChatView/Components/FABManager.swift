@@ -73,6 +73,36 @@ public final class FABManager {
         ])
     }
 
+    // MARK: - Theme
+
+    func applyTheme(_ theme: ChatTheme, layout: ChatLayout, factory: ChatContentFactory) {
+        // Rebuild FAB button content from factory
+        let newFab = factory.fabView(theme: theme, layout: layout)
+
+        // Transfer visual properties from new fab to existing button
+        button.backgroundColor = newFab.backgroundColor
+        button.layer.borderColor = newFab.layer.borderColor
+
+        // Update arrow tint if present
+        for sub in button.subviews {
+            if let arrow = sub as? UIImageView {
+                // Find arrow in new fab
+                for newSub in newFab.subviews {
+                    if let newArrow = newSub as? UIImageView {
+                        arrow.tintColor = newArrow.tintColor
+                    }
+                }
+            }
+        }
+
+        // Rebuild badge from factory
+        let newBadge = factory.fabBadgeView(theme: theme, layout: layout)
+        badge.backgroundColor = newBadge.backgroundColor
+        if let label = badge as? UILabel, let newLabel = newBadge as? UILabel {
+            label.textColor = newLabel.textColor
+        }
+    }
+
     // MARK: - Position
 
     func setExpanded(_ expanded: Bool, animated: Bool) {

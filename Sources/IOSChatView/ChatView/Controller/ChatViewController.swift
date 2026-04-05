@@ -77,7 +77,7 @@ public final class ChatViewController: UIViewController {
 
     // MARK: - Initial Scroll
 
-    var isInitialScrollProtected = false
+    public var isInitialScrollProtected = false
     public var pendingScrollMessageId: String?
 
     // MARK: - Data (internal — mutated by extensions, read by MessageUpdateHandler/DataSource)
@@ -257,6 +257,8 @@ public final class ChatViewController: UIViewController {
         collectionView.backgroundColor = .clear
         inputBar.applyTheme(theme.isDark ? .dark : .light)
         floatingDateManager.applyTheme(theme)
+        fabManager.applyTheme(theme, layout: layout, factory: contentFactory)
+        emptyStateManager.applyTheme(factory: contentFactory, theme: theme, layout: layout)
         sizeCache.invalidateAll()
         reloadWithCrossfade()
     }

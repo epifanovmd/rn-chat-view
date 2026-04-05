@@ -80,7 +80,7 @@ public final class MessageBubbleView: UIView {
         stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
 
         // Sender Name
-        if showSenderName, let name = message.senderName, !isMine {
+        if showSenderName, let name = message.senderName {
             let senderView = factory.senderNameView(name: name, theme: theme, layout: currentLayout)
             stack.addArrangedSubview(senderView)
         }
@@ -286,7 +286,7 @@ public final class MessageBubbleView: UIView {
             hasText: msg.content.text != nil,
             isForwarded: features.showForwardedMark && msg.forwardedFrom != nil,
             hasReply: features.showReplyPreview && msg.reply != nil,
-            hasSenderName: showSenderName && msg.senderName != nil && !msg.isMine,
+            hasSenderName: showSenderName && msg.senderName != nil,
             isEmojiOnly: msg.content.content == nil && EmojiHelper.emojiOnlyCount(msg.content.text) != nil
         )
     }
