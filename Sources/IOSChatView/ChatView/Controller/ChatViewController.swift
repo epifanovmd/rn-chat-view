@@ -81,6 +81,8 @@ public final class ChatViewController: UIViewController {
     public private(set) var messageIndex: [String: ChatMessage] = [:]
     private(set) var listItems: [ListDiffable] = []
     private(set) var cachedDateSeparators: [(index: Int, item: DateSeparatorListItem)] = []
+    /// O(1) lookup: messageId → section index in listItems
+    private var sectionIndexCache: [String: Int] = [:]
 
     // MARK: - IGListKit
 
@@ -347,8 +349,27 @@ public final class ChatViewController: UIViewController {
 
     /// Called by MessageUpdateHandler to apply new messages data.
     func applyMessages(_ newMessages: [ChatMessage]) {
+        let oldCount = messages.count
         messages = newMessages
-        messageIndex = Dictionary(newMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+
+        // Incremental index update for append/prepend (common case)
+        if newMessages.count > oldCount {
+            let delta = newMessages.count - oldCount
+            // Check if it's a simple append
+            if oldCount > 0 && messages[oldCount - 1].id == messageIndex[messages[oldCount - 1].id]?.id {
+                // Append: add only new entries
+                for i in oldCount..<newMessages.count {
+                    messageIndex[newMessages[i].id] = newMessages[i]
+                }
+            } else {
+                // Prepend or reorder: rebuild
+                messageIndex = Dictionary(newMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+            }
+        } else {
+            // Count decreased or same — full rebuild
+            messageIndex = Dictionary(newMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+        }
+
         rebuildListItems()
     }
 
@@ -377,7 +398,10 @@ public final class ChatViewController: UIViewController {
 
     private func rebuildListItems() {
         var items: [ListDiffable] = []
+        items.reserveCapacity(messages.count + messages.count / 20 + 1)
         var dateSeps: [(index: Int, item: DateSeparatorListItem)] = []
+        var sectionCache: [String: Int] = [:]
+        sectionCache.reserveCapacity(messages.count)
         let showSeps = features.showDateSeparators
 
         var currentGroup: String?
@@ -388,6 +412,7 @@ public final class ChatViewController: UIViewController {
                 dateSeps.append((index: items.count, item: sep))
                 items.append(sep)
             }
+            sectionCache[msg.id] = items.count
             items.append(MessageListItem(message: msg))
         }
 
@@ -397,6 +422,7 @@ public final class ChatViewController: UIViewController {
 
         listItems = items
         cachedDateSeparators = dateSeps
+        sectionIndexCache = sectionCache
     }
 
     // MARK: - Scroll
@@ -413,9 +439,7 @@ public final class ChatViewController: UIViewController {
     }
 
     public func scrollToMessage(id: String, position: String, animated: Bool, highlight: Bool) {
-        guard let sectionIndex = listItems.firstIndex(where: {
-            ($0 as? MessageListItem)?.message.id == id
-        }) else { return }
+        guard let sectionIndex = sectionIndexCache[id] else { return }
         let totalSections = collectionView.numberOfSections
         guard sectionIndex < totalSections else { return }
 
@@ -444,9 +468,7 @@ public final class ChatViewController: UIViewController {
     func performHighlight() {
         guard let id = pendingHighlightId else { return }
         pendingHighlightId = nil
-        guard let sectionIndex = listItems.firstIndex(where: {
-            ($0 as? MessageListItem)?.message.id == id
-        }) else { return }
+        guard let sectionIndex = sectionIndexCache[id] else { return }
         let sc = adapter.sectionController(forSection: sectionIndex) as? MessageSectionController
         sc?.highlightCell()
     }

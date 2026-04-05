@@ -500,7 +500,7 @@ enum ChatDemoData {
         ]
     }
 
-    private static let defaultActions: [MessageAction] = [
+    static let defaultActions: [MessageAction] = [
         MessageAction(id: "reply", title: "Ответить", systemImage: "arrowshape.turn.up.left", isDestructive: false),
         MessageAction(id: "edit", title: "Редактировать", systemImage: "pencil", isDestructive: false),
         MessageAction(id: "copy", title: "Копировать", systemImage: "doc.on.doc", isDestructive: false),
@@ -834,6 +834,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     private let debugPanel = DebugPanelView()
     private let layoutPanel = DebugScrollPanel()
     private let themePanel = DebugScrollPanel()
+    private var messageCounter = 1000
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -860,6 +861,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         ])
         chatVC.didMove(toParent: self)
 
+        chatVC.hasMore = true
         chatVC.updateMessages(ChatDemoData.makeSampleMessages())
     }
 
@@ -1071,6 +1073,65 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
     // MARK: - Alert Helper
 
+    // MARK: - Load Older Messages
+
+    private func loadOlderMessages() {
+        let cal = Calendar.current
+        var msgs = chatVC.messages
+        let batchSize = 50
+
+        // Determine base date: earlier than the first message
+        let baseDate: Date
+        if let firstTimestamp = msgs.first?.timestamp {
+            baseDate = cal.date(byAdding: .hour, value: -batchSize, to: firstTimestamp)!
+        } else {
+            baseDate = Date()
+        }
+
+        var newBatch: [ChatMessage] = []
+        let senders = ["Alice", "Bob", "Charlie", "Diana"]
+        let texts = [
+            "Привет! Как дела?",
+            "Всё отлично, работаю над проектом 🚀",
+            "Звучит здорово! Можешь показать?",
+            "Да, конечно, скоро скину",
+            "Окей, жду!",
+            "Кстати, видел новую версию?",
+            "Нет ещё, что там нового?",
+            "Много улучшений в производительности",
+            "Круто, нужно обновиться",
+            "Давай созвонимся завтра",
+        ]
+
+        for i in 0..<batchSize {
+            messageCounter += 1
+            let timestamp = cal.date(byAdding: .minute, value: i * 3, to: baseDate)!
+            let groupDate = DateHelper.shared.groupKey(from: timestamp)
+            let isMine = i % 3 == 0
+            let sender = isMine ? nil : senders[i % senders.count]
+
+            let msg = ChatMessage(
+                id: "gen-\(messageCounter)",
+                content: MessageContent(text: texts[i % texts.count], media: nil),
+                timestamp: timestamp,
+                senderName: sender,
+                isMine: isMine,
+                groupDate: groupDate,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: ChatDemoData.defaultActions
+            )
+            newBatch.append(msg)
+        }
+
+        msgs = newBatch + msgs
+        chatVC.isLoadingTop = false
+        chatVC.updateMessages(msgs)
+    }
+
     private func showAlert(_ title: String, _ message: String? = nil) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
@@ -1080,7 +1141,11 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     // MARK: - ChatViewControllerDelegate
 
     func chatDidScroll(offset: CGPoint) {}
-    func chatDidReachTop(distance: CGFloat) { showAlert("Reached Top", "distance: \(Int(distance))") }
+    func chatDidReachTop(distance: CGFloat) {
+        guard !chatVC.isLoadingTop else { return }
+        chatVC.isLoadingTop = true
+        loadOlderMessages()
+    }
     func chatDidReachBottom(distance: CGFloat) {}
 
     func chatDidTapFAB() {
