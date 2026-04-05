@@ -102,7 +102,7 @@ public final class ChatViewController: UIViewController {
     // MARK: - Collection View + Data Source
 
     public private(set) var collectionView: UICollectionView!
-    private var dataSource: ChatDataSource!
+    var dataSource: ChatDataSource!
 
     // MARK: - UI Components
 

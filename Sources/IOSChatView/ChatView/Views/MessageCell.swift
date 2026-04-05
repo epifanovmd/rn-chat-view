@@ -86,6 +86,25 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.onReactionTap = onReactionTap
     }
 
+    // MARK: - Reconfigure In-Place
+
+    func reconfigureInPlace(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
+        currentTheme = theme
+        currentLayout = layout
+
+        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, layout: layout, showSenderName: showSenderName, features: features)
+
+        // Update width constraint only if changed
+        for c in bubbleView.constraints where c.firstAttribute == .width {
+            if c.constant != bw { c.constant = bw }
+        }
+
+        bubbleView.reconfigureInPlace(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bw, showSenderName: showSenderName, features: features, layout: layout, factory: factory)
+        bubbleView.onReplyTap = onReplyTap
+        bubbleView.onContentInteraction = onContentInteraction
+        bubbleView.onReactionTap = onReactionTap
+    }
+
     // MARK: - Highlight
 
     func playHighlight() {

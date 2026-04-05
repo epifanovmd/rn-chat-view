@@ -12,9 +12,12 @@ public final class MessageBubbleView: UIView {
 
     private let stack = UIStackView()
     private var contentView: UIView?
+    private var reactionsView: UIView?
+    private var footerView: UIView?
 
     private var isEmojiOnly = false
     private var currentLayout = ChatLayout()
+    private(set) var currentMessage: ChatMessage?
 
     // MARK: - Stored constraints (updated in applyLayout)
 
@@ -162,20 +165,35 @@ public final class MessageBubbleView: UIView {
         }
 
         // Reactions
+        reactionsView = nil
         if features.showReactions, !message.reactions.isEmpty {
             let maxReactionWidth = bubbleWidth - currentLayout.bubbleHPad * 2
-            let reactionsViewInstance = factory.reactionsView(reactions: message.reactions, theme: theme, maxWidth: maxReactionWidth, layout: currentLayout) { [weak self] emoji in
+            let rv = factory.reactionsView(reactions: message.reactions, theme: theme, maxWidth: maxReactionWidth, layout: currentLayout) { [weak self] emoji in
                 self?.onReactionTap?(emoji)
             }
-            stack.addArrangedSubview(reactionsViewInstance)
+            reactionsView = rv
+            stack.addArrangedSubview(rv)
+        }
+
+        // Voice bottom spacer
+        let hasFooter = features.showTimestamp || (message.isEdited && features.showEditedMark) || (isMine && features.showMessageStatus)
+        if case .voice = content.media, !hasFooter {
+            let spacer = UIView()
+            spacer.translatesAutoresizingMaskIntoConstraints = false
+            spacer.heightAnchor.constraint(equalToConstant: 4).isActive = true
+            stack.addArrangedSubview(spacer)
         }
 
         // Footer
+        footerView = nil
         if !isEmojiOnly {
-            if let footerView = factory.footerView(message: message, theme: theme, layout: currentLayout, features: features) {
-                stack.addArrangedSubview(footerView)
+            if let fv = factory.footerView(message: message, theme: theme, layout: currentLayout, features: features) {
+                footerView = fv
+                stack.addArrangedSubview(fv)
             }
         }
+
+        currentMessage = message
     }
 
     // MARK: - Content Factory
@@ -222,11 +240,184 @@ public final class MessageBubbleView: UIView {
         return factory.textView(text: "", isMine: isMine, theme: theme, layout: currentLayout)
     }
 
+    // MARK: - Reconfigure In-Place
+
+    /// Reconfigures the bubble without destroying/recreating the view hierarchy.
+    /// Falls back to full `configure()` when structural shape changes.
+    func reconfigureInPlace(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
+        guard let old = currentMessage, canReconfigureInPlace(from: old, to: message, showSenderName: showSenderName, features: features) else {
+            configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bubbleWidth, showSenderName: showSenderName, features: features, layout: layout, factory: factory)
+            return
+        }
+
+        applyLayout(layout)
+        let isMine = message.isMine
+        let content = message.content
+
+        // Background
+        backgroundColor = isMine ? theme.outgoingBubble : theme.incomingBubble
+
+        // Update content view in-place
+        let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
+        let innerW: CGFloat
+        if isForwarded {
+            innerW = bubbleWidth - currentLayout.bubbleHPad * 2 - currentLayout.forwardedAccentWidth - currentLayout.forwardedContentInset
+        } else {
+            innerW = bubbleWidth - currentLayout.bubbleHPad * 2
+        }
+        reconfigureContentView(message: message, width: innerW, isMine: isMine, theme: theme, layout: layout, factory: factory)
+
+        // Update reactions
+        reconfigureReactions(message: message, bubbleWidth: bubbleWidth, theme: theme, features: features, layout: layout, factory: factory)
+
+        // Update footer (cheap — just replace)
+        if let oldFooter = footerView {
+            stack.removeArrangedSubview(oldFooter)
+            oldFooter.removeFromSuperview()
+            footerView = nil
+        }
+        if !isEmojiOnly {
+            if let fv = factory.footerView(message: message, theme: theme, layout: currentLayout, features: features) {
+                footerView = fv
+                stack.addArrangedSubview(fv)
+            }
+        }
+
+        currentMessage = message
+    }
+
+    /// Checks if the structural shape of the bubble is the same (can skip full rebuild).
+    private func canReconfigureInPlace(from old: ChatMessage, to new: ChatMessage, showSenderName: Bool, features: ChatFeatures) -> Bool {
+        // Same message ID
+        guard old.id == new.id else { return false }
+        // Same media type case
+        guard mediaCaseTag(old.content.media) == mediaCaseTag(new.content.media) else { return false }
+        // Same text presence
+        guard (old.content.text != nil) == (new.content.text != nil) else { return false }
+        // Same forwarded status
+        let oldFwd = features.showForwardedMark && old.forwardedFrom != nil
+        let newFwd = features.showForwardedMark && new.forwardedFrom != nil
+        guard oldFwd == newFwd else { return false }
+        // Same reply presence
+        let oldReply = features.showReplyPreview && old.reply != nil
+        let newReply = features.showReplyPreview && new.reply != nil
+        guard oldReply == newReply else { return false }
+        // Same sender name presence
+        let oldName = showSenderName && old.senderName != nil && !old.isMine
+        let newName = showSenderName && new.senderName != nil && !new.isMine
+        guard oldName == newName else { return false }
+        // Same emoji-only status
+        let oldEmoji = old.content.media == nil && EmojiHelper.emojiOnlyCount(old.content.text) != nil
+        let newEmoji = new.content.media == nil && EmojiHelper.emojiOnlyCount(new.content.text) != nil
+        guard oldEmoji == newEmoji else { return false }
+        return true
+    }
+
+    private func mediaCaseTag(_ media: MessageMedia?) -> Int {
+        switch media {
+        case nil:            return 0
+        case .images:        return 1
+        case .voice:         return 2
+        case .poll:          return 3
+        case .files:         return 4
+        case .custom:        return 5
+        }
+    }
+
+    /// Reconfigure the content view in-place by type.
+    private func reconfigureContentView(message: ChatMessage, width: CGFloat, isMine: Bool, theme: ChatTheme, layout: ChatLayout, factory: ChatContentFactory) {
+        guard let cv = contentView else { return }
+        let content = message.content
+
+        switch content.media {
+        case .poll(let poll):
+            if let pollView = cv as? PollContentView {
+                pollView.configure(poll: poll, isMine: isMine, theme: theme, layout: layout)
+                pollView.onOptionTap = { [weak self] optionId in self?.onContentInteraction?(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
+                pollView.onDetailTap = { [weak self] in self?.onContentInteraction?(.pollDetailTap(pollId: poll.id)) }
+            }
+
+        case .voice(let payload):
+            if let voiceView = cv as? VoiceContentView {
+                voiceView.configure(voice: payload, isMine: isMine, theme: theme, layout: layout)
+                voiceView.onPlayTap = { [weak self] in self?.onContentInteraction?(.voiceTap(url: payload.url)) }
+            }
+
+        case .images(let items):
+            if let gridView = cv as? MediaGridView {
+                gridView.configure(media: items, width: width, theme: theme, layout: layout)
+                gridView.onItemTap = { [weak self] index in self?.onContentInteraction?(.mediaTap(index: index)) }
+            }
+
+        case .files(let items):
+            if let filesStack = cv as? UIStackView {
+                for (i, sub) in filesStack.arrangedSubviews.enumerated() {
+                    if let fileView = sub as? FileContentView, i < items.count {
+                        fileView.configure(file: items[i], isMine: isMine, theme: theme, layout: layout)
+                        fileView.onTap = { [weak self] in self?.onContentInteraction?(.fileTap(index: i)) }
+                    }
+                }
+            }
+
+        case .custom, nil:
+            break
+        }
+
+        // Update text if present (standalone or mixed content with media)
+        if let text = content.text, !text.isEmpty {
+            if let textView = cv as? TextContentView {
+                // Standalone text
+                textView.configure(text: text, isMine: isMine, theme: theme, layout: layout)
+            } else if let mixedStack = cv as? UIStackView {
+                // Mixed: media + text in a stack
+                for sub in mixedStack.arrangedSubviews {
+                    if let tv = sub as? TextContentView {
+                        tv.configure(text: text, isMine: isMine, theme: theme, layout: layout)
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    /// Update reactions: reconfigure existing, add if new, remove if gone.
+    private func reconfigureReactions(message: ChatMessage, bubbleWidth: CGFloat, theme: ChatTheme, features: ChatFeatures, layout: ChatLayout, factory: ChatContentFactory) {
+        let hasReactions = features.showReactions && !message.reactions.isEmpty
+
+        if hasReactions {
+            let maxW = bubbleWidth - currentLayout.bubbleHPad * 2
+            if let rv = reactionsView as? ReactionsView {
+                rv.configure(reactions: message.reactions, theme: theme, maxWidth: maxW, layout: layout)
+                rv.onReactionTap = { [weak self] emoji in self?.onReactionTap?(emoji) }
+            } else {
+                // Reactions appeared — insert before footer
+                let rv = factory.reactionsView(reactions: message.reactions, theme: theme, maxWidth: maxW, layout: layout) { [weak self] emoji in
+                    self?.onReactionTap?(emoji)
+                }
+                let insertIndex: Int
+                if let fv = footerView, let idx = stack.arrangedSubviews.firstIndex(of: fv) {
+                    insertIndex = idx
+                } else {
+                    insertIndex = stack.arrangedSubviews.count
+                }
+                stack.insertArrangedSubview(rv, at: insertIndex)
+                reactionsView = rv
+            }
+        } else if let rv = reactionsView {
+            stack.removeArrangedSubview(rv)
+            rv.removeFromSuperview()
+            reactionsView = nil
+        }
+    }
+
     // MARK: - Reuse
 
     func prepareForReuse() {
         stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
         contentView = nil
+        reactionsView = nil
+        footerView = nil
+        currentMessage = nil
         onReplyTap = nil
         onContentInteraction = nil
         onReactionTap = nil

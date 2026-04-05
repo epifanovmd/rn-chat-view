@@ -48,9 +48,50 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         }
     }
 
+    // MARK: - In-Place Reconfiguration
+
+    /// Reconfigures a visible message cell without dequeue, preserving the view hierarchy.
+    func reconfigureMessageCellInPlace(_ cell: MessageCell, message msg: ChatMessage, vc: ChatViewController) {
+        setupCallbacks(cell, message: msg, vc: vc)
+
+        let reply = resolveReply(for: msg, vc: vc)
+        let showName = vc.features.senderNameMode != .never
+
+        cell.reconfigureInPlace(
+            message: msg,
+            resolvedReply: reply,
+            theme: vc.theme,
+            maxWidth: vc.collectionView.bounds.width,
+            showSenderName: showName,
+            features: vc.features,
+            layout: vc.layout,
+            factory: vc.contentFactory
+        )
+    }
+
     // MARK: - Message Cell Configuration
 
     private func configureMessageCell(_ cell: MessageCell, message msg: ChatMessage, vc: ChatViewController) {
+        setupCallbacks(cell, message: msg, vc: vc)
+
+        let reply = resolveReply(for: msg, vc: vc)
+        let showName = vc.features.senderNameMode != .never
+
+        cell.configure(
+            message: msg,
+            resolvedReply: reply,
+            theme: vc.theme,
+            maxWidth: vc.collectionView.bounds.width,
+            showSenderName: showName,
+            features: vc.features,
+            layout: vc.layout,
+            factory: vc.contentFactory
+        )
+    }
+
+    // MARK: - Shared Helpers
+
+    private func setupCallbacks(_ cell: MessageCell, message msg: ChatMessage, vc: ChatViewController) {
         cell.onTap = { [weak vc] in
             vc?.messageSectionDidTap(messageId: msg.id, attachmentIndex: nil)
         }
@@ -78,8 +119,10 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         cell.onReactionTap = { [weak vc] emoji in
             vc?.messageSectionDidTapReaction(messageId: msg.id, emoji: emoji)
         }
+    }
 
-        let reply = msg.reply.flatMap { info -> ReplyDisplayInfo? in
+    private func resolveReply(for msg: ChatMessage, vc: ChatViewController) -> ReplyDisplayInfo? {
+        msg.reply.flatMap { info -> ReplyDisplayInfo? in
             guard let original = vc.messageIndex[info.replyToId] else { return nil }
             return ReplyDisplayInfo(
                 senderName: original.senderName ?? "Неизвестный",
@@ -87,17 +130,5 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
                 hasImage: original.content.media != nil
             )
         }
-        let showName = vc.features.senderNameMode != .never
-
-        cell.configure(
-            message: msg,
-            resolvedReply: reply,
-            theme: vc.theme,
-            maxWidth: vc.collectionView.bounds.width,
-            showSenderName: showName,
-            features: vc.features,
-            layout: vc.layout,
-            factory: vc.contentFactory
-        )
     }
 }

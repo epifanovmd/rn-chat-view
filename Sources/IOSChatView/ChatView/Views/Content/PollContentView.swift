@@ -118,7 +118,7 @@ public final class PollContentView: UIView {
         for (i, option) in poll.options.enumerated() {
             let row = optionRows[i]
             let isSelected = poll.selectedOptionIds.contains(option.id)
-            row.update(option: option, isSelected: isSelected, isMine: isMine, theme: theme, layout: L, animated: window != nil)
+            row.update(option: option, isSelected: isSelected, isMine: isMine, theme: theme, layout: L)
             row.onTap = poll.isClosed ? nil : { [weak self] in self?.onOptionTap?(option.id) }
         }
 
@@ -204,7 +204,7 @@ private final class PollOptionRow: UIView {
         addGestureRecognizer(tap)
     }
 
-    func update(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme, layout: ChatLayout, animated: Bool) {
+    func update(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme, layout: ChatLayout) {
         currentLayout = layout
         let L = currentLayout
 
@@ -248,12 +248,12 @@ private final class PollOptionRow: UIView {
         fillWidthConstraint = barFill.widthAnchor.constraint(equalTo: barBg.widthAnchor, multiplier: pct)
         fillWidthConstraint?.isActive = true
 
-        // Animate changes if cell is already visible
-        let shouldAnimate = animated && !isFirstConfigure
+        // Animate changes if this is a reconfigure (not first configure)
+        let shouldAnimate = !isFirstConfigure
         isFirstConfigure = false
 
         if shouldAnimate {
-            UIView.animate(withDuration: 0.35, delay: 0, options: .curveEaseInOut) {
+            UIView.animate(withDuration: 0.6, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0.3, options: .curveEaseInOut) {
                 self.label.textColor = textColor
                 self.barFill.backgroundColor = fillColor
                 self.percentLabel.textColor = pctColor

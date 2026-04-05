@@ -117,6 +117,9 @@ public enum MessageSizeCalculator {
         }
 
         let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.isMine && features.showMessageStatus)
+        if case .voice = content.media, !hasFooter {
+            h += L.bubbleSpacing + L.bubbleSpacing
+        }
         if hasFooter { h += L.footerHeight }
         h += L.bubbleBottomPad
         return h

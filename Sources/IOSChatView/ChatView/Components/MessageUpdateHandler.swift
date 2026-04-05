@@ -132,8 +132,14 @@ final class MessageUpdateHandler {
         vc.flushPendingMessages()
     }
 
-    /// Content change (edit, delete, reorder, reactions, polls) —
-    /// DifferenceKit animated diff, only affected cells animate.
+    /// Content change (edit, delete, reorder, reactions, polls).
+    ///
+    /// For pure content updates (same row count, same structure) — reconfigures
+    /// visible cells in-place without dequeue, preserving the view hierarchy
+    /// and enabling animations (e.g., poll bar transitions).
+    ///
+    /// For structural changes (row count differs, inserts/deletes) — falls back
+    /// to DifferenceKit animated batch updates.
     private func applyContent(vc: ChatViewController, newRows: [ChatRow], wasAtBottom: Bool) {
         let shouldScroll = vc.pendingScrollToBottom
         if shouldScroll { vc.pendingScrollToBottom = false }
@@ -150,20 +156,54 @@ final class MessageUpdateHandler {
 
         let savedOffset = vc.collectionView.contentOffset
 
-        vc.collectionView.reload(using: changeset) { [weak vc] data in
-            guard let vc else { return }
-            vc.rows = data
-            vc.chatLayout.rowLayoutData = vc.computeLayoutData()
-        }
+        // Check if this is a pure content update (no inserts/deletes/moves)
+        let isPureContent = isPureContentChange(changeset)
 
-        // Safety: if DifferenceKit left rows in intermediate state, force final.
-        if vc.rows.count != newRows.count {
+        if isPureContent {
+            // Find changed message IDs
+            let changedIDs = findChangedMessageIDs(oldRows: vc.rows, newRows: newRows)
+
+            // Update model
             vc.rows = newRows
             vc.chatLayout.rowLayoutData = vc.computeLayoutData()
-            vc.collectionView.reloadData()
-        }
 
-        vc.collectionView.layoutIfNeeded()
+            // Build index: messageID → new ChatMessage
+            var newMessageByID: [String: ChatMessage] = [:]
+            for row in newRows {
+                if case .message(let msg) = row { newMessageByID[msg.id] = msg }
+            }
+
+            // Reconfigure visible cells in-place
+            for cell in vc.collectionView.visibleCells {
+                guard let msgCell = cell as? MessageCell,
+                      let indexPath = vc.collectionView.indexPath(for: cell),
+                      indexPath.item < newRows.count,
+                      case .message(let msg) = newRows[indexPath.item],
+                      changedIDs.contains(msg.id) else { continue }
+
+                vc.dataSource.reconfigureMessageCellInPlace(msgCell, message: msg, vc: vc)
+            }
+
+            // Invalidate layout for size changes
+            vc.collectionView.collectionViewLayout.invalidateLayout()
+            vc.collectionView.layoutIfNeeded()
+        } else {
+            // Structural change — use DifferenceKit
+            vc.collectionView.reload(using: changeset) { [weak vc] data in
+                guard let vc else { return }
+                vc.rows = data
+                vc.chatLayout.rowLayoutData = vc.computeLayoutData()
+            }
+
+            // Safety: if DifferenceKit left rows in intermediate state, force final.
+            if vc.rows.count != newRows.count {
+                vc.rows = newRows
+                vc.chatLayout.rowLayoutData = vc.computeLayoutData()
+                vc.collectionView.reloadData()
+            }
+
+            vc.collectionView.layoutIfNeeded()
+        }
 
         if shouldScroll {
             vc.scrollToBottom(animated: true)
@@ -173,6 +213,36 @@ final class MessageUpdateHandler {
 
         vc.finalizeUpdate(count: newRows.count, animated: true)
         vc.flushPendingMessages()
+    }
+
+    /// Returns true if the changeset contains only element updates (no inserts, deletes, moves, or section changes).
+    private func isPureContentChange(_ changeset: StagedChangeset<[ChatRow]>) -> Bool {
+        for stage in changeset {
+            if !stage.elementInserted.isEmpty || !stage.elementDeleted.isEmpty || !stage.elementMoved.isEmpty {
+                return false
+            }
+            if !stage.sectionInserted.isEmpty || !stage.sectionDeleted.isEmpty || !stage.sectionMoved.isEmpty {
+                return false
+            }
+        }
+        return true
+    }
+
+    /// Returns IDs of messages whose content changed between old and new rows.
+    private func findChangedMessageIDs(oldRows: [ChatRow], newRows: [ChatRow]) -> Set<String> {
+        var oldById: [String: ChatRow] = [:]
+        oldById.reserveCapacity(oldRows.count)
+        for row in oldRows {
+            if let id = row.messageId { oldById[id] = row }
+        }
+        var changed = Set<String>()
+        for row in newRows {
+            guard case .message(let msg) = row else { continue }
+            if let old = oldById[msg.id], !row.isContentEqual(to: old) {
+                changed.insert(msg.id)
+            }
+        }
+        return changed
     }
 
     // MARK: - Helpers
