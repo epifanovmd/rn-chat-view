@@ -36,6 +36,8 @@ public protocol ChatMessageDelegate: AnyObject {
     func chatDidTapReplyMessage(id: String)
     func chatDidTapPollOption(messageId: String, pollId: String, optionId: String)
     func chatDidTapPollDetail(messageId: String, pollId: String)
+    /// Called when a custom content view fires an interaction.
+    func chatDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable])
 }
 
 extension ChatMessageDelegate {
@@ -46,6 +48,7 @@ extension ChatMessageDelegate {
     func chatDidTapReplyMessage(id: String) {}
     func chatDidTapPollOption(messageId: String, pollId: String, optionId: String) {}
     func chatDidTapPollDetail(messageId: String, pollId: String) {}
+    func chatDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable]) {}
 }
 
 // MARK: - Input Events

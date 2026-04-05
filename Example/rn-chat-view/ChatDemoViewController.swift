@@ -1258,6 +1258,10 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         showAlert("Poll Detail", "poll: \(pollId)")
     }
 
+    func chatDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable]) {
+        showAlert("Custom: \(type)", "message: \(messageId)")
+    }
+
     private func togglePollVote(messageId: String, optionId: String) {
         var msgs = chatVC.messages
         guard let idx = msgs.firstIndex(where: { $0.id == messageId }),

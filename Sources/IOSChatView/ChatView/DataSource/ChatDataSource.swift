@@ -114,6 +114,8 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
                 vc?.messageSectionDidTapPollDetail(messageId: msg.id, pollId: pId)
             case .voiceTap(let url):
                 vc?.messageSectionDidTapVoice(messageId: msg.id, url: url)
+            case .custom(let type, let payload):
+                vc?.messageSectionDidCustomInteraction(messageId: msg.id, type: type, payload: payload)
             }
         }
         cell.onReactionTap = { [weak vc] emoji in

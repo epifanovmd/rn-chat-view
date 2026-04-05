@@ -35,4 +35,8 @@ extension ChatViewController {
     func messageSectionDidTapReaction(messageId: String, emoji: String) {
         delegate?.chatDidTapReaction(messageId: messageId, emoji: emoji)
     }
+
+    func messageSectionDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable]) {
+        delegate?.chatDidCustomInteraction(messageId: messageId, type: type, payload: payload)
+    }
 }

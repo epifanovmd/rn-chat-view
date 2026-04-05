@@ -178,6 +178,9 @@ public enum ChatContentInteraction {
     case pollOptionTap(pollId: String, optionId: String)
     case pollDetailTap(pollId: String)
     case voiceTap(url: String)
+    /// Generic interaction for custom content views.
+    /// Use `type` to distinguish actions, `payload` for arbitrary data.
+    case custom(type: String, payload: [String: AnyHashable])
 }
 
 // MARK: - Reaction
