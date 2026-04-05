@@ -68,13 +68,23 @@ class DefaultChatContentFactory: ChatContentFactory {
         case .voice:
             return L.voicePlaySize
         case .poll(let p):
-            return MessageSizeCalculator.pollHeight(p, width: width, layout: L)
+            return pollHeight(p, width: width, layout: L)
         case .files(let items):
             let rowH = L.fileIconSize + L.filePadding * 2
             return rowH * CGFloat(items.count) + L.fileRowSpacing * CGFloat(max(0, items.count - 1))
         case .custom:
             return L.messageFont.lineHeight + L.bubbleVPad * 2
         }
+    }
+
+    private func pollHeight(_ poll: PollPayload, width: CGFloat, layout L: ChatLayout) -> CGFloat {
+        let count = poll.options.count
+        var h: CGFloat = ChatTextMeasurer.height(poll.question, font: L.pollQuestionFont, width: width)
+        h += L.bubbleSpacing + L.pollSubtitleFont.lineHeight
+        h += L.pollHeaderSpacing
+        h += CGFloat(count) * L.pollBarHeight + CGFloat(max(0, count - 1)) * L.pollOptionSpacing
+        h += L.pollHeaderSpacing + L.pollVotesFont.lineHeight
+        return h
     }
 
     // MARK: - Text
@@ -91,7 +101,7 @@ class DefaultChatContentFactory: ChatContentFactory {
     }
 
     func textHeight(text: String, font: UIFont, width: CGFloat) -> CGFloat {
-        MessageSizeCalculator.textHeight(text, font: font, width: width)
+        ChatTextMeasurer.height(text, font: font, width: width)
     }
 
     // MARK: - Emoji
@@ -99,7 +109,7 @@ class DefaultChatContentFactory: ChatContentFactory {
     func emojiView(text: String, emojiCount: Int, layout: ChatLayout) -> UIView {
         let label = UILabel()
         label.text = text
-        label.font = MessageSizeCalculator.emojiFont(for: emojiCount, layout: layout)
+        label.font = ChatTextMeasurer.emojiFont(for: emojiCount, layout: layout)
         label.textAlignment = .center
         return label
     }

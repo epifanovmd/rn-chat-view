@@ -17,8 +17,8 @@ enum MessageSizeCalculator {
         let content = msg.content
 
         if content.media == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
-            let font = emojiFont(for: count, layout: L)
-            let tw = textWidth(content.text!, font: font)
+            let font = ChatTextMeasurer.emojiFont(for: count, layout: L)
+            let tw = ChatTextMeasurer.width(content.text!, font: font)
             var w = min(tw + L.bubbleHPad * 2, maxW)
             if features.showReactions, !msg.reactions.isEmpty {
                 w = max(w, reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2)
@@ -28,14 +28,14 @@ enum MessageSizeCalculator {
 
         var senderNameW: CGFloat = 0
         if showSenderName, let name = msg.senderName, !msg.isMine {
-            senderNameW = textWidth(name, font: L.senderNameFont) + L.bubbleHPad * 2
+            senderNameW = ChatTextMeasurer.width(name, font: L.senderNameFont) + L.bubbleHPad * 2
         }
 
         var replyW: CGFloat = 0
         if features.showReplyPreview, let reply = msg.reply {
             let replyInner = L.replyAccentWidth + L.bubbleHPad + L.bubbleHPad
-            let senderW = textWidth(reply.senderName ?? "", font: L.replySenderFont)
-            let textW = textWidth(reply.text ?? "…", font: L.replyFont)
+            let senderW = ChatTextMeasurer.width(reply.senderName ?? "", font: L.replySenderFont)
+            let textW = ChatTextMeasurer.width(reply.text ?? "…", font: L.replyFont)
             let replyContentW = max(senderW, textW)
             let minReplyW = min(replyContentW + replyInner, maxW * 0.7)
             replyW = minReplyW + L.bubbleHPad * 2
@@ -50,7 +50,7 @@ enum MessageSizeCalculator {
         }
 
         if content.media == nil, let text = content.text {
-            let tw = textWidth(text, font: L.messageFont)
+            let tw = ChatTextMeasurer.width(text, font: L.messageFont)
             let minW = minFooterWidth(for: msg, layout: L, features: features)
             var contentW = max(tw + L.bubbleHPad * 2, minW + L.bubbleHPad * 2)
 
@@ -72,8 +72,8 @@ enum MessageSizeCalculator {
         let content = msg.content
 
         if content.media == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
-            let font = emojiFont(for: count, layout: L)
-            var h = textHeight(content.text!, font: font, width: bw - L.bubbleHPad * 2) + L.bubbleVPad * 2
+            let font = ChatTextMeasurer.emojiFont(for: count, layout: L)
+            var h = ChatTextMeasurer.height(content.text!, font: font, width: bw - L.bubbleHPad * 2) + L.bubbleVPad * 2
 
             if features.showReactions, !msg.reactions.isEmpty {
                 let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2, layout: L)
@@ -131,7 +131,7 @@ enum MessageSizeCalculator {
 
         for reaction in reactions {
             let text = "\(reaction.emoji) \(reaction.count)"
-            let chipWidth = textWidth(text, font: L.reactionFont) + L.reactionChipPadding * 2
+            let chipWidth = ChatTextMeasurer.width(text, font: L.reactionFont) + L.reactionChipPadding * 2
 
             if currentLineWidth + chipWidth + (currentLineWidth > 0 ? L.reactionChipSpacing : 0) > maxWidth {
                 lines += 1
@@ -168,7 +168,7 @@ enum MessageSizeCalculator {
         var total: CGFloat = 0
         for reaction in reactions {
             let text = "\(reaction.emoji) \(reaction.count)"
-            let w = textWidth(text, font: L.reactionFont) + L.reactionChipPadding * 2
+            let w = ChatTextMeasurer.width(text, font: L.reactionFont) + L.reactionChipPadding * 2
             total += w + L.reactionChipSpacing
         }
         return total - L.reactionChipSpacing
@@ -176,57 +176,19 @@ enum MessageSizeCalculator {
 
     // MARK: - Helpers
 
-    static func pollHeight(_ poll: PollPayload, width: CGFloat, layout L: ChatLayout = ChatLayout()) -> CGFloat {
-        let count = poll.options.count
-        var h: CGFloat = textHeight(poll.question, font: L.pollQuestionFont, width: width)
-        h += L.bubbleSpacing + L.pollSubtitleFont.lineHeight
-        h += L.pollHeaderSpacing
-        h += CGFloat(count) * L.pollBarHeight + CGFloat(max(0, count - 1)) * L.pollOptionSpacing
-        h += L.pollHeaderSpacing + L.pollVotesFont.lineHeight
-        return h
-    }
-
-    static func textHeight(_ text: String, font: UIFont, width: CGFloat) -> CGFloat {
-        let size = (text as NSString).boundingRect(
-            with: CGSize(width: width, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font],
-            context: nil
-        ).size
-        return ceil(size.height)
-    }
-
-    static func textWidth(_ text: String, font: UIFont) -> CGFloat {
-        let size = (text as NSString).boundingRect(
-            with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: font.lineHeight),
-            options: [.usesLineFragmentOrigin],
-            attributes: [.font: font],
-            context: nil
-        ).size
-        return ceil(size.width)
-    }
-
     static func minFooterWidth(for msg: ChatMessage, layout L: ChatLayout = ChatLayout(), features: ChatFeatures = ChatFeatures()) -> CGFloat {
         var w: CGFloat = 0
         if features.showTimestamp {
-            w += textWidth(DateHelper.shared.timeString(from: msg.timestamp), font: L.timeFont)
+            w += ChatTextMeasurer.width(DateHelper.shared.timeString(from: msg.timestamp), font: L.timeFont)
         }
         if msg.isMine && features.showMessageStatus {
             w += L.statusIconSize + L.footerSpacing
         }
         if msg.isEdited && features.showEditedMark {
-            w += textWidth("изм.", font: L.editedFont) + L.footerSpacing
+            w += ChatTextMeasurer.width("изм.", font: L.editedFont) + L.footerSpacing
         }
         if w > 0 { w += L.footerSpacing * 2 }
         return w
-    }
-
-    static func emojiFont(for count: Int, layout L: ChatLayout = ChatLayout()) -> UIFont {
-        switch count {
-        case 1: return L.emojiFont1
-        case 2: return L.emojiFont2
-        default: return L.emojiFont3
-        }
     }
 }
 
