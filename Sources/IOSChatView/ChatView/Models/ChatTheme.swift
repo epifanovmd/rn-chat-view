@@ -1,0 +1,415 @@
+import UIKit
+
+public struct ChatTheme {
+    public let isDark: Bool
+
+    // MARK: - Фон
+
+    /// Основной фон чата
+    public var backgroundColor: UIColor
+    /// Цвет обоев/паттерна
+    public var wallpaperColor: UIColor
+
+    // MARK: - Исходящее сообщение
+
+    /// Фон пузыря исходящего сообщения
+    public var outgoingBubble: UIColor
+    /// Цвет текста исходящего сообщения
+    public var outgoingText: UIColor
+    /// Цвет метки времени исходящего сообщения
+    public var outgoingTime: UIColor
+    /// Цвет иконки статуса (отправка/отправлено/доставлено)
+    public var outgoingStatus: UIColor
+    /// Цвет иконки статуса «прочитано»
+    public var outgoingStatusRead: UIColor
+    /// Цвет метки «изменено» исходящего сообщения
+    public var outgoingEdited: UIColor
+    /// Цвет ссылок в исходящем сообщении
+    public var outgoingLink: UIColor
+
+    // MARK: - Входящее сообщение
+
+    /// Фон пузыря входящего сообщения
+    public var incomingBubble: UIColor
+    /// Цвет текста входящего сообщения
+    public var incomingText: UIColor
+    /// Цвет метки времени входящего сообщения
+    public var incomingTime: UIColor
+    /// Цвет метки «изменено» входящего сообщения
+    public var incomingEdited: UIColor
+    /// Цвет имени отправителя во входящем сообщении
+    public var incomingSenderName: UIColor
+    /// Цвет ссылок во входящем сообщении
+    public var incomingLink: UIColor
+
+    // MARK: - Превью цитаты внутри пузыря
+
+    /// Фон превью цитаты в исходящем сообщении
+    public var outgoingReplyBackground: UIColor
+    /// Цвет акцентной полоски цитаты в исходящем
+    public var outgoingReplyAccent: UIColor
+    /// Цвет имени отправителя в цитате исходящего
+    public var outgoingReplySender: UIColor
+    /// Цвет текста цитаты в исходящем
+    public var outgoingReplyText: UIColor
+    /// Фон превью цитаты во входящем сообщении
+    public var incomingReplyBackground: UIColor
+    /// Цвет акцентной полоски цитаты во входящем
+    public var incomingReplyAccent: UIColor
+    /// Цвет имени отправителя в цитате входящего
+    public var incomingReplySender: UIColor
+    /// Цвет текста цитаты во входящем
+    public var incomingReplyText: UIColor
+
+    // MARK: - Пересланное сообщение
+
+    /// Цвет метки «переслано» в исходящем сообщении
+    public var outgoingForwardedLabel: UIColor
+    /// Цвет метки «переслано» во входящем сообщении
+    public var incomingForwardedLabel: UIColor
+    /// Цвет акцентной полоски пересланного в исходящем
+    public var outgoingForwardedAccent: UIColor
+    /// Цвет акцентной полоски пересланного во входящем
+    public var incomingForwardedAccent: UIColor
+
+    // MARK: - Файл
+
+    /// Фон карточки файла в исходящем сообщении
+    public var outgoingFileBackground: UIColor
+    /// Фон карточки файла во входящем сообщении
+    public var incomingFileBackground: UIColor
+    /// Цвет иконки файла
+    public var fileIconColor: UIColor
+
+    // MARK: - Реакции
+
+    /// Фон чипа реакции (чужой)
+    public var reactionBackground: UIColor
+    /// Фон чипа моей реакции
+    public var reactionMineBackground: UIColor
+    /// Цвет текста/эмодзи реакции
+    public var reactionText: UIColor
+    /// Цвет рамки чипа моей реакции
+    public var reactionMineBorder: UIColor
+
+    // MARK: - Разделитель дат
+
+    /// Фон пилюли разделителя дат
+    public var dateSeparatorBackground: UIColor
+    /// Цвет текста разделителя дат
+    public var dateSeparatorText: UIColor
+
+    // MARK: - FAB (кнопка скролла вниз)
+
+    /// Фон кнопки FAB
+    public var fabBackground: UIColor
+    /// Цвет рамки FAB
+    public var fabBorder: UIColor
+    /// Стиль размытия фона FAB
+    public var fabBlurStyle: UIBlurEffect.Style
+    /// Цвет стрелки FAB
+    public var fabArrowColor: UIColor
+    /// Фон бейджа непрочитанных на FAB
+    public var fabBadgeBackground: UIColor
+    /// Цвет текста бейджа непрочитанных
+    public var fabBadgeTextColor: UIColor
+    /// Цвет тени FAB
+    public var fabShadowColor: UIColor
+
+    // MARK: - Голосовое сообщение (контент)
+
+    /// Цвет активных (проигранных) полосок волны
+    public var voiceWaveformActive: UIColor
+    /// Цвет неактивных полосок волны
+    public var voiceWaveformInactive: UIColor
+
+    // MARK: - Опрос
+
+    /// Цвет заполненной полосы варианта опроса
+    public var pollBarFilled: UIColor
+    /// Цвет фона/пустой полосы варианта опроса
+    public var pollBarEmpty: UIColor
+    /// Цвет бордера выбранного варианта
+    public var pollSelectedBorder: UIColor
+    /// Цвет подписи типа опроса
+    public var pollSubtitleColor: UIColor
+
+    // MARK: - Сетка медиа
+
+    /// Фон плейсхолдера при загрузке изображений
+    public var mediaPlaceholderBackground: UIColor
+    /// Цвет иконки воспроизведения на видео
+    public var mediaPlayIconColor: UIColor
+    /// Цвет тени иконки воспроизведения
+    public var mediaPlayShadowColor: UIColor
+    /// Фон бейджа длительности видео
+    public var mediaDurationBackground: UIColor
+    /// Цвет текста бейджа длительности видео
+    public var mediaDurationTextColor: UIColor
+    /// Фон оверлея «+N» на сетке медиа
+    public var mediaOverlayBackground: UIColor
+    /// Цвет текста оверлея «+N»
+    public var mediaOverlayTextColor: UIColor
+
+    // MARK: - Подсветка сообщения
+
+    /// Цвет оверлея подсветки при скролле к сообщению
+    public var messageHighlightColor: UIColor
+
+    // MARK: - Пустое состояние
+
+    /// Цвет текста пустого состояния («Нет сообщений»)
+    public var emptyStateText: UIColor
+
+    // MARK: - Init
+
+    public init(
+        isDark: Bool,
+        backgroundColor: UIColor,
+        wallpaperColor: UIColor,
+        outgoingBubble: UIColor,
+        outgoingText: UIColor,
+        outgoingTime: UIColor,
+        outgoingStatus: UIColor,
+        outgoingStatusRead: UIColor,
+        outgoingEdited: UIColor,
+        outgoingLink: UIColor,
+        incomingBubble: UIColor,
+        incomingText: UIColor,
+        incomingTime: UIColor,
+        incomingEdited: UIColor,
+        incomingSenderName: UIColor,
+        incomingLink: UIColor,
+        outgoingReplyBackground: UIColor,
+        outgoingReplyAccent: UIColor,
+        outgoingReplySender: UIColor,
+        outgoingReplyText: UIColor,
+        incomingReplyBackground: UIColor,
+        incomingReplyAccent: UIColor,
+        incomingReplySender: UIColor,
+        incomingReplyText: UIColor,
+        outgoingForwardedLabel: UIColor,
+        incomingForwardedLabel: UIColor,
+        outgoingForwardedAccent: UIColor,
+        incomingForwardedAccent: UIColor,
+        outgoingFileBackground: UIColor,
+        incomingFileBackground: UIColor,
+        fileIconColor: UIColor,
+        reactionBackground: UIColor,
+        reactionMineBackground: UIColor,
+        reactionText: UIColor,
+        reactionMineBorder: UIColor,
+        dateSeparatorBackground: UIColor,
+        dateSeparatorText: UIColor,
+        fabBackground: UIColor,
+        fabBorder: UIColor,
+        fabBlurStyle: UIBlurEffect.Style,
+        fabArrowColor: UIColor,
+        fabBadgeBackground: UIColor,
+        fabBadgeTextColor: UIColor,
+        fabShadowColor: UIColor,
+        voiceWaveformActive: UIColor,
+        voiceWaveformInactive: UIColor,
+        pollBarFilled: UIColor,
+        pollBarEmpty: UIColor,
+        pollSelectedBorder: UIColor,
+        pollSubtitleColor: UIColor,
+        mediaPlaceholderBackground: UIColor,
+        mediaPlayIconColor: UIColor,
+        mediaPlayShadowColor: UIColor,
+        mediaDurationBackground: UIColor,
+        mediaDurationTextColor: UIColor,
+        mediaOverlayBackground: UIColor,
+        mediaOverlayTextColor: UIColor,
+        messageHighlightColor: UIColor,
+        emptyStateText: UIColor
+    ) {
+        self.isDark = isDark
+        self.backgroundColor = backgroundColor
+        self.wallpaperColor = wallpaperColor
+        self.outgoingBubble = outgoingBubble
+        self.outgoingText = outgoingText
+        self.outgoingTime = outgoingTime
+        self.outgoingStatus = outgoingStatus
+        self.outgoingStatusRead = outgoingStatusRead
+        self.outgoingEdited = outgoingEdited
+        self.outgoingLink = outgoingLink
+        self.incomingBubble = incomingBubble
+        self.incomingText = incomingText
+        self.incomingTime = incomingTime
+        self.incomingEdited = incomingEdited
+        self.incomingSenderName = incomingSenderName
+        self.incomingLink = incomingLink
+        self.outgoingReplyBackground = outgoingReplyBackground
+        self.outgoingReplyAccent = outgoingReplyAccent
+        self.outgoingReplySender = outgoingReplySender
+        self.outgoingReplyText = outgoingReplyText
+        self.incomingReplyBackground = incomingReplyBackground
+        self.incomingReplyAccent = incomingReplyAccent
+        self.incomingReplySender = incomingReplySender
+        self.incomingReplyText = incomingReplyText
+        self.outgoingForwardedLabel = outgoingForwardedLabel
+        self.incomingForwardedLabel = incomingForwardedLabel
+        self.outgoingForwardedAccent = outgoingForwardedAccent
+        self.incomingForwardedAccent = incomingForwardedAccent
+        self.outgoingFileBackground = outgoingFileBackground
+        self.incomingFileBackground = incomingFileBackground
+        self.fileIconColor = fileIconColor
+        self.reactionBackground = reactionBackground
+        self.reactionMineBackground = reactionMineBackground
+        self.reactionText = reactionText
+        self.reactionMineBorder = reactionMineBorder
+        self.dateSeparatorBackground = dateSeparatorBackground
+        self.dateSeparatorText = dateSeparatorText
+        self.fabBackground = fabBackground
+        self.fabBorder = fabBorder
+        self.fabBlurStyle = fabBlurStyle
+        self.fabArrowColor = fabArrowColor
+        self.fabBadgeBackground = fabBadgeBackground
+        self.fabBadgeTextColor = fabBadgeTextColor
+        self.fabShadowColor = fabShadowColor
+        self.voiceWaveformActive = voiceWaveformActive
+        self.voiceWaveformInactive = voiceWaveformInactive
+        self.pollBarFilled = pollBarFilled
+        self.pollBarEmpty = pollBarEmpty
+        self.pollSelectedBorder = pollSelectedBorder
+        self.pollSubtitleColor = pollSubtitleColor
+        self.mediaPlaceholderBackground = mediaPlaceholderBackground
+        self.mediaPlayIconColor = mediaPlayIconColor
+        self.mediaPlayShadowColor = mediaPlayShadowColor
+        self.mediaDurationBackground = mediaDurationBackground
+        self.mediaDurationTextColor = mediaDurationTextColor
+        self.mediaOverlayBackground = mediaOverlayBackground
+        self.mediaOverlayTextColor = mediaOverlayTextColor
+        self.messageHighlightColor = messageHighlightColor
+        self.emptyStateText = emptyStateText
+    }
+}
+
+// MARK: - Presets
+
+public extension ChatTheme {
+    public static let light = ChatTheme(
+        isDark: false,
+        backgroundColor: UIColor(red: 0.94, green: 0.94, blue: 0.96, alpha: 1),
+        wallpaperColor: UIColor(red: 0.84, green: 0.88, blue: 0.93, alpha: 1),
+        outgoingBubble: UIColor(red: 0.88, green: 0.98, blue: 0.84, alpha: 1),
+        outgoingText: .black,
+        outgoingTime: UIColor(white: 0.0, alpha: 0.45),
+        outgoingStatus: UIColor(white: 0.0, alpha: 0.35),
+        outgoingStatusRead: UIColor(red: 0.2, green: 0.6, blue: 0.35, alpha: 1),
+        outgoingEdited: UIColor(white: 0.0, alpha: 0.4),
+        outgoingLink: .systemBlue,
+        incomingBubble: .white,
+        incomingText: .black,
+        incomingTime: UIColor(white: 0.0, alpha: 0.45),
+        incomingEdited: UIColor(white: 0.0, alpha: 0.4),
+        incomingSenderName: .systemBlue,
+        incomingLink: .systemBlue,
+        outgoingReplyBackground: UIColor(red: 0.78, green: 0.93, blue: 0.74, alpha: 1),
+        outgoingReplyAccent: UIColor(red: 0.2, green: 0.6, blue: 0.35, alpha: 1),
+        outgoingReplySender: UIColor(red: 0.2, green: 0.6, blue: 0.35, alpha: 1),
+        outgoingReplyText: UIColor(white: 0.0, alpha: 0.7),
+        incomingReplyBackground: UIColor(red: 0.93, green: 0.93, blue: 0.95, alpha: 1),
+        incomingReplyAccent: .systemBlue,
+        incomingReplySender: .systemBlue,
+        incomingReplyText: UIColor(white: 0.0, alpha: 0.7),
+        outgoingForwardedLabel: UIColor(red: 0.2, green: 0.6, blue: 0.35, alpha: 1),
+        incomingForwardedLabel: .systemBlue,
+        outgoingForwardedAccent: UIColor(red: 0.2, green: 0.6, blue: 0.35, alpha: 1),
+        incomingForwardedAccent: .systemBlue,
+        outgoingFileBackground: UIColor(red: 0.78, green: 0.93, blue: 0.74, alpha: 1),
+        incomingFileBackground: UIColor(red: 0.93, green: 0.93, blue: 0.95, alpha: 1),
+        fileIconColor: .systemBlue,
+        reactionBackground: UIColor(white: 0.93, alpha: 1),
+        reactionMineBackground: UIColor.systemBlue.withAlphaComponent(0.15),
+        reactionText: .black,
+        reactionMineBorder: UIColor.systemBlue.withAlphaComponent(0.5),
+        dateSeparatorBackground: UIColor(white: 0.0, alpha: 0.08),
+        dateSeparatorText: UIColor(white: 0.0, alpha: 0.5),
+        fabBackground: .white,
+        fabBorder: UIColor(white: 0.8, alpha: 1),
+        fabBlurStyle: .systemUltraThinMaterial,
+        fabArrowColor: UIColor(red: 0.25, green: 0.55, blue: 0.9, alpha: 1),
+        fabBadgeBackground: UIColor(red: 0.25, green: 0.55, blue: 0.9, alpha: 1),
+        fabBadgeTextColor: .white,
+        fabShadowColor: UIColor(red: 0.2, green: 0.4, blue: 0.7, alpha: 0.3),
+        voiceWaveformActive: .systemBlue,
+        voiceWaveformInactive: UIColor(white: 0.75, alpha: 1),
+        pollBarFilled: UIColor(red: 0.35, green: 0.65, blue: 0.95, alpha: 1),
+        pollBarEmpty: UIColor(white: 0.0, alpha: 0.05),
+        pollSelectedBorder: .clear,
+        pollSubtitleColor: UIColor(white: 0.0, alpha: 0.4),
+        mediaPlaceholderBackground: UIColor(white: 0.9, alpha: 1),
+        mediaPlayIconColor: .white,
+        mediaPlayShadowColor: .black,
+        mediaDurationBackground: UIColor.black.withAlphaComponent(0.5),
+        mediaDurationTextColor: .white,
+        mediaOverlayBackground: UIColor.black.withAlphaComponent(0.55),
+        mediaOverlayTextColor: .white,
+        messageHighlightColor: UIColor.systemYellow.withAlphaComponent(0.3),
+        emptyStateText: UIColor(white: 0.5, alpha: 1)
+    )
+
+    public static let dark = ChatTheme(
+        isDark: true,
+        backgroundColor: UIColor(red: 0.06, green: 0.09, blue: 0.13, alpha: 1),
+        wallpaperColor: UIColor(red: 0.06, green: 0.09, blue: 0.13, alpha: 1),
+        outgoingBubble: UIColor(red: 0.17, green: 0.32, blue: 0.47, alpha: 1),
+        outgoingText: .white,
+        outgoingTime: UIColor(white: 1.0, alpha: 0.5),
+        outgoingStatus: UIColor(white: 1.0, alpha: 0.4),
+        outgoingStatusRead: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
+        outgoingEdited: UIColor(white: 1.0, alpha: 0.45),
+        outgoingLink: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        incomingBubble: UIColor(red: 0.11, green: 0.15, blue: 0.20, alpha: 1),
+        incomingText: .white,
+        incomingTime: UIColor(white: 1.0, alpha: 0.5),
+        incomingEdited: UIColor(white: 1.0, alpha: 0.45),
+        incomingSenderName: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        incomingLink: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        outgoingReplyBackground: UIColor(red: 0.14, green: 0.27, blue: 0.40, alpha: 1),
+        outgoingReplyAccent: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
+        outgoingReplySender: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
+        outgoingReplyText: UIColor(white: 1.0, alpha: 0.6),
+        incomingReplyBackground: UIColor(red: 0.14, green: 0.18, blue: 0.24, alpha: 1),
+        incomingReplyAccent: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        incomingReplySender: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        incomingReplyText: UIColor(white: 1.0, alpha: 0.6),
+        outgoingForwardedLabel: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
+        incomingForwardedLabel: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        outgoingForwardedAccent: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
+        incomingForwardedAccent: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        outgoingFileBackground: UIColor(red: 0.14, green: 0.27, blue: 0.40, alpha: 1),
+        incomingFileBackground: UIColor(red: 0.14, green: 0.18, blue: 0.24, alpha: 1),
+        fileIconColor: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        reactionBackground: UIColor(white: 0.2, alpha: 1),
+        reactionMineBackground: UIColor.systemBlue.withAlphaComponent(0.25),
+        reactionText: .white,
+        reactionMineBorder: UIColor.systemBlue.withAlphaComponent(0.6),
+        dateSeparatorBackground: UIColor(white: 1.0, alpha: 0.08),
+        dateSeparatorText: UIColor(white: 1.0, alpha: 0.5),
+        fabBackground: UIColor(red: 0.15, green: 0.19, blue: 0.25, alpha: 1),
+        fabBorder: UIColor(white: 0.25, alpha: 1),
+        fabBlurStyle: .systemUltraThinMaterialDark,
+        fabArrowColor: UIColor(red: 0.45, green: 0.7, blue: 1.0, alpha: 1),
+        fabBadgeBackground: UIColor(red: 0.35, green: 0.6, blue: 0.95, alpha: 1),
+        fabBadgeTextColor: .white,
+        fabShadowColor: UIColor.black.withAlphaComponent(0.4),
+        voiceWaveformActive: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        voiceWaveformInactive: UIColor(white: 0.35, alpha: 1),
+        pollBarFilled: UIColor(red: 0.35, green: 0.6, blue: 0.9, alpha: 1),
+        pollBarEmpty: UIColor(white: 1.0, alpha: 0.06),
+        pollSelectedBorder: .clear,
+        pollSubtitleColor: UIColor(white: 1.0, alpha: 0.4),
+        mediaPlaceholderBackground: UIColor(white: 0.2, alpha: 1),
+        mediaPlayIconColor: .white,
+        mediaPlayShadowColor: .black,
+        mediaDurationBackground: UIColor.black.withAlphaComponent(0.5),
+        mediaDurationTextColor: .white,
+        mediaOverlayBackground: UIColor.black.withAlphaComponent(0.55),
+        mediaOverlayTextColor: .white,
+        messageHighlightColor: UIColor.systemYellow.withAlphaComponent(0.3),
+        emptyStateText: UIColor(white: 0.5, alpha: 1)
+    )
+}
