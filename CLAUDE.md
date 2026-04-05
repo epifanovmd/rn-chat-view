@@ -13,19 +13,24 @@ Production-ready iOS native chat UI component library.
 
 ## Architecture
 
+**Content-agnostic design.** The library core knows nothing about message types (images, voice, poll, etc.). All content rendering and interaction handling is delegated to `ChatContentFactory`. Built-in types ship in `DefaultContent/` as opt-in defaults.
+
 Delegate-based composition. `ChatViewController` is the main orchestrator, split into 5 extensions:
 
 - `+Data` — row building, layout data computation, size cache, message index
 - `+Scroll` — UICollectionViewDelegate with throttled events, pagination, visibility tracking
 - `+Input` — InputBarDelegate conformance, forwards to ChatViewControllerDelegate
-- `+ContextMenu` — long-press context menu presentation + keyboard freeze/restore
+- `+ContextMenu` — long-press context menu presentation (uses KeyboardFreezeManager)
 - `+MessageActions` — routes cell interaction callbacks to delegate
 
 Extracted managers:
 - `MessageUpdateHandler` — detects update type (initial/prepend/append/content) and applies optimal strategy
 - `FloatingDateManager` — floating date pill during scrolling
-- `FABManager` — scroll-to-bottom button + unread badge
-- `EmptyStateManager` — empty state view with spinner
+- `FABManager` — scroll-to-bottom button + unread badge (views from factory)
+- `EmptyStateManager` — empty state view (views from factory)
+- `KeyboardFreezeManager` — keyboard freeze/restore during context menu
+- `UnreadManager` — unread message tracking and count
+- `SizeCache` — width-aware cell size cache
 
 ### Data Flow
 
@@ -54,7 +59,7 @@ Extracted managers:
 ChatViewControllerDelegate (typealias combining 4 focused protocols):
   ├── ChatScrollDelegate       — scroll, pagination, FAB tap
   ├── ChatVisibilityDelegate   — message visibility tracking
-  ├── ChatMessageDelegate      — tap, long press, reactions, polls, replies
+  ├── ChatMessageDelegate      — tap, long press, reactions, replies, chatDidContentInteraction
   └── ChatInputDelegate        — send, edit, attachment, voice recording
 
 InputBarDelegate               — input bar events → ChatViewController → ChatViewControllerDelegate
@@ -77,7 +82,7 @@ batchUpdate { } — apply multiple config changes atomically (single reload)
 
 ```
 Sources/IOSChatView/
-├── ChatView/
+├── ChatView/                                  # CORE — content-agnostic
 │   ├── Controller/
 │   │   ├── ChatViewController.swift           # Main controller, public API
 │   │   ├── ChatViewController+Data.swift      # Row building, layout, size cache
@@ -92,40 +97,48 @@ Sources/IOSChatView/
 │   ├── Components/
 │   │   ├── MessageUpdateHandler.swift         # Update strategy dispatcher
 │   │   ├── FloatingDateManager.swift          # Floating date pill
-│   │   ├── FABManager.swift                   # Scroll-to-bottom FAB + badge
-│   │   └── EmptyStateManager.swift            # Empty state + spinner
+│   │   ├── FABManager.swift                   # Scroll-to-bottom FAB + badge (views from factory)
+│   │   ├── EmptyStateManager.swift            # Empty state (views from factory)
+│   │   ├── KeyboardFreezeManager.swift        # Keyboard freeze/restore for context menu
+│   │   └── UnreadManager.swift                # Unread message tracking
 │   ├── Views/
 │   │   ├── ChatCollectionViewLayout.swift     # Custom layout (pre-computed, binary search)
 │   │   ├── MessageCell.swift                  # Message cell with gesture handlers
-│   │   ├── MessageBubbleView.swift            # Bubble assembly (text, media, footer, etc.)
+│   │   ├── MessageBubbleView.swift            # Bubble assembly (text, content, footer, etc.)
 │   │   ├── DateSeparatorCell.swift            # Date separator cell
-│   │   ├── LoadingCell.swift                  # Loading indicator cell
+│   │   ├── LoadingCell.swift                  # Loading indicator cell (view from factory)
 │   │   ├── PaddedLabel.swift                  # Utility label
 │   │   └── Content/
 │   │       ├── TextContentView.swift          # Text with link detection
-│   │       ├── MediaGridView.swift            # Image/video grid (1-4 items)
-│   │       ├── VoiceContentView.swift         # Waveform + play/pause
-│   │       ├── PollContentView.swift          # Poll with animated bars
-│   │       ├── FileContentView.swift          # File attachment rows
 │   │       ├── ReactionsView.swift            # Emoji reaction chips
 │   │       ├── ReplyPreviewView.swift         # Quoted message preview
 │   │       └── MessageStatusView.swift        # Sent/delivered/read indicators
 │   ├── Factory/
-│   │   ├── ChatContentFactory.swift           # Protocol for custom content views
-│   │   └── DefaultChatContentFactory.swift    # Default implementation
+│   │   └── ChatContentFactory.swift           # Protocol — all views delegated here
 │   ├── Models/
-│   │   ├── ChatModels.swift                   # ChatMessage, MessageMedia, Reaction, etc.
-│   │   ├── ChatTheme.swift                    # 50+ colors, light/dark presets
+│   │   ├── ChatModels.swift                   # ChatContent, AnyChatContent, MessageBody, ChatMessage, etc.
+│   │   ├── ChatTheme.swift                    # 50+ colors, light/dark presets, contextMenuTheme
 │   │   ├── ChatLayout.swift                   # 350+ layout parameters
-│   │   ├── ChatFeatures.swift                 # Feature flags
-│   │   └── ChatParsing.swift                  # NSDictionary → ChatMessage (RN bridge)
+│   │   └── ChatFeatures.swift                 # Feature flags
 │   ├── Audio/
 │   │   └── VoicePlayer.swift                  # Singleton audio player
 │   └── Helpers/
 │       ├── MessageSizeCalculator.swift        # Cell height calculation
+│       ├── SizeCache.swift                    # Width-aware cell size cache
 │       ├── ChatTextMeasurer.swift             # Text measurement utilities
-│       ├── ImageCache.swift                   # URL → UIImage cache
 │       └── DateHelper.swift                   # Date formatting
+│
+├── DefaultContent/                            # Built-in content types (opt-in)
+│   ├── DefaultChatContentFactory.swift        # Default factory: images, voice, poll, files
+│   ├── Models/
+│   │   ├── DefaultContentTypes.swift          # ImagesContent, VoicePayload, PollPayload, FilesContent
+│   │   └── ChatParsing.swift                  # NSDictionary → ChatMessage (RN bridge)
+│   └── Views/
+│       ├── MediaGridView.swift                # Image/video grid (1-4 items)
+│       ├── VoiceContentView.swift             # Waveform + play/pause
+│       ├── PollContentView.swift              # Poll with animated bars
+│       ├── FileContentView.swift              # File attachment rows
+│       └── ImageCache.swift                   # URL → UIImage cache
 ├── InputBar/
 │   ├── InputBarView.swift                     # Main input bar + UITextViewDelegate
 │   ├── InputBarView+Recording.swift           # Voice recording gesture state machine
@@ -243,9 +256,24 @@ public protocol ChatInputDelegate: AnyObject {
 ### Data Models
 
 ```swift
+// Content type system — library is agnostic to concrete types
+public protocol ChatContent: Equatable, Hashable, Sendable {
+    static var contentTypeID: String { get }
+}
+
+public struct AnyChatContent: Equatable, Hashable, Sendable {
+    public init<T: ChatContent>(_ content: T)
+    public func content<T: ChatContent>(as type: T.Type) -> T?
+}
+
+public struct MessageBody: Equatable, Hashable {
+    public let text: String?
+    public let content: AnyChatContent?    // any ChatContent type
+}
+
 public struct ChatMessage: Equatable, Hashable {
     public let id: String
-    public let content: MessageContent     // text + media
+    public let content: MessageBody        // text + optional content
     public let timestamp: Date
     public let senderName: String?
     public let isMine: Bool
@@ -258,51 +286,23 @@ public struct ChatMessage: Equatable, Hashable {
     public let actions: [MessageAction]    // context menu actions
 }
 
-public struct MessageContent: Equatable, Hashable {
-    public let text: String?
-    public let media: MessageMedia?
-}
-
-public enum MessageMedia: Equatable, Hashable {
-    case images([MediaItem])               // 1-4 images/videos in grid
-    case voice(VoicePayload)               // waveform + duration
-    case poll(PollPayload)                 // question + options + votes
-    case files([FilePayload])              // file attachments
-    case custom(type: String, payload: AnyHashable)
-}
-
-public enum MediaItem: Equatable, Hashable {
-    case image(ImageItem)
-    case video(VideoItem)
-}
-
-public struct Reaction: Equatable, Hashable {
-    public let emoji: String
-    public let count: Int
-    public let isMine: Bool
-}
-
-public struct ReplyInfo: Equatable, Hashable {
-    public let replyToId: String
-    public let senderName: String?
-    public let text: String?
-    public let hasImage: Bool
-}
-
-public struct MessageAction: Equatable, Hashable {
-    public let id: String
-    public let title: String
-    public let systemImage: String?
-    public let isDestructive: Bool
+// Generic interaction — library routes without inspecting
+public struct ChatContentInteraction: Sendable {
+    public let type: String
+    public let payload: [String: AnyHashable]
 }
 ```
 
-### ChatContentFactory (Customization)
+### ChatContentFactory
 
 ```swift
-public protocol ChatContentFactory {
-    func contentView(for media: MessageMedia, ...) -> UIView
-    func contentHeight(for media: MessageMedia, ...) -> CGFloat
+public protocol ChatContentFactory: AnyObject {
+    // Content (custom types rendered here)
+    func contentView(for media: AnyChatContent, ...) -> UIView
+    func contentHeight(for media: AnyChatContent, ...) -> CGFloat
+    func reconfigureContentView(_ view: UIView, for media: AnyChatContent, ...) -> Bool
+
+    // Universal elements
     func textView(text: String, ...) -> UIView
     func textHeight(text: String, ...) -> CGFloat
     func emojiView(text: String, emojiCount: Int, ...) -> UIView
@@ -314,8 +314,16 @@ public protocol ChatContentFactory {
     func dateSeparatorView(title: String, ...) -> UIView
     func dateSeparatorHeight(layout: ChatLayout) -> CGFloat
     func floatingDateView(title: String, ...) -> UIView
+
+    // UI components
+    func emptyStateView(...) -> UIView
+    func emptyStateLoadingView(...) -> UIView
+    func loadingIndicatorView(...) -> UIView
+    func fabView(...) -> UIView
+    func fabBadgeView(...) -> UIView
 }
-// DefaultChatContentFactory — subclass to override specific views
+// DefaultChatContentFactory — handles built-in types, subclass to customize
+// See CUSTOMIZATION.md for full guide on custom content types
 ```
 
 ### Feature Flags (ChatFeatures)

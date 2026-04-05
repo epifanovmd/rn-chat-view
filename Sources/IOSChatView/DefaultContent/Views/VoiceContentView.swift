@@ -305,6 +305,8 @@ public final class VoiceContentView: UIView {
             updateUI()
             return
         }
+        guard let url = voiceURL else { return }
+        VoicePlayer.shared.toggle(url: url)
         onPlayTap?()
     }
 }

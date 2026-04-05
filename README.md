@@ -64,8 +64,10 @@ Production-ready iOS chat UI component library. Built with UIKit + DifferenceKit
 - [x] `ChatContentFactory` — full view customization via protocol
 - [x] `InputBarTheme` — independent input bar theming
 - [x] `ContextMenuTheme` — context menu theming (light/dark presets)
-- [x] Custom content types via `MessageMedia.custom`
+- [x] Custom content types via `ChatContent` protocol (type-safe, extensible)
 - [x] `batchUpdate {}` — atomic config changes (single reload)
+- [x] Content-agnostic core — library knows nothing about message types
+- [x] See [CUSTOMIZATION.md](CUSTOMIZATION.md) for full custom types guide
 
 ---
 
@@ -209,8 +211,9 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
         // Upload voice file, create voice message
     }
     func chatDidChangeInputText(_ text: String) { /* typing indicator */ }
-    func chatDidTapPollOption(messageId: String, pollId: String, optionId: String) {}
-    func chatDidTapPollDetail(messageId: String, pollId: String) {}
+    func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {
+        // Handle content-specific interactions (poll votes, custom taps, etc.)
+    }
 }
 ```
 
@@ -224,32 +227,32 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
 // Text message
 let textMsg = ChatMessage(
     id: "1",
-    content: MessageContent(text: "Hello!", media: nil),
+    content: MessageBody(text: "Hello!"),
     timestamp: Date(),
     senderName: "Alice",
     isMine: false,
-    groupDate: "2025-04-05",
+    groupDate: "2026-04-06",
     status: .read,
     reply: nil,
     forwardedFrom: nil,
     reactions: [],
     isEdited: false,
-    actions: MessageAction.defaultActions
+    actions: []
 )
 
-// Image message with caption
+// Image message with caption (using built-in ImagesContent)
 let imageMsg = ChatMessage(
     id: "2",
-    content: MessageContent(
+    content: MessageBody(
         text: "Check this out!",
-        media: .images([
+        content: AnyChatContent(ImagesContent([
             .image(ImageItem(url: "https://example.com/photo.jpg", width: 400, height: 300, thumbnailUrl: nil))
-        ])
+        ]))
     ),
     timestamp: Date(),
     senderName: nil,
     isMine: true,
-    groupDate: "2025-04-05",
+    groupDate: "2026-04-06",
     status: .sent,
     reply: nil,
     forwardedFrom: nil,
@@ -258,106 +261,49 @@ let imageMsg = ChatMessage(
     actions: []
 )
 
-// Media grid (2-4 items)
-let gridMsg = ChatMessage(
-    id: "3",
-    content: MessageContent(
-        text: nil,
-        media: .images([
-            .image(ImageItem(url: "https://...", width: 400, height: 300, thumbnailUrl: nil)),
-            .video(VideoItem(url: "https://...", thumbnailUrl: "https://...", width: 400, height: 300, duration: 45)),
-            .image(ImageItem(url: "https://...", width: 300, height: 400, thumbnailUrl: nil)),
-        ])
-    ),
-    // ...
-)
-
-// Voice message
+// Voice message (using built-in VoicePayload)
 let voiceMsg = ChatMessage(
-    id: "4",
-    content: MessageContent(
-        text: nil,
-        media: .voice(VoicePayload(url: "https://example.com/voice.m4a", duration: 12.5, waveform: [0.2, 0.5, 0.8, 0.3, 0.6]))
+    id: "3",
+    content: MessageBody(
+        content: AnyChatContent(VoicePayload(url: "https://...", duration: 12.5, waveform: [0.2, 0.5, 0.8, 0.3]))
     ),
     // ...
 )
 
-// Poll
+// Poll (using built-in PollPayload)
 let pollMsg = ChatMessage(
-    id: "5",
-    content: MessageContent(
-        text: nil,
-        media: .poll(PollPayload(
-            id: "poll1",
-            question: "Favorite color?",
+    id: "4",
+    content: MessageBody(
+        content: AnyChatContent(PollPayload(
+            id: "poll1", question: "Favorite color?",
             options: [
                 PollOption(id: "r", text: "Red", votes: 5, percentage: 0.5),
                 PollOption(id: "b", text: "Blue", votes: 5, percentage: 0.5),
             ],
-            totalVotes: 10,
-            selectedOptionIds: ["r"],
-            isMultipleChoice: false,
-            isClosed: false,
-            isAnonymous: false
+            totalVotes: 10, selectedOptionIds: ["r"],
+            isMultipleChoice: false, isClosed: false, isAnonymous: false
         ))
     ),
     // ...
 )
 
-// File attachments
-let fileMsg = ChatMessage(
-    id: "6",
-    content: MessageContent(
-        text: nil,
-        media: .files([
-            FilePayload(url: "https://...", name: "report.pdf", size: 2_500_000, mimeType: "application/pdf"),
-            FilePayload(url: "https://...", name: "archive.zip", size: 15_000_000, mimeType: "application/zip"),
-        ])
-    ),
-    // ...
-)
+// Custom content type — define your own struct conforming to ChatContent
+struct LocationContent: ChatContent {
+    static let contentTypeID = "location"
+    let latitude: Double
+    let longitude: Double
+    let address: String
+}
 
-// Reply message
-let replyMsg = ChatMessage(
-    id: "7",
-    content: MessageContent(text: "I agree!", media: nil),
-    timestamp: Date(),
-    senderName: "Bob",
-    isMine: true,
-    groupDate: "2025-04-05",
-    status: .delivered,
-    reply: ReplyInfo(replyToId: "1", senderName: "Alice", text: "Hello!", hasImage: false),
-    forwardedFrom: nil,
-    reactions: [],
-    isEdited: false,
-    actions: []
-)
-
-// Forwarded message
-let fwdMsg = ChatMessage(
-    id: "8",
-    content: MessageContent(text: "Important announcement", media: nil),
-    timestamp: Date(),
-    senderName: nil,
-    isMine: true,
-    groupDate: "2025-04-05",
-    status: .sent,
-    reply: nil,
-    forwardedFrom: "Admin Channel",
-    reactions: [],
-    isEdited: false,
-    actions: []
-)
-
-// Custom content type
 let locationMsg = ChatMessage(
-    id: "9",
-    content: MessageContent(
+    id: "5",
+    content: MessageBody(
         text: "My location",
-        media: .custom(type: "location", payload: AnyHashable(myLocationData))
+        content: AnyChatContent(LocationContent(latitude: 55.75, longitude: 37.62, address: "Moscow"))
     ),
     // ...
 )
+// See CUSTOMIZATION.md for the full guide on custom content types
 ```
 
 ### Message Actions
@@ -542,20 +488,24 @@ chatVC.features = features
 
 ## Content Factory (Advanced Customization)
 
-Override any part of message rendering by subclassing `DefaultChatContentFactory`:
+The library is content-agnostic — all rendering is delegated to `ChatContentFactory`. Subclass `DefaultChatContentFactory` to add custom types or customize built-in views:
 
 ```swift
-class MyContentFactory: DefaultChatContentFactory {
+class MyFactory: DefaultChatContentFactory {
 
-    // Custom media rendering (e.g., location messages)
-    override func contentView(for media: MessageMedia, message: ChatMessage,
+    // Handle custom content types
+    override func contentView(for media: AnyChatContent, message: ChatMessage,
                               width: CGFloat, theme: ChatTheme, layout: ChatLayout,
                               onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
-        if case .custom(let type, let payload) = media, type == "location",
-           let loc = payload.base as? LocationData {
+        if let location = media.content(as: LocationContent.self) {
             let view = LocationMapView()
-            view.configure(location: loc)
-            view.onTap = { onInteraction(.mediaTap(index: 0)) }
+            view.configure(location: location)
+            view.onTap = {
+                onInteraction(ChatContentInteraction(type: "locationTap", payload: [
+                    "lat": location.latitude as AnyHashable,
+                    "lon": location.longitude as AnyHashable,
+                ]))
+            }
             return view
         }
         return super.contentView(for: media, message: message, width: width,
@@ -563,39 +513,24 @@ class MyContentFactory: DefaultChatContentFactory {
     }
 
     // Height for custom content
-    override func contentHeight(for media: MessageMedia, width: CGFloat, layout: ChatLayout) -> CGFloat {
-        if case .custom(let type, _) = media, type == "location" { return 200 }
+    override func contentHeight(for media: AnyChatContent, width: CGFloat, layout: ChatLayout) -> CGFloat {
+        if media.content(as: LocationContent.self) != nil { return 200 }
         return super.contentHeight(for: media, width: width, layout: layout)
-    }
-
-    // Custom date separator
-    override func dateSeparatorView(title: String, theme: ChatTheme, layout: ChatLayout) -> UIView {
-        let label = PaddedLabel()
-        label.text = title
-        label.font = .boldSystemFont(ofSize: 12)
-        label.textColor = .white
-        label.backgroundColor = .systemBlue
-        label.layer.cornerRadius = 10
-        label.clipsToBounds = true
-        return label
-    }
-
-    // Custom footer (or nil to hide)
-    override func footerView(message: ChatMessage, theme: ChatTheme,
-                             layout: ChatLayout, features: ChatFeatures) -> UIView? {
-        return super.footerView(message: message, theme: theme, layout: layout, features: features)
     }
 }
 
-chatVC.contentFactory = MyContentFactory()
+chatVC.contentFactory = MyFactory()
 ```
+
+For the full guide on custom content types, factory patterns, and interaction handling, see **[CUSTOMIZATION.md](CUSTOMIZATION.md)**.
 
 ### All Factory Methods
 
 | Method | Purpose |
 |---|---|
-| `contentView(for:message:width:theme:layout:onInteraction:)` | Media content (images, voice, poll, files, custom) |
-| `contentHeight(for:width:layout:)` | Height calculation for media |
+| `contentView(for:message:width:theme:layout:onInteraction:)` | Content rendering (any type) |
+| `contentHeight(for:width:layout:)` | Height calculation for content |
+| `reconfigureContentView(_:for:message:...)` | In-place content update (animations) |
 | `textView(text:isMine:theme:layout:)` | Text portion of message |
 | `textHeight(text:font:width:)` | Text height calculation |
 | `emojiView(text:emojiCount:layout:)` | Emoji-only messages (1-3 emojis) |
@@ -607,6 +542,11 @@ chatVC.contentFactory = MyContentFactory()
 | `dateSeparatorView(title:theme:layout:)` | Date separator pill |
 | `dateSeparatorHeight(layout:)` | Date separator height |
 | `floatingDateView(title:theme:layout:)` | Floating date during scroll |
+| `emptyStateView(theme:layout:)` | Empty state placeholder |
+| `emptyStateLoadingView(theme:layout:)` | Loading spinner in empty state |
+| `loadingIndicatorView(theme:layout:)` | Pagination loading indicator |
+| `fabView(theme:layout:)` | Scroll-to-bottom FAB button |
+| `fabBadgeView(theme:layout:)` | Unread badge on FAB |
 
 ---
 
@@ -641,8 +581,7 @@ func chatDidSelectAction(actionId: String, messageId: String)           // conte
 func chatDidSelectEmojiReaction(emoji: String, messageId: String)       // emoji from context menu
 func chatDidTapReaction(messageId: String, emoji: String)               // reaction chip tap
 func chatDidTapReplyMessage(id: String)                                 // quoted message tap
-func chatDidTapPollOption(messageId: String, pollId: String, optionId: String)  // poll vote
-func chatDidTapPollDetail(messageId: String, pollId: String)            // poll detail tap
+func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)  // all content interactions
 ```
 
 ### ChatInputDelegate
@@ -777,18 +716,25 @@ Supports all content types, reactions, replies, actions, and status.
 
 ## Architecture
 
+The library core (`ChatView/`) is content-agnostic — it knows nothing about message types. All content rendering lives in `DefaultContent/`, which users can replace entirely.
+
 ```
 Sources/IOSChatView/
-├── ChatView/
+├── ChatView/              # CORE — content-agnostic
 │   ├── Controller/        # ChatViewController + 5 extensions
 │   ├── DataSource/        # UICollectionViewDataSource + ChatRow (Differentiable)
-│   ├── Components/        # MessageUpdateHandler, FAB, FloatingDate, EmptyState
-│   ├── Factory/           # ChatContentFactory protocol + DefaultChatContentFactory
-│   ├── Models/            # ChatMessage, ChatTheme, ChatLayout, ChatFeatures, ChatParsing
+│   ├── Components/        # MessageUpdateHandler, FAB, FloatingDate, EmptyState,
+│   │                      # KeyboardFreezeManager, UnreadManager
+│   ├── Factory/           # ChatContentFactory protocol (no implementation)
+│   ├── Models/            # ChatContent, AnyChatContent, MessageBody, ChatMessage, Theme, Layout
 │   ├── Views/             # MessageCell, MessageBubbleView, ChatCollectionViewLayout
-│   │   └── Content/       # Text, MediaGrid, Voice, Poll, File, Reactions, Reply, Status
+│   │   └── Content/       # Text, Reactions, Reply, Status (universal elements)
 │   ├── Audio/             # VoicePlayer (singleton)
-│   └── Helpers/           # MessageSizeCalculator, ChatTextMeasurer, ImageCache, DateHelper
+│   └── Helpers/           # MessageSizeCalculator, SizeCache, ChatTextMeasurer, DateHelper
+├── DefaultContent/        # Built-in content types (opt-in)
+│   ├── DefaultChatContentFactory.swift
+│   ├── Models/            # ImagesContent, VoicePayload, PollPayload, FilesContent, ChatParsing
+│   └── Views/             # MediaGrid, Voice, Poll, File, ImageCache
 ├── InputBar/
 │   ├── InputBarView       # Main view + recording extension
 │   ├── Audio/             # VoiceRecorder
@@ -804,7 +750,7 @@ Sources/IOSChatView/
 ### Performance
 
 - **Custom layout:** Pre-computed heights, binary search for visible rect, no delegate calls during scroll
-- **Size cache:** Message heights cached by ID, invalidated only on content change
+- **Size cache:** Width-aware cache (id + width key), auto-invalidates on rotation
 - **DifferenceKit:** O(n) Heckel diff, animated batch updates only for affected cells
 - **Prepend:** O(delta) — only new rows computed, scroll offset compensated
 - **Append:** Constant time — rows added at end, auto-scroll if near bottom
