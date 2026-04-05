@@ -72,7 +72,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
             return MediaGridView.gridHeight(for: images.items, width: width, layout: L)
         }
         if media.content(as: VoicePayload.self) != nil {
-            return L.voicePlaySize + 8 // 4pt top + 4pt bottom internal padding
+            return L.voicePlaySize + 12 // 8pt top + 4pt bottom internal padding
         }
         if let poll = media.content(as: PollPayload.self) {
             return pollHeight(poll, width: width, layout: L)
