@@ -6,181 +6,77 @@ public enum MessageStatus: String {
     case sending, sent, delivered, read
 }
 
-// MARK: - Media Item (unified image/video)
+// MARK: - ChatContent (extensible protocol)
 
-public enum MediaItem: Equatable, Hashable {
-    case image(ImageItem)
-    case video(VideoItem)
-
-    public var thumbnailUrl: String? {
-        switch self {
-        case .image(let i): return i.thumbnailUrl ?? i.url
-        case .video(let v): return v.thumbnailUrl
-        }
-    }
-
-    public var width: CGFloat? {
-        switch self {
-        case .image(let i): return i.width
-        case .video(let v): return v.width
-        }
-    }
-
-    public var height: CGFloat? {
-        switch self {
-        case .image(let i): return i.height
-        case .video(let v): return v.height
-        }
-    }
-
-    public var isVideo: Bool {
-        if case .video = self { return true }
-        return false
-    }
-
-    public var imageUrl: String? {
-        if case .image(let i) = self { return i.url }
-        return nil
-    }
-
-    public var videoUrl: String? {
-        if case .video(let v) = self { return v.url }
-        return nil
-    }
-
-    public var duration: TimeInterval? {
-        if case .video(let v) = self { return v.duration }
-        return nil
-    }
+/// Protocol for any content type attached to a message.
+/// The library is agnostic to concrete types — all rendering and interaction
+/// logic lives in `ChatContentFactory`.
+///
+/// Conform your own types to use them as first-class message content:
+/// ```swift
+/// struct PaymentContent: ChatContent {
+///     static let contentTypeID = "payment"
+///     let amount: Decimal
+///     let currency: String
+/// }
+/// ```
+public protocol ChatContent: Equatable, Hashable, Sendable {
+    /// Stable identifier for this content type. Must be unique per type.
+    /// Used for in-place reconfiguration optimization (same typeID = same view structure).
+    static var contentTypeID: String { get }
 }
 
-// MARK: - Content Payloads
+// MARK: - AnyChatContent (type-erased wrapper)
 
-public struct ImageItem: Equatable, Hashable {
-    public let url: String
-    public let width: CGFloat?
-    public let height: CGFloat?
-    public let thumbnailUrl: String?
+/// Type-erased wrapper for any `ChatContent`. Preserves `Equatable`/`Hashable`
+/// for DifferenceKit diffing while hiding the concrete type from the library core.
+public struct AnyChatContent: Equatable, Hashable, Sendable {
+    public let contentTypeID: String
+    private let box: AnyHashable
 
-    public init(url: String, width: CGFloat?, height: CGFloat?, thumbnailUrl: String?) {
-        self.url = url
-        self.width = width
-        self.height = height
-        self.thumbnailUrl = thumbnailUrl
+    public init<T: ChatContent>(_ content: T) {
+        self.contentTypeID = T.contentTypeID
+        self.box = AnyHashable(content)
     }
-}
 
-public struct VideoItem: Equatable, Hashable {
-    public let url: String
-    public let thumbnailUrl: String?
-    public let width: CGFloat?
-    public let height: CGFloat?
-    public let duration: TimeInterval?
-
-    public init(url: String, thumbnailUrl: String?, width: CGFloat?, height: CGFloat?, duration: TimeInterval?) {
-        self.url = url
-        self.thumbnailUrl = thumbnailUrl
-        self.width = width
-        self.height = height
-        self.duration = duration
+    /// Unwrap to a specific type. Returns nil if the type doesn't match.
+    public func content<T: ChatContent>(as type: T.Type) -> T? {
+        box.base as? T
     }
-}
 
-public struct VoicePayload: Equatable, Hashable {
-    public let url: String
-    public let duration: TimeInterval
-    public let waveform: [Float]
-
-    public init(url: String, duration: TimeInterval, waveform: [Float]) {
-        self.url = url
-        self.duration = duration
-        self.waveform = waveform
+    public static func == (lhs: AnyChatContent, rhs: AnyChatContent) -> Bool {
+        lhs.box == rhs.box
     }
-}
 
-public struct PollOption: Equatable, Hashable {
-    public let id: String
-    public let text: String
-    public let votes: Int
-    public let percentage: CGFloat
-
-    public init(id: String, text: String, votes: Int, percentage: CGFloat) {
-        self.id = id
-        self.text = text
-        self.votes = votes
-        self.percentage = percentage
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(box)
     }
-}
-
-public struct PollPayload: Equatable, Hashable {
-    public let id: String
-    public let question: String
-    public let options: [PollOption]
-    public let totalVotes: Int
-    public let selectedOptionIds: [String]
-    public let isMultipleChoice: Bool
-    public let isClosed: Bool
-    public let isAnonymous: Bool
-
-    public init(id: String, question: String, options: [PollOption], totalVotes: Int, selectedOptionIds: [String], isMultipleChoice: Bool, isClosed: Bool, isAnonymous: Bool) {
-        self.id = id
-        self.question = question
-        self.options = options
-        self.totalVotes = totalVotes
-        self.selectedOptionIds = selectedOptionIds
-        self.isMultipleChoice = isMultipleChoice
-        self.isClosed = isClosed
-        self.isAnonymous = isAnonymous
-    }
-}
-
-public struct FilePayload: Equatable, Hashable {
-    public let url: String
-    public let name: String
-    public let size: Int64
-    public let mimeType: String?
-
-    public init(url: String, name: String, size: Int64, mimeType: String?) {
-        self.url = url
-        self.name = name
-        self.size = size
-        self.mimeType = mimeType
-    }
-}
-
-// MARK: - Message Media (enum — ровно один тип медиа)
-
-public enum MessageMedia: Equatable, Hashable {
-    case images([MediaItem])
-    case voice(VoicePayload)
-    case poll(PollPayload)
-    case files([FilePayload])
-    case custom(type: String, payload: AnyHashable)
 }
 
 // MARK: - Message Content
 
-public struct MessageContent: Equatable, Hashable {
+public struct MessageBody: Equatable, Hashable {
     public let text: String?
-    public let media: MessageMedia?
+    public let content: AnyChatContent?
 
-    public init(text: String?, media: MessageMedia?) {
+    public init(text: String?, content: AnyChatContent? = nil) {
         self.text = text
-        self.media = media
+        self.content = content
     }
 }
 
 // MARK: - Content Interaction
 
-public enum ChatContentInteraction {
-    case mediaTap(index: Int)
-    case fileTap(index: Int)
-    case pollOptionTap(pollId: String, optionId: String)
-    case pollDetailTap(pollId: String)
-    case voiceTap(url: String)
-    /// Generic interaction for custom content views.
-    /// Use `type` to distinguish actions, `payload` for arbitrary data.
-    case custom(type: String, payload: [String: AnyHashable])
+/// Generic content interaction. The library routes it without inspecting contents.
+/// Factory-created views fire these; the delegate receives them.
+public struct ChatContentInteraction: Sendable {
+    public let type: String
+    public let payload: [String: AnyHashable]
+
+    public init(type: String, payload: [String: AnyHashable] = [:]) {
+        self.type = type
+        self.payload = payload
+    }
 }
 
 // MARK: - Reaction
@@ -233,7 +129,7 @@ public struct MessageAction: Equatable, Hashable {
 
 public struct ChatMessage: Equatable, Hashable {
     public let id: String
-    public let content: MessageContent
+    public let content: MessageBody
     public let timestamp: Date
     public let senderName: String?
     public let isMine: Bool
@@ -245,7 +141,7 @@ public struct ChatMessage: Equatable, Hashable {
     public let isEdited: Bool
     public let actions: [MessageAction]
 
-    public init(id: String, content: MessageContent, timestamp: Date, senderName: String?, isMine: Bool, groupDate: String, status: MessageStatus, reply: ReplyInfo?, forwardedFrom: String?, reactions: [Reaction], isEdited: Bool, actions: [MessageAction]) {
+    public init(id: String, content: MessageBody, timestamp: Date, senderName: String?, isMine: Bool, groupDate: String, status: MessageStatus, reply: ReplyInfo?, forwardedFrom: String?, reactions: [Reaction], isEdited: Bool, actions: [MessageAction]) {
         self.id = id
         self.content = content
         self.timestamp = timestamp

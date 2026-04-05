@@ -5,9 +5,8 @@ public final class FABManager {
 
     // MARK: - Views
 
-    let button = UIButton(type: .custom)
-    let arrow = UIImageView()
-    let badge = PaddedLabel(hPad: 6)
+    private(set) var button: UIView!
+    private(set) var badge: UIView!
 
     // MARK: - State
 
@@ -17,83 +16,65 @@ public final class FABManager {
 
     // MARK: - Constraints
 
-    /// Above mic button (inputBar.bottomAnchor based) — used when no text
     private var compactConstraint: NSLayoutConstraint!
-    /// Above entire input bar (inputBar.topAnchor based) — used when text present
     private var expandedConstraint: NSLayoutConstraint!
 
     // MARK: - Setup
 
-    func setup(in parentView: UIView, inputBar: UIView, layout: ChatLayout, theme: ChatTheme, features: ChatFeatures) {
+    func setup(in parentView: UIView, inputBar: UIView, factory: ChatContentFactory, layout: ChatLayout, theme: ChatTheme, features: ChatFeatures) {
         let size = layout.inputButtonSize
 
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.layer.cornerRadius = size / 2
-        button.layer.borderWidth = layout.inputBorderWidth
-        button.alpha = 0
-        button.isUserInteractionEnabled = false
-        button.addTarget(self, action: #selector(handleTap), for: .touchUpInside)
-        parentView.addSubview(button)
+        // FAB button (from factory)
+        let fab = factory.fabView(theme: theme, layout: layout)
+        fab.translatesAutoresizingMaskIntoConstraints = false
+        fab.alpha = 0
+        fab.isUserInteractionEnabled = false
+        parentView.addSubview(fab)
+        self.button = fab
 
-        if !features.showFab {
-            button.isHidden = true
+        if let btn = fab as? UIButton {
+            btn.addTarget(self, action: #selector(handleTap), for: .touchUpInside)
+        } else {
+            let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+            fab.addGestureRecognizer(tap)
         }
 
-        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
-        arrow.image = UIImage(systemName: "chevron.down", withConfiguration: config)
-        arrow.contentMode = .scaleAspectFit
-        arrow.translatesAutoresizingMaskIntoConstraints = false
-        arrow.isUserInteractionEnabled = false
-        button.addSubview(arrow)
+        if !features.showFab {
+            fab.isHidden = true
+        }
 
-        badge.font = layout.fabBadgeFont
-        badge.textAlignment = .center
-        badge.layer.cornerRadius = layout.fabBadgeCornerRadius
-        badge.layer.masksToBounds = true
-        badge.translatesAutoresizingMaskIntoConstraints = false
-        badge.isHidden = true
-        badge.isUserInteractionEnabled = false
-        parentView.addSubview(badge)
+        // Badge (from factory)
+        let badgeView = factory.fabBadgeView(theme: theme, layout: layout)
+        badgeView.translatesAutoresizingMaskIntoConstraints = false
+        badgeView.isHidden = true
+        badgeView.isUserInteractionEnabled = false
+        parentView.addSubview(badgeView)
+        self.badge = badgeView
 
         let hPad = layout.inputBarHPad
         let aboveMicOffset = layout.inputBarVPad + size + layout.fabMargin
         let singleLineHeight = 2 * layout.inputBarVPad + layout.textViewMinHeight
         let expandedGap = aboveMicOffset - singleLineHeight
 
-        compactConstraint = button.bottomAnchor.constraint(equalTo: inputBar.bottomAnchor, constant: -aboveMicOffset)
-        expandedConstraint = button.bottomAnchor.constraint(equalTo: inputBar.topAnchor, constant: -expandedGap)
+        compactConstraint = fab.bottomAnchor.constraint(equalTo: inputBar.bottomAnchor, constant: -aboveMicOffset)
+        expandedConstraint = fab.bottomAnchor.constraint(equalTo: inputBar.topAnchor, constant: -expandedGap)
 
         compactConstraint.isActive = true
         expandedConstraint.isActive = false
 
         NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(equalToConstant: size),
-            button.heightAnchor.constraint(equalToConstant: size),
-            button.trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -hPad),
-            arrow.centerXAnchor.constraint(equalTo: button.centerXAnchor),
-            arrow.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-            badge.centerXAnchor.constraint(equalTo: button.leadingAnchor, constant: 4),
-            badge.centerYAnchor.constraint(equalTo: button.topAnchor, constant: 4),
-            badge.heightAnchor.constraint(equalToConstant: layout.fabBadgeHeight),
-            badge.widthAnchor.constraint(greaterThanOrEqualToConstant: layout.fabBadgeMinWidth),
+            fab.widthAnchor.constraint(equalToConstant: size),
+            fab.heightAnchor.constraint(equalToConstant: size),
+            fab.trailingAnchor.constraint(equalTo: parentView.trailingAnchor, constant: -hPad),
+            badgeView.centerXAnchor.constraint(equalTo: fab.leadingAnchor, constant: 4),
+            badgeView.centerYAnchor.constraint(equalTo: fab.topAnchor, constant: 4),
+            badgeView.heightAnchor.constraint(equalToConstant: layout.fabBadgeHeight),
+            badgeView.widthAnchor.constraint(greaterThanOrEqualToConstant: layout.fabBadgeMinWidth),
         ])
-
-        applyTheme(theme)
-    }
-
-    // MARK: - Theme
-
-    func applyTheme(_ theme: ChatTheme) {
-        button.backgroundColor = theme.fabBackground
-        button.layer.borderColor = theme.fabBorder.cgColor
-        arrow.tintColor = theme.fabArrowColor
-        badge.backgroundColor = theme.fabBadgeBackground
-        badge.textColor = theme.fabBadgeTextColor
     }
 
     // MARK: - Position
 
-    /// Switch between compact (above mic) and expanded (above entire input bar) positions.
     func setExpanded(_ expanded: Bool, animated: Bool) {
         guard expanded != isExpanded else { return }
         isExpanded = expanded
@@ -128,7 +109,9 @@ public final class FABManager {
     func updateBadge(unreadCount: Int) {
         badge.isHidden = unreadCount == 0 || !isVisible
         guard unreadCount > 0 else { return }
-        badge.text = unreadCount > 99 ? "99+" : "\(unreadCount)"
+        if let label = badge as? UILabel {
+            label.text = unreadCount > 99 ? "99+" : "\(unreadCount)"
+        }
         let badgeAlpha: CGFloat = isVisible ? 1 : 0
         badge.alpha = badgeAlpha
     }

@@ -148,7 +148,7 @@ public final class ChatViewController: UIViewController {
         setupCollectionView()
         setupDataSource()
         setupInputBar()
-        emptyStateManager.setup(in: view, inputBar: inputBar, layout: layout, theme: theme)
+        emptyStateManager.setup(in: view, inputBar: inputBar, factory: contentFactory, layout: layout, theme: theme)
         emptyStateManager.onTap = { [weak self] in self?.view.endEditing(true) }
         setupFAB()
         setupFloatingDate()
@@ -236,7 +236,7 @@ public final class ChatViewController: UIViewController {
     // MARK: - Setup FAB
 
     private func setupFAB() {
-        fabManager.setup(in: view, inputBar: inputBar, layout: layout, theme: theme, features: features)
+        fabManager.setup(in: view, inputBar: inputBar, factory: contentFactory, layout: layout, theme: theme, features: features)
         fabManager.onTap = { [weak self] in self?.delegate?.chatDidTapFAB() }
     }
 
@@ -261,8 +261,6 @@ public final class ChatViewController: UIViewController {
     func applyTheme() {
         guard isViewLoaded else { return }
         collectionView.backgroundColor = .clear
-        emptyStateManager.applyTheme(theme)
-        fabManager.applyTheme(theme)
         inputBar.applyTheme(theme.isDark ? .dark : .light)
         floatingDateManager.applyTheme(theme)
         sizeCache.removeAll()

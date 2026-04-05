@@ -1,6 +1,7 @@
 import UIKit
 
 /// Default implementation of ChatContentFactory.
+/// Handles built-in media types: images, voice, poll, files.
 /// Subclass and override specific methods for customization.
 open class DefaultChatContentFactory: ChatContentFactory {
 
@@ -9,7 +10,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
     // MARK: - Media Content
 
     open func contentView(
-        for media: MessageMedia,
+        for media: AnyChatContent,
         message: ChatMessage,
         width: CGFloat,
         theme: ChatTheme,
@@ -17,67 +18,111 @@ open class DefaultChatContentFactory: ChatContentFactory {
         onInteraction: @escaping (ChatContentInteraction) -> Void
     ) -> UIView {
         let isMine = message.isMine
-        switch media {
-        case .images(let items):
+
+        if let images = media.content(as: ImagesContent.self) {
             let grid = MediaGridView()
-            grid.configure(media: items, width: width, theme: theme, layout: layout)
+            grid.configure(media: images.items, width: width, theme: theme, layout: layout)
             grid.onItemTap = { index in onInteraction(.mediaTap(index: index)) }
             return grid
+        }
 
-        case .voice(let payload):
+        if let voice = media.content(as: VoicePayload.self) {
             let view = VoiceContentView()
-            view.configure(voice: payload, isMine: isMine, theme: theme, layout: layout)
-            view.onPlayTap = { onInteraction(.voiceTap(url: payload.url)) }
+            view.configure(voice: voice, isMine: isMine, theme: theme, layout: layout)
+            view.onPlayTap = { onInteraction(.voiceTap(url: voice.url)) }
             return view
+        }
 
-        case .poll(let payload):
+        if let poll = media.content(as: PollPayload.self) {
             let view = PollContentView()
-            view.configure(poll: payload, isMine: isMine, theme: theme, layout: layout)
-            view.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: payload.id, optionId: optionId)) }
-            view.onDetailTap = { onInteraction(.pollDetailTap(pollId: payload.id)) }
+            view.configure(poll: poll, isMine: isMine, theme: theme, layout: layout)
+            view.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
+            view.onDetailTap = { onInteraction(.pollDetailTap(pollId: poll.id)) }
             return view
+        }
 
-        case .files(let items):
+        if let files = media.content(as: FilesContent.self) {
             let stack = UIStackView()
             stack.axis = .vertical
             stack.spacing = layout.fileRowSpacing
-            for (i, file) in items.enumerated() {
+            for (i, file) in files.items.enumerated() {
                 let view = FileContentView()
                 view.configure(file: file, isMine: isMine, theme: theme, layout: layout)
                 view.onTap = { onInteraction(.fileTap(index: i)) }
                 stack.addArrangedSubview(view)
             }
             return stack
-
-        case .custom(let type, _):
-            let label = UILabel()
-            label.text = "[\(type)]"
-            label.font = layout.messageFont
-            label.textColor = .secondaryLabel
-            label.textAlignment = .center
-            return label
         }
+
+        // Fallback for unknown types
+        let label = UILabel()
+        label.text = "[\(media.contentTypeID)]"
+        label.font = layout.messageFont
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        return label
     }
 
     open func contentHeight(
-        for media: MessageMedia,
+        for media: AnyChatContent,
         width: CGFloat,
         layout L: ChatLayout
     ) -> CGFloat {
-        switch media {
-        case .images(let items):
-            return MediaGridView.gridHeight(for: items, width: width, layout: L)
-        case .voice:
-            return L.voicePlaySize
-        case .poll(let p):
-            return pollHeight(p, width: width, layout: L)
-        case .files(let items):
-            let rowH = L.fileIconSize + L.filePadding * 2
-            return rowH * CGFloat(items.count) + L.fileRowSpacing * CGFloat(max(0, items.count - 1))
-        case .custom:
-            return L.messageFont.lineHeight + L.bubbleVPad * 2
+        if let images = media.content(as: ImagesContent.self) {
+            return MediaGridView.gridHeight(for: images.items, width: width, layout: L)
         }
+        if media.content(as: VoicePayload.self) != nil {
+            return L.voicePlaySize + 8 // 4pt top + 4pt bottom internal padding
+        }
+        if let poll = media.content(as: PollPayload.self) {
+            return pollHeight(poll, width: width, layout: L)
+        }
+        if let files = media.content(as: FilesContent.self) {
+            let rowH = L.fileIconSize + L.filePadding * 2
+            return rowH * CGFloat(files.items.count) + L.fileRowSpacing * CGFloat(max(0, files.items.count - 1))
+        }
+        return L.messageFont.lineHeight + L.bubbleVPad * 2
     }
+
+    open func reconfigureContentView(
+        _ view: UIView,
+        for media: AnyChatContent,
+        message: ChatMessage,
+        width: CGFloat,
+        theme: ChatTheme,
+        layout: ChatLayout,
+        onInteraction: @escaping (ChatContentInteraction) -> Void
+    ) -> Bool {
+        let isMine = message.isMine
+
+        if let poll = media.content(as: PollPayload.self), let pollView = view as? PollContentView {
+            pollView.configure(poll: poll, isMine: isMine, theme: theme, layout: layout)
+            pollView.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
+            pollView.onDetailTap = { onInteraction(.pollDetailTap(pollId: poll.id)) }
+            return true
+        }
+        if let voice = media.content(as: VoicePayload.self), let voiceView = view as? VoiceContentView {
+            voiceView.configure(voice: voice, isMine: isMine, theme: theme, layout: layout)
+            voiceView.onPlayTap = { onInteraction(.voiceTap(url: voice.url)) }
+            return true
+        }
+        if let images = media.content(as: ImagesContent.self), let gridView = view as? MediaGridView {
+            gridView.configure(media: images.items, width: width, theme: theme, layout: layout)
+            gridView.onItemTap = { index in onInteraction(.mediaTap(index: index)) }
+            return true
+        }
+        if let files = media.content(as: FilesContent.self), let filesStack = view as? UIStackView {
+            for (i, sub) in filesStack.arrangedSubviews.enumerated() {
+                if let fileView = sub as? FileContentView, i < files.items.count {
+                    fileView.configure(file: files.items[i], isMine: isMine, theme: theme, layout: layout)
+                    fileView.onTap = { onInteraction(.fileTap(index: i)) }
+                }
+            }
+            return true
+        }
+        return false
+    }
+
 
     private func pollHeight(_ poll: PollPayload, width: CGFloat, layout L: ChatLayout) -> CGFloat {
         let count = poll.options.count
@@ -260,5 +305,70 @@ open class DefaultChatContentFactory: ChatContentFactory {
 
     open func floatingDateView(title: String, theme: ChatTheme, layout: ChatLayout) -> UIView {
         dateSeparatorView(title: title, theme: theme, layout: layout)
+    }
+
+    // MARK: - Empty State
+
+    open func emptyStateView(theme: ChatTheme, layout: ChatLayout) -> UIView {
+        let label = UILabel()
+        label.text = NSLocalizedString("chat.empty", value: "Сообщений пока нет.\nНапишите первым!", comment: "")
+        label.font = layout.emptyStateFont
+        label.textColor = theme.emptyStateText
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        return label
+    }
+
+    open func emptyStateLoadingView(theme: ChatTheme, layout: ChatLayout) -> UIView {
+        let spinner = UIActivityIndicatorView(style: .large)
+        spinner.startAnimating()
+        return spinner
+    }
+
+    // MARK: - Loading Indicator
+
+    open func loadingIndicatorView(theme: ChatTheme, layout: ChatLayout) -> UIView {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.startAnimating()
+        return spinner
+    }
+
+    // MARK: - FAB
+
+    open func fabView(theme: ChatTheme, layout: ChatLayout) -> UIView {
+        let size = layout.inputButtonSize
+        let button = UIButton(type: .custom)
+        button.layer.cornerRadius = size / 2
+        button.layer.borderWidth = layout.inputBorderWidth
+        button.backgroundColor = theme.fabBackground
+        button.layer.borderColor = theme.fabBorder.cgColor
+
+        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+        let arrow = UIImageView(image: UIImage(systemName: "chevron.down", withConfiguration: config))
+        arrow.contentMode = .scaleAspectFit
+        arrow.tintColor = theme.fabArrowColor
+        arrow.translatesAutoresizingMaskIntoConstraints = false
+        arrow.isUserInteractionEnabled = false
+        button.addSubview(arrow)
+
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: size),
+            button.heightAnchor.constraint(equalToConstant: size),
+            arrow.centerXAnchor.constraint(equalTo: button.centerXAnchor),
+            arrow.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+        ])
+
+        return button
+    }
+
+    open func fabBadgeView(theme: ChatTheme, layout: ChatLayout) -> UIView {
+        let badge = PaddedLabel(hPad: 6)
+        badge.font = layout.fabBadgeFont
+        badge.textAlignment = .center
+        badge.layer.cornerRadius = layout.fabBadgeCornerRadius
+        badge.layer.masksToBounds = true
+        badge.backgroundColor = theme.fabBadgeBackground
+        badge.textColor = theme.fabBadgeTextColor
+        return badge
     }
 }

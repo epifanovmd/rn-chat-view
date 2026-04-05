@@ -34,10 +34,10 @@ public protocol ChatMessageDelegate: AnyObject {
     func chatDidSelectEmojiReaction(emoji: String, messageId: String)
     func chatDidTapReaction(messageId: String, emoji: String)
     func chatDidTapReplyMessage(id: String)
-    func chatDidTapPollOption(messageId: String, pollId: String, optionId: String)
-    func chatDidTapPollDetail(messageId: String, pollId: String)
-    /// Called when a custom content view fires an interaction.
-    func chatDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable])
+
+    /// Generic content interaction from factory-created views.
+    /// All media-type-specific interactions (poll tap, voice tap, etc.) go through this.
+    func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)
 }
 
 extension ChatMessageDelegate {
@@ -46,9 +46,7 @@ extension ChatMessageDelegate {
     func chatDidSelectEmojiReaction(emoji: String, messageId: String) {}
     func chatDidTapReaction(messageId: String, emoji: String) {}
     func chatDidTapReplyMessage(id: String) {}
-    func chatDidTapPollOption(messageId: String, pollId: String, optionId: String) {}
-    func chatDidTapPollDetail(messageId: String, pollId: String) {}
-    func chatDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable]) {}
+    func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {}
 }
 
 // MARK: - Input Events

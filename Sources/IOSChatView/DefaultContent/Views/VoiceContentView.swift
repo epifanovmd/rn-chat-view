@@ -107,14 +107,15 @@ public final class VoiceContentView: UIView {
         let waveH = btnSize - L.voiceDurationFont.lineHeight - 2
         let contentLeading: CGFloat = 10
 
+        let vPad: CGFloat = 4
         playButtonWidthConstraint = playButton.widthAnchor.constraint(equalToConstant: btnSize)
         playButtonHeightConstraint = playButton.heightAnchor.constraint(equalToConstant: btnSize)
-        viewHeightConstraint = heightAnchor.constraint(equalToConstant: btnSize)
+        viewHeightConstraint = heightAnchor.constraint(equalToConstant: btnSize + vPad * 2)
         waveformHeightConstraint = waveformView.heightAnchor.constraint(equalToConstant: waveH)
 
         NSLayoutConstraint.activate([
             playButton.leadingAnchor.constraint(equalTo: leadingAnchor),
-            playButton.topAnchor.constraint(equalTo: topAnchor),
+            playButton.topAnchor.constraint(equalTo: topAnchor, constant: vPad),
             playButtonWidthConstraint,
             playButtonHeightConstraint,
             viewHeightConstraint,
@@ -124,7 +125,7 @@ public final class VoiceContentView: UIView {
 
             waveformView.leadingAnchor.constraint(equalTo: playButton.trailingAnchor, constant: contentLeading),
             waveformView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            waveformView.topAnchor.constraint(equalTo: topAnchor),
+            waveformView.topAnchor.constraint(equalTo: topAnchor, constant: vPad),
             waveformHeightConstraint,
 
             durationLabel.leadingAnchor.constraint(equalTo: waveformView.leadingAnchor),
@@ -151,7 +152,7 @@ public final class VoiceContentView: UIView {
         let waveH = btnSize - L.voiceDurationFont.lineHeight - 2
         playButtonWidthConstraint.constant = btnSize
         playButtonHeightConstraint.constant = btnSize
-        viewHeightConstraint.constant = btnSize
+        viewHeightConstraint.constant = btnSize + 8 // 4pt top + 4pt bottom padding
         waveformHeightConstraint.constant = waveH
 
         // Rebuild loading ring for new size

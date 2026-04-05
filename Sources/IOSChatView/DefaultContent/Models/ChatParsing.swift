@@ -39,14 +39,14 @@ extension ChatMessage {
         )
     }
 
-    private static func parseContent(dict: NSDictionary, text: String?) -> MessageContent {
+    private static func parseContent(dict: NSDictionary, text: String?) -> MessageBody {
         let finalText = (text?.isEmpty == false) ? text : nil
 
         // Determine media type by priority: poll > files > voice > images
-        let messageMedia: MessageMedia?
+        let media: AnyChatContent?
 
         if let pollDict = dict["poll"] as? NSDictionary {
-            messageMedia = .poll(parsePoll(pollDict))
+            media = AnyChatContent(parsePoll(pollDict))
         } else {
             // Files: support single "file" or array "files"
             var files: [FilePayload] = []
@@ -57,27 +57,27 @@ extension ChatMessage {
             }
 
             if !files.isEmpty {
-                messageMedia = .files(files)
+                media = AnyChatContent(FilesContent(files))
             } else if let voiceDict = dict["voice"] as? NSDictionary {
-                messageMedia = .voice(parseVoice(voiceDict))
+                media = AnyChatContent(parseVoice(voiceDict))
             } else {
                 // Build unified media array from images + video
-                var media: [MediaItem] = []
+                var items: [MediaItem] = []
                 if let imagesArr = dict["images"] as? [NSDictionary] {
                     for imgDict in imagesArr {
                         if let item = parseImageItem(imgDict) {
-                            media.append(.image(item))
+                            items.append(.image(item))
                         }
                     }
                 }
                 if let videoDict = dict["video"] as? NSDictionary {
-                    media.append(.video(parseVideo(videoDict)))
+                    items.append(.video(parseVideo(videoDict)))
                 }
-                messageMedia = media.isEmpty ? nil : .images(media)
+                media = items.isEmpty ? nil : AnyChatContent(ImagesContent(items))
             }
         }
 
-        return MessageContent(text: finalText, media: messageMedia)
+        return MessageBody(text: finalText, content: media)
     }
 
     private static func parseImageItem(_ dict: NSDictionary) -> ImageItem? {

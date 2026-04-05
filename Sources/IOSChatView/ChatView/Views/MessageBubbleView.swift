@@ -66,7 +66,7 @@ public final class MessageBubbleView: UIView {
         applyLayout(layout)
         let isMine = message.isMine
         let content = message.content
-        isEmojiOnly = content.media == nil && EmojiHelper.emojiOnlyCount(content.text) != nil
+        isEmojiOnly = content.content == nil && EmojiHelper.emojiOnlyCount(content.text) != nil
 
         // Background
         if isEmojiOnly {
@@ -147,16 +147,6 @@ public final class MessageBubbleView: UIView {
                 stack.addArrangedSubview(replyView)
             }
 
-            // Voice top spacer
-            let hasReply = features.showReplyPreview && message.reply != nil
-            let hasHeader = (showSenderName && message.senderName != nil && !isMine) || hasReply
-            if case .voice = content.media, !hasHeader {
-                let spacer = UIView()
-                spacer.translatesAutoresizingMaskIntoConstraints = false
-                spacer.heightAnchor.constraint(equalToConstant: 4).isActive = true
-                stack.addArrangedSubview(spacer)
-            }
-
             // Content
             let innerW = bubbleWidth - currentLayout.bubbleHPad * 2
             let newContent = createContentView(for: message, width: innerW, isMine: isMine, theme: theme, factory: factory)
@@ -173,15 +163,6 @@ public final class MessageBubbleView: UIView {
             }
             reactionsView = rv
             stack.addArrangedSubview(rv)
-        }
-
-        // Voice bottom spacer
-        let hasFooter = features.showTimestamp || (message.isEdited && features.showEditedMark) || (isMine && features.showMessageStatus)
-        if case .voice = content.media, !hasFooter {
-            let spacer = UIView()
-            spacer.translatesAutoresizingMaskIntoConstraints = false
-            spacer.heightAnchor.constraint(equalToConstant: 4).isActive = true
-            stack.addArrangedSubview(spacer)
         }
 
         // Footer
@@ -202,7 +183,7 @@ public final class MessageBubbleView: UIView {
         let content = msg.content
 
         // Emoji-only (text without media, 1-3 emoji)
-        if content.media == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
+        if content.content == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
             return factory.emojiView(text: content.text!, emojiCount: count, layout: currentLayout)
         }
 
@@ -210,7 +191,7 @@ public final class MessageBubbleView: UIView {
         var views: [UIView] = []
 
         // Media view
-        if let media = content.media {
+        if let media = content.content {
             let mediaView = factory.contentView(for: media, message: msg, width: width, theme: theme, layout: currentLayout) { [weak self] interaction in
                 self?.onContentInteraction?(interaction)
             }
@@ -291,7 +272,7 @@ public final class MessageBubbleView: UIView {
         // Same message ID
         guard old.id == new.id else { return false }
         // Same media type case
-        guard mediaCaseTag(old.content.media) == mediaCaseTag(new.content.media) else { return false }
+        guard mediaCaseTag(old.content.content) == mediaCaseTag(new.content.content) else { return false }
         // Same text presence
         guard (old.content.text != nil) == (new.content.text != nil) else { return false }
         // Same forwarded status
@@ -307,69 +288,34 @@ public final class MessageBubbleView: UIView {
         let newName = showSenderName && new.senderName != nil && !new.isMine
         guard oldName == newName else { return false }
         // Same emoji-only status
-        let oldEmoji = old.content.media == nil && EmojiHelper.emojiOnlyCount(old.content.text) != nil
-        let newEmoji = new.content.media == nil && EmojiHelper.emojiOnlyCount(new.content.text) != nil
+        let oldEmoji = old.content.content == nil && EmojiHelper.emojiOnlyCount(old.content.text) != nil
+        let newEmoji = new.content.content == nil && EmojiHelper.emojiOnlyCount(new.content.text) != nil
         guard oldEmoji == newEmoji else { return false }
         return true
     }
 
-    private func mediaCaseTag(_ media: MessageMedia?) -> Int {
-        switch media {
-        case nil:            return 0
-        case .images:        return 1
-        case .voice:         return 2
-        case .poll:          return 3
-        case .files:         return 4
-        case .custom:        return 5
-        }
+    private func mediaCaseTag(_ media: AnyChatContent?) -> String {
+        media?.contentTypeID ?? ""
     }
 
-    /// Reconfigure the content view in-place by type.
+    /// Reconfigure the content view in-place via the factory.
     private func reconfigureContentView(message: ChatMessage, width: CGFloat, isMine: Bool, theme: ChatTheme, layout: ChatLayout, factory: ChatContentFactory) {
         guard let cv = contentView else { return }
         let content = message.content
 
-        switch content.media {
-        case .poll(let poll):
-            if let pollView = cv as? PollContentView {
-                pollView.configure(poll: poll, isMine: isMine, theme: theme, layout: layout)
-                pollView.onOptionTap = { [weak self] optionId in self?.onContentInteraction?(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
-                pollView.onDetailTap = { [weak self] in self?.onContentInteraction?(.pollDetailTap(pollId: poll.id)) }
+        // Ask factory to reconfigure the media view in-place
+        if let media = content.content {
+            let interactionHandler: (ChatContentInteraction) -> Void = { [weak self] interaction in
+                self?.onContentInteraction?(interaction)
             }
-
-        case .voice(let payload):
-            if let voiceView = cv as? VoiceContentView {
-                voiceView.configure(voice: payload, isMine: isMine, theme: theme, layout: layout)
-                voiceView.onPlayTap = { [weak self] in self?.onContentInteraction?(.voiceTap(url: payload.url)) }
-            }
-
-        case .images(let items):
-            if let gridView = cv as? MediaGridView {
-                gridView.configure(media: items, width: width, theme: theme, layout: layout)
-                gridView.onItemTap = { [weak self] index in self?.onContentInteraction?(.mediaTap(index: index)) }
-            }
-
-        case .files(let items):
-            if let filesStack = cv as? UIStackView {
-                for (i, sub) in filesStack.arrangedSubviews.enumerated() {
-                    if let fileView = sub as? FileContentView, i < items.count {
-                        fileView.configure(file: items[i], isMine: isMine, theme: theme, layout: layout)
-                        fileView.onTap = { [weak self] in self?.onContentInteraction?(.fileTap(index: i)) }
-                    }
-                }
-            }
-
-        case .custom, nil:
-            break
+            _ = factory.reconfigureContentView(cv, for: media, message: message, width: width, theme: theme, layout: layout, onInteraction: interactionHandler)
         }
 
         // Update text if present (standalone or mixed content with media)
         if let text = content.text, !text.isEmpty {
             if let textView = cv as? TextContentView {
-                // Standalone text
                 textView.configure(text: text, isMine: isMine, theme: theme, layout: layout)
             } else if let mixedStack = cv as? UIStackView {
-                // Mixed: media + text in a stack
                 for sub in mixedStack.arrangedSubviews {
                     if let tv = sub as? TextContentView {
                         tv.configure(text: text, isMine: isMine, theme: theme, layout: layout)

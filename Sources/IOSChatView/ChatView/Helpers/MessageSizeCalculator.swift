@@ -16,7 +16,7 @@ public enum MessageSizeCalculator {
         let maxW = containerWidth * L.bubbleMaxWidthRatio
         let content = msg.content
 
-        if content.media == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
+        if content.content == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
             let font = ChatTextMeasurer.emojiFont(for: count, layout: L)
             let tw = ChatTextMeasurer.width(content.text!, font: font)
             var w = min(tw + L.bubbleHPad * 2, maxW)
@@ -41,7 +41,7 @@ public enum MessageSizeCalculator {
             replyW = minReplyW + L.bubbleHPad * 2
         }
 
-        if content.media != nil {
+        if content.content != nil {
             var w = maxW
             if features.showReactions, !msg.reactions.isEmpty {
                 w = max(w, reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2)
@@ -49,7 +49,7 @@ public enum MessageSizeCalculator {
             return min(w, maxW)
         }
 
-        if content.media == nil, let text = content.text {
+        if content.content == nil, let text = content.text {
             let tw = ChatTextMeasurer.width(text, font: L.messageFont)
             let minW = minFooterWidth(for: msg, layout: L, features: features)
             var contentW = max(tw + L.bubbleHPad * 2, minW + L.bubbleHPad * 2)
@@ -71,7 +71,7 @@ public enum MessageSizeCalculator {
     public static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         let content = msg.content
 
-        if content.media == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
+        if content.content == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
             let font = ChatTextMeasurer.emojiFont(for: count, layout: L)
             var h = ChatTextMeasurer.height(content.text!, font: font, width: bw - L.bubbleHPad * 2) + L.bubbleVPad * 2
 
@@ -103,12 +103,6 @@ public enum MessageSizeCalculator {
             h += L.replyHeight + L.bubbleSpacing
         }
 
-        let hasReply = features.showReplyPreview && msg.reply != nil
-        let hasHeader = (showSenderName && msg.senderName != nil && !msg.isMine) || hasReply || isForwarded
-        if case .voice = content.media, !hasHeader {
-            h += L.bubbleSpacing + L.bubbleSpacing
-        }
-
         h += contentHeight(for: content, width: innerW, layout: L, factory: factory)
 
         if features.showReactions, !msg.reactions.isEmpty {
@@ -117,9 +111,6 @@ public enum MessageSizeCalculator {
         }
 
         let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.isMine && features.showMessageStatus)
-        if case .voice = content.media, !hasFooter {
-            h += L.bubbleSpacing + L.bubbleSpacing
-        }
         if hasFooter { h += L.footerHeight }
         h += L.bubbleBottomPad
         return h
@@ -149,10 +140,10 @@ public enum MessageSizeCalculator {
 
     // MARK: - Content Height
 
-    public static func contentHeight(for content: MessageContent, width: CGFloat, layout L: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
+    public static func contentHeight(for content: MessageBody, width: CGFloat, layout L: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         var h: CGFloat = 0
 
-        if let media = content.media {
+        if let media = content.content {
             h += factory.contentHeight(for: media, width: width, layout: L)
         }
 

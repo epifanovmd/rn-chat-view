@@ -43,7 +43,7 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
 
         case .loading:
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: LoadingCell.reuseID, for: indexPath) as! LoadingCell
-            cell.startAnimating()
+            cell.configure(factory: vc.contentFactory, theme: vc.theme, layout: vc.layout)
             return cell
         }
     }
@@ -103,20 +103,7 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
             vc?.messageSectionDidTapReply(messageId: replyTo)
         }
         cell.onContentInteraction = { [weak vc] interaction in
-            switch interaction {
-            case .mediaTap(let i):
-                vc?.messageSectionDidTap(messageId: msg.id, attachmentIndex: i)
-            case .fileTap(let i):
-                vc?.messageSectionDidTap(messageId: msg.id, attachmentIndex: i)
-            case .pollOptionTap(let pId, let oId):
-                vc?.messageSectionDidTapPollOption(messageId: msg.id, pollId: pId, optionId: oId)
-            case .pollDetailTap(let pId):
-                vc?.messageSectionDidTapPollDetail(messageId: msg.id, pollId: pId)
-            case .voiceTap(let url):
-                vc?.messageSectionDidTapVoice(messageId: msg.id, url: url)
-            case .custom(let type, let payload):
-                vc?.messageSectionDidCustomInteraction(messageId: msg.id, type: type, payload: payload)
-            }
+            vc?.messageSectionDidContentInteraction(messageId: msg.id, interaction: interaction)
         }
         cell.onReactionTap = { [weak vc] emoji in
             vc?.messageSectionDidTapReaction(messageId: msg.id, emoji: emoji)
@@ -129,7 +116,7 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
             return ReplyDisplayInfo(
                 senderName: original.senderName ?? "Неизвестный",
                 text: original.content.text ?? "",
-                hasImage: original.content.media != nil
+                hasImage: original.content.content != nil
             )
         }
     }

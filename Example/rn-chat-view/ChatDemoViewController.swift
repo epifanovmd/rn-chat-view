@@ -22,7 +22,7 @@ enum ChatDemoData {
             // 1. Plain text (incoming)
             ChatMessage(
                 id: "1",
-                content: MessageContent(text: "Привет! Как дела?", media: nil),
+                content: MessageBody(text: "Привет! Как дела?", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -25, to: now)!,
                 senderName: otherUser,
                 isMine: false,
@@ -38,7 +38,7 @@ enum ChatDemoData {
             // 2. Plain text (outgoing, read)
             ChatMessage(
                 id: "2",
-                content: MessageContent(text: "Привет, Алиса! Всё отлично, работаю над компонентом чата 🚀", media: nil),
+                content: MessageBody(text: "Привет, Алиса! Всё отлично, работаю над компонентом чата 🚀", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -24, to: now)!,
                 senderName: nil,
                 isMine: true,
@@ -54,7 +54,7 @@ enum ChatDemoData {
             // 3. Reply message (incoming)
             ChatMessage(
                 id: "3",
-                content: MessageContent(text: "Звучит здорово! Можешь показать дизайн?", media: nil),
+                content: MessageBody(text: "Звучит здорово! Можешь показать дизайн?", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -23, to: now)!,
                 senderName: otherUser,
                 isMine: false,
@@ -70,15 +70,15 @@ enum ChatDemoData {
             // 4. Image message (outgoing)
             ChatMessage(
                 id: "4",
-                content: MessageContent(
+                content: MessageBody(
                     text: "Вот макет",
-                    media: .images([
+                    content: AnyChatContent(ImagesContent([
                         .image(ImageItem(
                             url: "https://picsum.photos/id/1/400/300",
                             width: 400, height: 300,
                             thumbnailUrl: "https://picsum.photos/id/1/200/150"
                         ))
-                    ])
+                    ]))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -22, to: now)!,
                 senderName: nil,
@@ -100,11 +100,11 @@ enum ChatDemoData {
             // 5a. Single video (incoming)
             ChatMessage(
                 id: "5a",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .images([
+                    content: AnyChatContent(ImagesContent([
                         .video(VideoItem(url: "https://example.com/video1.mp4", thumbnailUrl: "https://picsum.photos/id/60/400/300", width: 400, height: 300, duration: 45)),
-                    ])
+                    ]))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -6, to: now)!,
                 senderName: otherUser,
@@ -121,12 +121,12 @@ enum ChatDemoData {
             // 5b. Two images (outgoing, with text)
             ChatMessage(
                 id: "5b",
-                content: MessageContent(
+                content: MessageBody(
                     text: "Смотри какие виды!",
-                    media: .images([
+                    content: AnyChatContent(ImagesContent([
                         .image(ImageItem(url: "https://picsum.photos/id/10/400/300", width: 400, height: 300, thumbnailUrl: "https://picsum.photos/id/10/200/150")),
                         .image(ImageItem(url: "https://picsum.photos/id/20/300/400", width: 300, height: 400, thumbnailUrl: "https://picsum.photos/id/20/150/200")),
-                    ])
+                    ]))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-2400),
                 senderName: nil,
@@ -143,13 +143,13 @@ enum ChatDemoData {
             // 5c. Mixed: 2 images + 1 video (incoming)
             ChatMessage(
                 id: "5c",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .images([
+                    content: AnyChatContent(ImagesContent([
                         .image(ImageItem(url: "https://picsum.photos/id/30/400/400", width: 400, height: 400, thumbnailUrl: "https://picsum.photos/id/30/200/200")),
                         .video(VideoItem(url: "https://example.com/video2.mp4", thumbnailUrl: "https://picsum.photos/id/40/400/300", width: 400, height: 300, duration: 12)),
                         .image(ImageItem(url: "https://picsum.photos/id/50/300/400", width: 300, height: 400, thumbnailUrl: "https://picsum.photos/id/50/150/200")),
-                    ])
+                    ]))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-1800),
                 senderName: otherUser,
@@ -166,14 +166,14 @@ enum ChatDemoData {
             // 5d. Four images (outgoing)
             ChatMessage(
                 id: "5d",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .images([
+                    content: AnyChatContent(ImagesContent([
                         .image(ImageItem(url: "https://picsum.photos/id/100/400/300", width: 400, height: 300, thumbnailUrl: "https://picsum.photos/id/100/200/150")),
                         .image(ImageItem(url: "https://picsum.photos/id/110/300/300", width: 300, height: 300, thumbnailUrl: "https://picsum.photos/id/110/150/150")),
                         .image(ImageItem(url: "https://picsum.photos/id/120/400/250", width: 400, height: 250, thumbnailUrl: "https://picsum.photos/id/120/200/125")),
                         .image(ImageItem(url: "https://picsum.photos/id/130/350/400", width: 350, height: 400, thumbnailUrl: "https://picsum.photos/id/130/175/200")),
-                    ])
+                    ]))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-1200),
                 senderName: nil,
@@ -190,15 +190,15 @@ enum ChatDemoData {
             // 5e. Five+ mixed: 3 images + 2 videos (incoming, with +N overlay)
             ChatMessage(
                 id: "5e",
-                content: MessageContent(
+                content: MessageBody(
                     text: "Фото и видео с поездки 🏔",
-                    media: .images([
+                    content: AnyChatContent(ImagesContent([
                         .image(ImageItem(url: "https://picsum.photos/id/140/400/300", width: 400, height: 300, thumbnailUrl: "https://picsum.photos/id/140/200/150")),
                         .video(VideoItem(url: "https://example.com/video3.mp4", thumbnailUrl: "https://picsum.photos/id/150/400/300", width: 400, height: 300, duration: 128)),
                         .image(ImageItem(url: "https://picsum.photos/id/160/300/400", width: 300, height: 400, thumbnailUrl: "https://picsum.photos/id/160/150/200")),
                         .image(ImageItem(url: "https://picsum.photos/id/170/400/400", width: 400, height: 400, thumbnailUrl: "https://picsum.photos/id/170/200/200")),
                         .video(VideoItem(url: "https://example.com/video4.mp4", thumbnailUrl: "https://picsum.photos/id/180/400/250", width: 400, height: 250, duration: 67)),
-                    ])
+                    ]))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-600),
                 senderName: otherUser,
@@ -215,9 +215,9 @@ enum ChatDemoData {
             // 6. Voice message (outgoing)
             ChatMessage(
                 id: "6",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .voice(VoicePayload(
+                    content: AnyChatContent(VoicePayload(
                         url: "https://dl.espressif.com/dl/audio/gs-16b-2c-44100hz.m4a",
                         duration: 12.5,
                         waveform: [0.1, 0.3, 0.5, 0.8, 1.0, 0.7, 0.4, 0.6, 0.9, 0.5,
@@ -239,9 +239,9 @@ enum ChatDemoData {
             // 6b. Voice message (incoming)
             ChatMessage(
                 id: "6b",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .voice(VoicePayload(
+                    content: AnyChatContent(VoicePayload(
                         url: "https://dl.espressif.com/dl/audio/gs-16b-1c-44100hz.m4a",
                         duration: 8.0,
                         waveform: [0.2, 0.5, 0.9, 0.7, 0.3, 0.6, 1.0, 0.8, 0.4, 0.2,
@@ -263,9 +263,9 @@ enum ChatDemoData {
             // 6c. Voice message (outgoing, short)
             ChatMessage(
                 id: "6c",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .voice(VoicePayload(
+                    content: AnyChatContent(VoicePayload(
                         url: "https://dl.espressif.com/dl/audio/ff-16b-1c-44100hz.m4a",
                         duration: 3.2,
                         waveform: [0.4, 0.8, 1.0, 0.6, 0.3, 0.5, 0.9, 0.7, 0.2, 0.4]
@@ -286,9 +286,9 @@ enum ChatDemoData {
             // 6d. Voice message (incoming, long)
             ChatMessage(
                 id: "6d",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .voice(VoicePayload(
+                    content: AnyChatContent(VoicePayload(
                         url: "https://dl.espressif.com/dl/audio/ff-16b-2c-44100hz.m4a",
                         duration: 47.0,
                         waveform: [0.1, 0.2, 0.4, 0.6, 0.8, 1.0, 0.9, 0.7, 0.5, 0.3,
@@ -311,13 +311,13 @@ enum ChatDemoData {
             // 7. File message (incoming, multiple files)
             ChatMessage(
                 id: "7",
-                content: MessageContent(
+                content: MessageBody(
                     text: "Вот файлы проекта",
-                    media: .files([
+                    content: AnyChatContent(FilesContent([
                         FilePayload(url: "https://example.com/report.pdf", name: "Q4_Report_2025.pdf", size: 2_540_000, mimeType: "application/pdf"),
                         FilePayload(url: "https://example.com/design.zip", name: "UI_Design_Assets.zip", size: 15_800_000, mimeType: "application/zip"),
                         FilePayload(url: "https://example.com/track.mp3", name: "notification_sound.mp3", size: 340_000, mimeType: "audio/mpeg"),
-                    ])
+                    ]))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -3, to: now)!,
                 senderName: otherUser,
@@ -334,9 +334,9 @@ enum ChatDemoData {
             // 8. Poll message (outgoing, single choice)
             ChatMessage(
                 id: "8",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .poll(PollPayload(
+                    content: AnyChatContent(PollPayload(
                         id: "poll-1",
                         question: "Когда проведём командную встречу?",
                         options: [
@@ -366,9 +366,9 @@ enum ChatDemoData {
             // 8b. Poll message (incoming, multiple choice)
             ChatMessage(
                 id: "8b",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .poll(PollPayload(
+                    content: AnyChatContent(PollPayload(
                         id: "poll-2",
                         question: "Какие технологии используем в новом проекте?",
                         options: [
@@ -399,9 +399,9 @@ enum ChatDemoData {
             // 8c. Closed poll (outgoing)
             ChatMessage(
                 id: "8c",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .poll(PollPayload(
+                    content: AnyChatContent(PollPayload(
                         id: "poll-3",
                         question: "Где проведём корпоратив?",
                         options: [
@@ -431,7 +431,7 @@ enum ChatDemoData {
             // 9. Forwarded message (incoming)
             ChatMessage(
                 id: "9",
-                content: MessageContent(text: "Деплой запланирован на пятницу в 18:00 UTC. Убедитесь, что все PR смержены до конца четверга.", media: nil),
+                content: MessageBody(text: "Деплой запланирован на пятницу в 18:00 UTC. Убедитесь, что все PR смержены до конца четверга.", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -1, to: now)!,
                 senderName: otherUser,
                 isMine: false,
@@ -447,7 +447,7 @@ enum ChatDemoData {
             // 10. Edited message (outgoing, sent)
             ChatMessage(
                 id: "10",
-                content: MessageContent(text: "Понял, закончу свой PR сегодня", media: nil),
+                content: MessageBody(text: "Понял, закончу свой PR сегодня", content: nil),
                 timestamp: cal.date(byAdding: .minute, value: -30, to: now)!,
                 senderName: nil,
                 isMine: true,
@@ -463,9 +463,9 @@ enum ChatDemoData {
             // 11. Long text message (incoming)
             ChatMessage(
                 id: "11",
-                content: MessageContent(
+                content: MessageBody(
                     text: "Кстати, хотела сказать, что новый API-эндпоинт для пользовательских настроек готов к тестированию. Документация обновлена в Confluence. Swagger-спеки по адресу /api/v2/preferences. Напиши, если будут вопросы!",
-                    media: nil
+                    content: nil
                 ),
                 timestamp: cal.date(byAdding: .minute, value: -10, to: now)!,
                 senderName: otherUser,
@@ -485,7 +485,7 @@ enum ChatDemoData {
             // 12. Sending message (outgoing, sending status)
             ChatMessage(
                 id: "12",
-                content: MessageContent(text: "Спасибо, сейчас посмотрю!", media: nil),
+                content: MessageBody(text: "Спасибо, сейчас посмотрю!", content: nil),
                 timestamp: now,
                 senderName: nil,
                 isMine: true,
@@ -1123,7 +1123,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
             let msg = ChatMessage(
                 id: "gen-\(messageCounter)",
-                content: MessageContent(text: texts[i % texts.count], media: nil),
+                content: MessageBody(text: texts[i % texts.count], content: nil),
                 timestamp: timestamp,
                 senderName: sender,
                 isMine: isMine,
@@ -1168,7 +1168,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {
         if let idx = attachmentIndex {
-            showAlert("Tap Message", "id: \(id)\nattachment: \(idx)")
+            showAlert("Tap Message", "id: \(id)\ncontent: \(idx)")
         } else {
             showAlert("Tap Message", "id: \(id)")
         }
@@ -1183,7 +1183,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
                 replyToId: messageId,
                 senderName: msg.senderName ?? "Вы",
                 text: msg.content.text,
-                hasImage: msg.content.media != nil
+                hasImage: msg.content.content != nil
             ))
         case "edit":
             chatVC.beginEdit(messageId: messageId, text: msg.content.text ?? "")
@@ -1250,22 +1250,24 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         chatVC.scrollToMessage(id: id, position: "center", animated: true, highlight: true)
     }
 
-    func chatDidTapPollOption(messageId: String, pollId: String, optionId: String) {
-        togglePollVote(messageId: messageId, optionId: optionId)
-    }
-
-    func chatDidTapPollDetail(messageId: String, pollId: String) {
-        showAlert("Poll Detail", "poll: \(pollId)")
-    }
-
-    func chatDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable]) {
-        showAlert("Custom: \(type)", "message: \(messageId)")
+    func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {
+        switch interaction.type {
+        case "pollOptionTap":
+            if let optionId = interaction.payload["optionId"] as? String {
+                togglePollVote(messageId: messageId, optionId: optionId)
+            }
+        case "pollDetailTap":
+            let pollId = interaction.payload["pollId"] as? String ?? "?"
+            showAlert("Poll Detail", "poll: \(pollId)")
+        default:
+            showAlert("Interaction: \(interaction.type)", "message: \(messageId)")
+        }
     }
 
     private func togglePollVote(messageId: String, optionId: String) {
         var msgs = chatVC.messages
         guard let idx = msgs.firstIndex(where: { $0.id == messageId }),
-              case .poll(let poll) = msgs[idx].content.media,
+              let poll = msgs[idx].content.content?.content(as: PollPayload.self),
               !poll.isClosed else { return }
 
         var selectedIds = poll.selectedOptionIds
@@ -1288,7 +1290,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         let msg = msgs[idx]
         msgs[idx] = ChatMessage(
             id: msg.id,
-            content: MessageContent(text: msg.content.text, media: .poll(updatedPoll)),
+            content: MessageBody(text: msg.content.text, content: AnyChatContent(updatedPoll)),
             timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
             groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
             forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
@@ -1331,7 +1333,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     private func randomizePolls() {
         var msgs = chatVC.messages
         for i in 0..<msgs.count {
-            guard case .poll(let poll) = msgs[i].content.media, !poll.isClosed else { continue }
+            guard let poll = msgs[i].content.content?.content(as: PollPayload.self), !poll.isClosed else { continue }
 
             var options: [PollOption] = []
             var totalVotes = 0
@@ -1355,7 +1357,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             let msg = msgs[i]
             msgs[i] = ChatMessage(
                 id: msg.id,
-                content: MessageContent(text: msg.content.text, media: .poll(updated)),
+                content: MessageBody(text: msg.content.text, content: AnyChatContent(updated)),
                 timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
                 groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
                 forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
@@ -1400,7 +1402,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
                 ]
                 msgs[idx] = ChatMessage(
                     id: msg.id,
-                    content: MessageContent(text: texts.randomElement()!, media: msg.content.media),
+                    content: MessageBody(text: texts.randomElement()!, content: msg.content.content),
                     timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
                     groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
                     forwardedFrom: msg.forwardedFrom,
@@ -1447,7 +1449,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         let today = DateHelper.shared.groupKey(from: Date())
         let newMsg = ChatMessage(
             id: UUID().uuidString,
-            content: MessageContent(text: text, media: nil),
+            content: MessageBody(text: text, content: nil),
             timestamp: Date(),
             senderName: nil,
             isMine: true,
@@ -1473,7 +1475,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         let msg = msgs[idx]
         msgs[idx] = ChatMessage(
             id: msg.id,
-            content: MessageContent(text: text, media: msg.content.media),
+            content: MessageBody(text: text, content: msg.content.content),
             timestamp: msg.timestamp,
             senderName: msg.senderName,
             isMine: msg.isMine,
@@ -1502,9 +1504,9 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
         let voiceMsg = ChatMessage(
             id: UUID().uuidString,
-            content: MessageContent(
+            content: MessageBody(
                 text: nil,
-                media: .voice(VoicePayload(
+                content: AnyChatContent(VoicePayload(
                     url: fileURL.absoluteString,
                     duration: duration,
                     waveform: waveform

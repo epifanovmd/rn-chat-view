@@ -20,23 +20,11 @@ extension ChatViewController {
         delegate?.chatDidTapReplyMessage(id: messageId)
     }
 
-    func messageSectionDidTapPollOption(messageId: String, pollId: String, optionId: String) {
-        delegate?.chatDidTapPollOption(messageId: messageId, pollId: pollId, optionId: optionId)
-    }
-
-    func messageSectionDidTapPollDetail(messageId: String, pollId: String) {
-        delegate?.chatDidTapPollDetail(messageId: messageId, pollId: pollId)
-    }
-
-    func messageSectionDidTapVoice(messageId: String, url: String) {
-        VoicePlayer.shared.toggle(url: url)
+    func messageSectionDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {
+        delegate?.chatDidContentInteraction(messageId: messageId, interaction: interaction)
     }
 
     func messageSectionDidTapReaction(messageId: String, emoji: String) {
         delegate?.chatDidTapReaction(messageId: messageId, emoji: emoji)
-    }
-
-    func messageSectionDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable]) {
-        delegate?.chatDidCustomInteraction(messageId: messageId, type: type, payload: payload)
     }
 }

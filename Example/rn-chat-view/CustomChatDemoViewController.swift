@@ -1,51 +1,66 @@
 import IOSChatView
 import UIKit
 
+// MARK: - Custom Media Content Types
+
+struct PaymentContent: ChatContent {
+    static let contentTypeID = "payment"
+    let amount: String
+    let currency: String
+    let status: String
+}
+
+struct LocationContent: ChatContent {
+    static let contentTypeID = "location"
+    let address: String
+    let lat: Double
+    let lon: Double
+}
+
+struct ContactContent: ChatContent {
+    static let contentTypeID = "contact"
+    let name: String
+    let phone: String
+}
+
 // MARK: - Custom Content Factory
 
 /// Demonstrates full customization: custom text bubbles, custom media views,
-/// custom footer, custom sender name, and handling `.custom` media type.
+/// custom footer, custom sender name, and handling custom media types.
 final class CustomChatContentFactory: DefaultChatContentFactory {
 
     nonisolated override init() { super.init() }
 
-    // MARK: - Custom Media: "payment" and "location" types via .custom(type:payload:)
+    // MARK: - Custom Media: "payment", "location", "contact" types via ChatContent
 
     nonisolated override func contentView(
-        for media: MessageMedia,
+        for media: AnyChatContent,
         message: ChatMessage,
         width: CGFloat,
         theme: ChatTheme,
         layout: ChatLayout,
         onInteraction: @escaping (ChatContentInteraction) -> Void
     ) -> UIView {
-        if case .custom(let type, let payload) = media {
-            switch type {
-            case "payment":
-                return makePaymentView(payload: payload, isMine: message.isMine, theme: theme, layout: layout, width: width, onInteraction: onInteraction)
-            case "location":
-                return makeLocationView(payload: payload, isMine: message.isMine, theme: theme, width: width, onInteraction: onInteraction)
-            case "contact":
-                return makeContactView(payload: payload, isMine: message.isMine, theme: theme, width: width, onInteraction: onInteraction)
-            default:
-                break
-            }
+        if let payment = media.content(as: PaymentContent.self) {
+            return makePaymentView(payment: payment, isMine: message.isMine, theme: theme, layout: layout, width: width, onInteraction: onInteraction)
+        } else if let location = media.content(as: LocationContent.self) {
+            return makeLocationView(location: location, isMine: message.isMine, theme: theme, width: width, onInteraction: onInteraction)
+        } else if let contact = media.content(as: ContactContent.self) {
+            return makeContactView(contact: contact, isMine: message.isMine, theme: theme, width: width, onInteraction: onInteraction)
         }
         return super.contentView(for: media, message: message, width: width, theme: theme, layout: layout, onInteraction: onInteraction)
     }
 
     nonisolated override func contentHeight(
-        for media: MessageMedia,
+        for media: AnyChatContent,
         width: CGFloat,
         layout: ChatLayout
     ) -> CGFloat {
-        if case .custom(let type, _) = media {
-            switch type {
-            case "payment":  return 80
-            case "location": return 140
-            case "contact":  return 60
-            default: break
-            }
+        switch media.contentTypeID {
+        case PaymentContent.contentTypeID:  return 80
+        case LocationContent.contentTypeID: return 140
+        case ContactContent.contentTypeID:  return 60
+        default: break
         }
         return super.contentHeight(for: media, width: width, layout: layout)
     }
@@ -234,11 +249,10 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
     // MARK: - Payment View
 
-    private func makePaymentView(payload: AnyHashable, isMine: Bool, theme: ChatTheme, layout: ChatLayout, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
-        let data = payload as? [String: AnyHashable] ?? [:]
-        let amount = data["amount"] as? String ?? "0"
-        let currency = data["currency"] as? String ?? "USD"
-        let status = data["status"] as? String ?? "completed"
+    private func makePaymentView(payment: PaymentContent, isMine: Bool, theme: ChatTheme, layout: ChatLayout, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
+        let amount = payment.amount
+        let currency = payment.currency
+        let status = payment.status
 
         let container = UIView()
         container.backgroundColor = isMine
@@ -298,7 +312,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
         // Tap → fires custom interaction through the standard pipeline
         addTapHandler(to: container) {
-            onInteraction(.custom(type: "paymentTap", payload: [
+            onInteraction(ChatContentInteraction(type: "paymentTap", payload: [
                 "amount": amount as AnyHashable,
                 "currency": currency as AnyHashable,
                 "status": status as AnyHashable,
@@ -310,11 +324,10 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
     // MARK: - Location View
 
-    private func makeLocationView(payload: AnyHashable, isMine: Bool, theme: ChatTheme, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
-        let data = payload as? [String: AnyHashable] ?? [:]
-        let address = data["address"] as? String ?? "Unknown location"
-        let lat = data["lat"] as? Double ?? 0
-        let lon = data["lon"] as? Double ?? 0
+    private func makeLocationView(location: LocationContent, isMine: Bool, theme: ChatTheme, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
+        let address = location.address
+        let lat = location.lat
+        let lon = location.lon
 
         let container = UIView()
         container.layer.cornerRadius = 12
@@ -410,7 +423,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
         ])
 
         addTapHandler(to: container) {
-            onInteraction(.custom(type: "locationTap", payload: [
+            onInteraction(ChatContentInteraction(type: "locationTap", payload: [
                 "address": address as AnyHashable,
                 "lat": lat as AnyHashable,
                 "lon": lon as AnyHashable,
@@ -422,10 +435,9 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
     // MARK: - Contact View
 
-    private func makeContactView(payload: AnyHashable, isMine: Bool, theme: ChatTheme, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
-        let data = payload as? [String: AnyHashable] ?? [:]
-        let name = data["name"] as? String ?? "Unknown"
-        let phone = data["phone"] as? String ?? ""
+    private func makeContactView(contact: ContactContent, isMine: Bool, theme: ChatTheme, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
+        let name = contact.name
+        let phone = contact.phone
 
         let container = UIView()
         container.backgroundColor = isMine
@@ -502,7 +514,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
         // Tap on whole card → custom interaction
         addTapHandler(to: container) {
-            onInteraction(.custom(type: "contactTap", payload: [
+            onInteraction(ChatContentInteraction(type: "contactTap", payload: [
                 "name": name as AnyHashable,
                 "phone": phone as AnyHashable,
             ]))
@@ -559,13 +571,13 @@ enum CustomChatDemoData {
             // Payment (incoming)
             ChatMessage(
                 id: "c1",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .custom(type: "payment", payload: [
-                        "amount": "1,250.00",
-                        "currency": "USD",
-                        "status": "completed",
-                    ] as [String: AnyHashable])
+                    content: AnyChatContent(PaymentContent(
+                        amount: "1,250.00",
+                        currency: "USD",
+                        status: "completed"
+                    ))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -26, to: now)!,
                 senderName: "Payment Bot",
@@ -582,7 +594,7 @@ enum CustomChatDemoData {
             // Text response
             ChatMessage(
                 id: "c2",
-                content: MessageContent(text: "Оплата получена, спасибо!", media: nil),
+                content: MessageBody(text: "Оплата получена, спасибо!", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -25, to: now)!,
                 senderName: nil,
                 isMine: true,
@@ -598,13 +610,13 @@ enum CustomChatDemoData {
             // Location (outgoing)
             ChatMessage(
                 id: "c3",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .custom(type: "location", payload: [
-                        "address": "Красная площадь, Москва",
-                        "lat": 55.7539,
-                        "lon": 37.6208,
-                    ] as [String: AnyHashable])
+                    content: AnyChatContent(LocationContent(
+                        address: "Красная площадь, Москва",
+                        lat: 55.7539,
+                        lon: 37.6208
+                    ))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -24, to: now)!,
                 senderName: nil,
@@ -621,7 +633,7 @@ enum CustomChatDemoData {
             // Reply to location
             ChatMessage(
                 id: "c4",
-                content: MessageContent(text: "Отличное место! Буду через 20 минут", media: nil),
+                content: MessageBody(text: "Отличное место! Буду через 20 минут", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -23, to: now)!,
                 senderName: "Elena",
                 isMine: false,
@@ -639,12 +651,12 @@ enum CustomChatDemoData {
             // Contact card (incoming)
             ChatMessage(
                 id: "c5",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .custom(type: "contact", payload: [
-                        "name": "Дмитрий Иванов",
-                        "phone": "+7 (999) 123-45-67",
-                    ] as [String: AnyHashable])
+                    content: AnyChatContent(ContactContent(
+                        name: "Дмитрий Иванов",
+                        phone: "+7 (999) 123-45-67"
+                    ))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!,
                 senderName: "Elena",
@@ -661,7 +673,7 @@ enum CustomChatDemoData {
             // Text with custom styling
             ChatMessage(
                 id: "c6",
-                content: MessageContent(text: "Вот контакт курьера, позвони ему когда будешь на месте", media: nil),
+                content: MessageBody(text: "Вот контакт курьера, позвони ему когда будешь на месте", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(30),
                 senderName: "Elena",
                 isMine: false,
@@ -677,13 +689,13 @@ enum CustomChatDemoData {
             // Pending payment (outgoing)
             ChatMessage(
                 id: "c7",
-                content: MessageContent(
+                content: MessageBody(
                     text: "Перевожу за обед",
-                    media: .custom(type: "payment", payload: [
-                        "amount": "890.50",
-                        "currency": "RUB",
-                        "status": "pending",
-                    ] as [String: AnyHashable])
+                    content: AnyChatContent(PaymentContent(
+                        amount: "890.50",
+                        currency: "RUB",
+                        status: "pending"
+                    ))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -4, to: now)!,
                 senderName: nil,
@@ -700,11 +712,11 @@ enum CustomChatDemoData {
             // Image message (normal type — shows that standard types still work)
             ChatMessage(
                 id: "c8",
-                content: MessageContent(
+                content: MessageBody(
                     text: "Фото с встречи",
-                    media: .images([
+                    content: AnyChatContent(ImagesContent([
                         .image(ImageItem(url: "https://picsum.photos/id/237/400/300", width: 400, height: 300, thumbnailUrl: "https://picsum.photos/id/237/200/150")),
-                    ])
+                    ]))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -3, to: now)!,
                 senderName: "Elena",
@@ -724,9 +736,9 @@ enum CustomChatDemoData {
             // Voice message (normal type)
             ChatMessage(
                 id: "c9",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .voice(VoicePayload(
+                    content: AnyChatContent(VoicePayload(
                         url: "https://example.com/voice.m4a",
                         duration: 8.5,
                         waveform: [0.2, 0.4, 0.7, 0.9, 0.6, 0.3, 0.5, 0.8, 0.4, 0.2,
@@ -748,13 +760,13 @@ enum CustomChatDemoData {
             // Location (incoming)
             ChatMessage(
                 id: "c10",
-                content: MessageContent(
+                content: MessageBody(
                     text: "Встретимся здесь завтра",
-                    media: .custom(type: "location", payload: [
-                        "address": "Парк Горького, Москва",
-                        "lat": 55.7312,
-                        "lon": 37.6036,
-                    ] as [String: AnyHashable])
+                    content: AnyChatContent(LocationContent(
+                        address: "Парк Горького, Москва",
+                        lat: 55.7312,
+                        lon: 37.6036
+                    ))
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -1, to: now)!,
                 senderName: "Elena",
@@ -771,7 +783,7 @@ enum CustomChatDemoData {
             // Forwarded message
             ChatMessage(
                 id: "c11",
-                content: MessageContent(text: "Напоминаю: завтра дресс-код smart casual", media: nil),
+                content: MessageBody(text: "Напоминаю: завтра дресс-код smart casual", content: nil),
                 timestamp: cal.date(byAdding: .minute, value: -30, to: now)!,
                 senderName: "Elena",
                 isMine: false,
@@ -787,12 +799,12 @@ enum CustomChatDemoData {
             // Contact (outgoing)
             ChatMessage(
                 id: "c12",
-                content: MessageContent(
+                content: MessageBody(
                     text: nil,
-                    media: .custom(type: "contact", payload: [
-                        "name": "Анна Петрова",
-                        "phone": "+7 (916) 555-12-34",
-                    ] as [String: AnyHashable])
+                    content: AnyChatContent(ContactContent(
+                        name: "Анна Петрова",
+                        phone: "+7 (916) 555-12-34"
+                    ))
                 ),
                 timestamp: cal.date(byAdding: .minute, value: -15, to: now)!,
                 senderName: nil,
@@ -809,7 +821,7 @@ enum CustomChatDemoData {
             // Final text
             ChatMessage(
                 id: "c13",
-                content: MessageContent(text: "Договорились, до завтра!", media: nil),
+                content: MessageBody(text: "Договорились, до завтра!", content: nil),
                 timestamp: now,
                 senderName: nil,
                 isMine: true,
@@ -875,7 +887,7 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
     func chatMessagesDidAppear(ids: [String]) {}
 
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {
-        let alert = UIAlertController(title: "Tap", message: "Message: \(id)\(attachmentIndex.map { ", attachment: \($0)" } ?? "")", preferredStyle: .alert)
+        let alert = UIAlertController(title: "Tap", message: "Message: \(id)\(attachmentIndex.map { ", content: \($0)" } ?? "")", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
@@ -888,7 +900,7 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
                 replyToId: messageId,
                 senderName: msg.senderName ?? "Вы",
                 text: msg.content.text,
-                hasImage: msg.content.media != nil
+                hasImage: msg.content.content != nil
             ))
         case "edit":
             chatVC.beginEdit(messageId: messageId, text: msg.content.text ?? "")
@@ -939,13 +951,10 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
         chatVC.scrollToMessage(id: id, position: "center", animated: true, highlight: true)
     }
 
-    func chatDidTapPollOption(messageId: String, pollId: String, optionId: String) {}
-    func chatDidTapPollDetail(messageId: String, pollId: String) {}
-
-    func chatDidCustomInteraction(messageId: String, type: String, payload: [String: AnyHashable]) {
-        let details = payload.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
+    func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {
+        let details = interaction.payload.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
         let alert = UIAlertController(
-            title: "Custom: \(type)",
+            title: "Interaction: \(interaction.type)",
             message: "Message: \(messageId)\n\(details)",
             preferredStyle: .alert
         )
@@ -958,7 +967,7 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
         let now = Date()
         let msg = ChatMessage(
             id: UUID().uuidString,
-            content: MessageContent(text: text, media: nil),
+            content: MessageBody(text: text, content: nil),
             timestamp: now,
             senderName: nil,
             isMine: true,
@@ -983,7 +992,7 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
         guard let idx = msgs.firstIndex(where: { $0.id == messageId }) else { return }
         let old = msgs[idx]
         msgs[idx] = ChatMessage(
-            id: old.id, content: MessageContent(text: text, media: old.content.media),
+            id: old.id, content: MessageBody(text: text, content: old.content.content),
             timestamp: old.timestamp, senderName: old.senderName, isMine: old.isMine,
             groupDate: old.groupDate, status: old.status, reply: old.reply,
             forwardedFrom: old.forwardedFrom, reactions: old.reactions,
