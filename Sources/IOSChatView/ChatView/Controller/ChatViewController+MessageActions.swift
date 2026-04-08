@@ -31,4 +31,12 @@ extension ChatViewController {
     func messageSectionDidTapThread(messageId: String, threadId: String) {
         delegate?.chatDidTapThread(messageId: messageId, threadId: threadId)
     }
+
+    func messageSectionDidTapLink(url: URL, messageId: String) {
+        delegate?.chatDidTapLink(url: url, messageId: messageId)
+    }
+
+    func messageSectionDidTapPhoneNumber(phoneNumber: String, messageId: String) {
+        delegate?.chatDidTapPhoneNumber(phoneNumber: phoneNumber, messageId: messageId)
+    }
 }

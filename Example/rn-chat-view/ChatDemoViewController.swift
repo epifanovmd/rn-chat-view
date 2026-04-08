@@ -464,11 +464,12 @@ enum ChatDemoData {
             ChatMessage(
                 id: "11",
                 content: MessageBody(
-                    text: "Кстати, хотела сказать, что новый API-эндпоинт для пользовательских настроек готов к тестированию. Документация обновлена в Confluence. Swagger-спеки по адресу /api/v2/preferences. Напиши, если будут вопросы!",
+                    text: "Кстати, новый API-эндпоинт готов к тестированию. Документация тут: https://confluence.example.com/api/v2/preferences\n\nЕсли будут вопросы — звони +7 (999) 123-45-67",
                     content: nil
                 ),
                 timestamp: cal.date(byAdding: .minute, value: -10, to: now)!,
                 senderName: otherUser,
+                senderAvatarUrl: "https://i.pravatar.cc/150?img=5",
                 ownership: .theirs,
                 groupDate: today,
                 status: .read,
@@ -854,6 +855,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         chatVC.delegate = self
         chatVC.theme = .dark
         chatVC.features.senderNameMode = .incomingOnly
+        chatVC.features.showAvatars = true
         chatVC.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
 
         setupLayoutPanel()
@@ -1264,6 +1266,22 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         nav.modalPresentationStyle = .pageSheet
         nav.navigationBar.prefersLargeTitles = false
         present(nav, animated: true)
+    }
+
+    func chatDidTapLink(url: URL, messageId: String) {
+        let alert = UIAlertController(title: "Ссылка", message: url.absoluteString, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Открыть", style: .default) { _ in UIApplication.shared.open(url) })
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        present(alert, animated: true)
+    }
+
+    func chatDidTapPhoneNumber(phoneNumber: String, messageId: String) {
+        let alert = UIAlertController(title: "Телефон", message: phoneNumber, preferredStyle: .alert)
+        if let url = URL(string: "tel:\(phoneNumber)") {
+            alert.addAction(UIAlertAction(title: "Позвонить", style: .default) { _ in UIApplication.shared.open(url) })
+        }
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        present(alert, animated: true)
     }
 
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {

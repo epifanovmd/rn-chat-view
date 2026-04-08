@@ -8,7 +8,7 @@ public struct ChatLayout {
     /// Ширина хвостика пузыря
     public var bubbleTailWidth: CGFloat = 6
     /// Макс. ширина пузыря как доля ширины экрана
-    public var bubbleMaxWidthRatio: CGFloat = 0.78
+    public var bubbleMaxWidthRatio: CGFloat = 0.85
     /// Минимальная ширина пузыря
     public var bubbleMinWidth: CGFloat = 60
     /// Горизонтальный отступ внутри пузыря
@@ -35,6 +35,15 @@ public struct ChatLayout {
     public var systemCellBottomSpacing: CGFloat = 20
     /// Дополнительный отступ снизу у закреплённого сообщения (между ним и следующим)
     public var pinnedCellBottomSpacing: CGFloat = 32
+
+    // MARK: - Аватарки
+
+    /// Размер аватарки (ширина = высота)
+    public var avatarSize: CGFloat = 36
+    /// Отступ аватарки от левого края экрана
+    public var avatarLeadingMargin: CGFloat = 6
+    /// Отступ между аватаркой и пузырём
+    public var avatarBubbleSpacing: CGFloat = 2
 
     // MARK: - Шрифты контента
 

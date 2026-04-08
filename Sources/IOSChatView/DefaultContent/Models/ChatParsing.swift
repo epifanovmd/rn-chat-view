@@ -9,6 +9,7 @@ extension ChatMessage {
 
         let text = dict["text"] as? String
         let senderName = dict["senderName"] as? String
+        let senderAvatarUrl = dict["senderAvatarUrl"] as? String
         let ownership = (dict["ownership"] as? String).flatMap(MessageOwnership.init(rawValue:)) ?? .theirs
         let statusStr = dict["status"] as? String ?? "sent"
         let forwardedFrom = dict["forwardedFrom"] as? String
@@ -29,6 +30,7 @@ extension ChatMessage {
             content: content,
             timestamp: date,
             senderName: senderName,
+            senderAvatarUrl: senderAvatarUrl,
             ownership: ownership,
             groupDate: groupDate,
             status: status,

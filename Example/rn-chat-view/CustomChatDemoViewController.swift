@@ -67,7 +67,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
     // MARK: - Custom Text View (gradient background label)
 
-    nonisolated override func textView(text: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout) -> UIView {
+    nonisolated override func textView(text: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout, linkDetectionEnabled: Bool, onLinkTap: ((URL) -> Void)?) -> UIView {
         let container = UIView()
 
         let label = UILabel()

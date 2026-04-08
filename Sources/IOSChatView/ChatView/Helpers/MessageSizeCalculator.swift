@@ -13,7 +13,10 @@ public enum MessageSizeCalculator {
     // MARK: - Bubble Width
 
     public static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) -> CGFloat {
-        let maxW = containerWidth * L.bubbleMaxWidthRatio
+        let avatarSpace: CGFloat = (features.showAvatars && msg.ownership == .theirs)
+            ? L.avatarSize + L.avatarLeadingMargin + L.avatarBubbleSpacing
+            : 0
+        let maxW = containerWidth * L.bubbleMaxWidthRatio - avatarSpace
         let content = msg.content
 
         if content.content == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {

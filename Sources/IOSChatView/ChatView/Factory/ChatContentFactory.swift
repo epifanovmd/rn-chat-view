@@ -95,12 +95,16 @@ public protocol ChatContentFactory: AnyObject {
     ///   - ownership: Message ownership (affects text color).
     ///   - theme: Current color theme.
     ///   - layout: Current sizing/spacing parameters (font, etc.).
+    ///   - linkDetectionEnabled: Whether to detect and highlight links/phones.
+    ///   - onLinkTap: Callback fired when the user taps a detected link or phone number.
     /// - Returns: A configured text view.
     func textView(
         text: String,
         ownership: MessageOwnership,
         theme: ChatTheme,
-        layout: ChatLayout
+        layout: ChatLayout,
+        linkDetectionEnabled: Bool,
+        onLinkTap: ((URL) -> Void)?
     ) -> UIView
 
     /// Returns the pre-calculated height of a text block for layout purposes.
@@ -374,6 +378,25 @@ public protocol ChatContentFactory: AnyObject {
     ///   - layout: Current sizing/spacing parameters.
     /// - Returns: A configured badge view.
     func fabBadgeView(
+        theme: ChatTheme,
+        layout: ChatLayout
+    ) -> UIView
+
+    // MARK: - Avatar
+
+    /// Creates the avatar view displayed next to incoming message groups.
+    ///
+    /// - Parameters:
+    ///   - name: Sender display name (for initials fallback).
+    ///   - url: Avatar image URL (nil = show initials).
+    ///   - size: Avatar diameter in points.
+    ///   - theme: Current color theme.
+    ///   - layout: Current sizing/spacing parameters.
+    /// - Returns: A configured avatar view.
+    func avatarView(
+        name: String,
+        url: String?,
+        size: CGFloat,
         theme: ChatTheme,
         layout: ChatLayout
     ) -> UIView

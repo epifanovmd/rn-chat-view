@@ -11,6 +11,7 @@ public final class MessageCell: UICollectionViewCell {
     var onContentInteraction: ((ChatContentInteraction) -> Void)?
     var onReactionTap: ((String) -> Void)?
     var onThreadTap: (() -> Void)?
+    var onLinkTap: ((URL) -> Void)?
 
     // MARK: - State
 
@@ -65,7 +66,10 @@ public final class MessageCell: UICollectionViewCell {
     func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
         currentTheme = theme
         currentLayout = layout
-        leadingConstraint.constant = layout.cellHMargin
+        let avatarSpace: CGFloat = (features.showAvatars && message.ownership == .theirs)
+            ? layout.avatarSize + layout.avatarLeadingMargin + layout.avatarBubbleSpacing
+            : 0
+        leadingConstraint.constant = layout.cellHMargin + avatarSpace
         trailingConstraint.constant = -layout.cellHMargin
         let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, layout: layout, showSenderName: showSenderName, features: features)
 
@@ -92,6 +96,7 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.onContentInteraction = onContentInteraction
         bubbleView.onReactionTap = onReactionTap
         bubbleView.onThreadTap = onThreadTap
+        bubbleView.onLinkTap = onLinkTap
     }
 
     // MARK: - Reconfigure In-Place
@@ -112,6 +117,7 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.onContentInteraction = onContentInteraction
         bubbleView.onReactionTap = onReactionTap
         bubbleView.onThreadTap = onThreadTap
+        bubbleView.onLinkTap = onLinkTap
     }
 
     // MARK: - Highlight
@@ -140,6 +146,7 @@ public final class MessageCell: UICollectionViewCell {
         onContentInteraction = nil
         onReactionTap = nil
         onThreadTap = nil
+        onLinkTap = nil
         for c in bubbleView.constraints where c.firstAttribute == .width { c.isActive = false }
         bubbleView.prepareForReuse()
     }

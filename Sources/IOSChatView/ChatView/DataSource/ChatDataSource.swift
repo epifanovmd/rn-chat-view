@@ -48,6 +48,27 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         }
     }
 
+    func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+        guard kind == AvatarSupplementaryView.kind,
+              let vc = controller,
+              indexPath.item < vc.chatLayout.avatarGroups.count else {
+            return collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: AvatarSupplementaryView.reuseID, for: indexPath)
+        }
+
+        let cell = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: AvatarSupplementaryView.reuseID, for: indexPath) as! AvatarSupplementaryView
+        let group = vc.chatLayout.avatarGroups[indexPath.item]
+        let size = vc.layout.avatarSize
+        let view = vc.contentFactory.avatarView(
+            name: group.senderName,
+            url: group.senderAvatarUrl,
+            size: size,
+            theme: vc.theme,
+            layout: vc.layout
+        )
+        cell.configure(view: view, size: size)
+        return cell
+    }
+
     // MARK: - In-Place Reconfiguration
 
     /// Reconfigures a visible message cell without dequeue, preserving the view hierarchy.
@@ -111,6 +132,14 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         cell.onThreadTap = { [weak vc] in
             guard let thread = msg.thread else { return }
             vc?.messageSectionDidTapThread(messageId: msg.id, threadId: thread.threadId)
+        }
+        cell.onLinkTap = { [weak vc] url in
+            if url.scheme == "tel" {
+                let phone = url.absoluteString.replacingOccurrences(of: "tel:", with: "")
+                vc?.messageSectionDidTapPhoneNumber(phoneNumber: phone, messageId: msg.id)
+            } else {
+                vc?.messageSectionDidTapLink(url: url, messageId: msg.id)
+            }
         }
     }
 

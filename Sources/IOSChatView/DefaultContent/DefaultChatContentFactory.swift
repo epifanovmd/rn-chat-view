@@ -140,10 +140,13 @@ open class DefaultChatContentFactory: ChatContentFactory {
         text: String,
         ownership: MessageOwnership,
         theme: ChatTheme,
-        layout: ChatLayout
+        layout: ChatLayout,
+        linkDetectionEnabled: Bool,
+        onLinkTap: ((URL) -> Void)?
     ) -> UIView {
         let view = TextContentView()
-        view.configure(text: text, ownership: ownership, theme: theme, layout: layout)
+        view.configure(text: text, ownership: ownership, theme: theme, layout: layout, linkDetectionEnabled: linkDetectionEnabled)
+        view.onLinkTap = onLinkTap
         return view
     }
 
@@ -475,6 +478,52 @@ open class DefaultChatContentFactory: ChatContentFactory {
         badge.backgroundColor = theme.fabBadgeBackground
         badge.textColor = theme.fabBadgeTextColor
         return badge
+    }
+
+    // MARK: - Avatar
+
+    open func avatarView(name: String, url: String?, size: CGFloat, theme: ChatTheme, layout: ChatLayout) -> UIView {
+        let container = UIView()
+        container.layer.cornerRadius = size / 2
+        container.layer.masksToBounds = true
+
+        // Initials fallback
+        let initials = String(name.prefix(1)).uppercased()
+        let hash = abs(name.hashValue)
+        let hue = CGFloat(hash % 360) / 360.0
+        container.backgroundColor = UIColor(hue: hue, saturation: 0.45, brightness: 0.75, alpha: 1)
+
+        let label = UILabel()
+        label.text = initials
+        label.font = .systemFont(ofSize: size * 0.42, weight: .semibold)
+        label.textColor = .white
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+
+        // Load image if URL provided
+        if let url {
+            let imageView = UIImageView()
+            imageView.contentMode = .scaleAspectFill
+            imageView.clipsToBounds = true
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(imageView)
+            NSLayoutConstraint.activate([
+                imageView.topAnchor.constraint(equalTo: container.topAnchor),
+                imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                imageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                imageView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            ])
+            ImageCache.shared.load(url: url) { image in
+                imageView.image = image
+            }
+        }
+
+        return container
     }
 }
 

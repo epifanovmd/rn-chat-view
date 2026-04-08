@@ -8,6 +8,7 @@ public final class MessageBubbleView: UIView {
     var onContentInteraction: ((ChatContentInteraction) -> Void)?
     var onReactionTap: ((String) -> Void)?
     var onThreadTap: (() -> Void)?
+    var onLinkTap: ((URL) -> Void)?
 
     // MARK: - Subviews
 
@@ -122,7 +123,7 @@ public final class MessageBubbleView: UIView {
 
             // Content inside forwarded
             let contentInnerW = bubbleWidth - L.bubbleHPad * 2 - L.forwardedAccentWidth - L.forwardedContentInset
-            let newContent = createContentView(for: message, width: contentInnerW, theme: theme, factory: factory)
+            let newContent = createContentView(for: message, width: contentInnerW, theme: theme, features: features, factory: factory)
             contentView = newContent
             forwardedStack.addArrangedSubview(newContent)
 
@@ -156,7 +157,7 @@ public final class MessageBubbleView: UIView {
 
             // Content
             let innerW = bubbleWidth - currentLayout.bubbleHPad * 2
-            let newContent = createContentView(for: message, width: innerW, theme: theme, factory: factory)
+            let newContent = createContentView(for: message, width: innerW, theme: theme, features: features, factory: factory)
             contentView = newContent
             stack.addArrangedSubview(newContent)
         }
@@ -196,7 +197,7 @@ public final class MessageBubbleView: UIView {
 
     // MARK: - Content Factory
 
-    private func createContentView(for msg: ChatMessage, width: CGFloat, theme: ChatTheme, factory: ChatContentFactory) -> UIView {
+    private func createContentView(for msg: ChatMessage, width: CGFloat, theme: ChatTheme, features: ChatFeatures, factory: ChatContentFactory) -> UIView {
         let content = msg.content
 
         // Emoji-only (text without media, 1-3 emoji)
@@ -217,7 +218,9 @@ public final class MessageBubbleView: UIView {
 
         // Text (caption or standalone)
         if let text = content.text, !text.isEmpty {
-            views.append(factory.textView(text: text, ownership: msg.ownership, theme: theme, layout: currentLayout))
+            views.append(factory.textView(text: text, ownership: msg.ownership, theme: theme, layout: currentLayout, linkDetectionEnabled: features.linkDetectionEnabled) { [weak self] url in
+                self?.onLinkTap?(url)
+            })
         }
 
         // Single view — return directly
@@ -235,7 +238,7 @@ public final class MessageBubbleView: UIView {
         }
 
         // Fallback: empty text
-        return factory.textView(text: "", ownership: msg.ownership, theme: theme, layout: currentLayout)
+        return factory.textView(text: "", ownership: msg.ownership, theme: theme, layout: currentLayout, linkDetectionEnabled: false, onLinkTap: nil)
     }
 
     // MARK: - Reconfigure In-Place
@@ -267,7 +270,7 @@ public final class MessageBubbleView: UIView {
         } else {
             innerW = bubbleWidth - currentLayout.bubbleHPad * 2
         }
-        reconfigureContentView(message: message, width: innerW, theme: theme, layout: layout, factory: factory)
+        reconfigureContentView(message: message, width: innerW, theme: theme, layout: layout, features: features, factory: factory)
 
         // Update reactions
         reconfigureReactions(message: message, bubbleWidth: bubbleWidth, theme: theme, features: features, layout: layout, factory: factory)
@@ -320,7 +323,7 @@ public final class MessageBubbleView: UIView {
     }
 
     /// Reconfigure the content view in-place via the factory.
-    private func reconfigureContentView(message: ChatMessage, width: CGFloat, theme: ChatTheme, layout: ChatLayout, factory: ChatContentFactory) {
+    private func reconfigureContentView(message: ChatMessage, width: CGFloat, theme: ChatTheme, layout: ChatLayout, features: ChatFeatures, factory: ChatContentFactory) {
         guard let cv = contentView else { return }
         let content = message.content
 
@@ -335,11 +338,13 @@ public final class MessageBubbleView: UIView {
         // Update text if present (standalone or mixed content with media)
         if let text = content.text, !text.isEmpty {
             if let textView = cv as? TextContentView {
-                textView.configure(text: text, ownership: message.ownership, theme: theme, layout: layout)
+                textView.configure(text: text, ownership: message.ownership, theme: theme, layout: layout, linkDetectionEnabled: features.linkDetectionEnabled)
+                textView.onLinkTap = { [weak self] url in self?.onLinkTap?(url) }
             } else if let mixedStack = cv as? UIStackView {
                 for sub in mixedStack.arrangedSubviews {
                     if let tv = sub as? TextContentView {
-                        tv.configure(text: text, ownership: message.ownership, theme: theme, layout: layout)
+                        tv.configure(text: text, ownership: message.ownership, theme: theme, layout: layout, linkDetectionEnabled: features.linkDetectionEnabled)
+                        tv.onLinkTap = { [weak self] url in self?.onLinkTap?(url) }
                         break
                     }
                 }
@@ -390,5 +395,6 @@ public final class MessageBubbleView: UIView {
         onContentInteraction = nil
         onReactionTap = nil
         onThreadTap = nil
+        onLinkTap = nil
     }
 }

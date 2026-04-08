@@ -170,6 +170,7 @@ public struct ChatMessage: Equatable, Hashable {
     public let content: MessageBody
     public let timestamp: Date
     public let senderName: String?
+    public let senderAvatarUrl: String?
     public let ownership: MessageOwnership
     public let groupDate: String
     public let status: MessageStatus
@@ -180,11 +181,12 @@ public struct ChatMessage: Equatable, Hashable {
     public let isEdited: Bool
     public let actions: [MessageAction]
 
-    public init(id: String, content: MessageBody, timestamp: Date, senderName: String?, ownership: MessageOwnership, groupDate: String, status: MessageStatus, reply: ReplyInfo?, forwardedFrom: String?, reactions: [Reaction], thread: ThreadInfo? = nil, isEdited: Bool, actions: [MessageAction]) {
+    public init(id: String, content: MessageBody, timestamp: Date, senderName: String?, senderAvatarUrl: String? = nil, ownership: MessageOwnership, groupDate: String, status: MessageStatus, reply: ReplyInfo?, forwardedFrom: String?, reactions: [Reaction], thread: ThreadInfo? = nil, isEdited: Bool, actions: [MessageAction]) {
         self.id = id
         self.content = content
         self.timestamp = timestamp
         self.senderName = senderName
+        self.senderAvatarUrl = senderAvatarUrl
         self.ownership = ownership
         self.groupDate = groupDate
         self.status = status

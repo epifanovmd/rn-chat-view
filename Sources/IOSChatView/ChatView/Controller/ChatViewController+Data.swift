@@ -131,5 +131,44 @@ extension ChatViewController {
 
     func applyLayoutData(_ data: [RowLayoutInfo]) {
         chatLayout.rowLayoutData = data
+        chatLayout.showAvatars = features.showAvatars
+        chatLayout.avatarSize = layout.avatarSize
+        chatLayout.avatarLeadingMargin = layout.avatarLeadingMargin
+        chatLayout.avatarGroups = features.showAvatars ? computeAvatarGroups() : []
+    }
+
+    /// Groups consecutive `.theirs` messages from the same sender into avatar groups.
+    private func computeAvatarGroups() -> [AvatarGroup] {
+        var groups: [AvatarGroup] = []
+        var i = 0
+        while i < rows.count {
+            guard case .message(let msg) = rows[i],
+                  msg.ownership == .theirs,
+                  let name = msg.senderName else {
+                i += 1
+                continue
+            }
+
+            let firstIdx = i
+            var lastIdx = i
+            let avatarUrl = msg.senderAvatarUrl
+
+            // Extend group while same sender
+            while lastIdx + 1 < rows.count {
+                guard case .message(let next) = rows[lastIdx + 1],
+                      next.ownership == .theirs,
+                      next.senderName == name else { break }
+                lastIdx += 1
+            }
+
+            groups.append(AvatarGroup(
+                firstIndex: firstIdx,
+                lastIndex: lastIdx,
+                senderName: name,
+                senderAvatarUrl: avatarUrl
+            ))
+            i = lastIdx + 1
+        }
+        return groups
     }
 }

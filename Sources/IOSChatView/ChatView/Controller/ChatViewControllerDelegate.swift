@@ -35,6 +35,8 @@ public protocol ChatMessageDelegate: AnyObject {
     func chatDidTapReaction(messageId: String, emoji: String)
     func chatDidTapReplyMessage(id: String)
     func chatDidTapThread(messageId: String, threadId: String)
+    func chatDidTapLink(url: URL, messageId: String)
+    func chatDidTapPhoneNumber(phoneNumber: String, messageId: String)
 
     /// Generic content interaction from factory-created views.
     /// All media-type-specific interactions (poll tap, voice tap, etc.) go through this.
@@ -48,6 +50,8 @@ public extension ChatMessageDelegate {
     func chatDidTapReaction(messageId: String, emoji: String) {}
     func chatDidTapReplyMessage(id: String) {}
     func chatDidTapThread(messageId: String, threadId: String) {}
+    func chatDidTapLink(url: URL, messageId: String) {}
+    func chatDidTapPhoneNumber(phoneNumber: String, messageId: String) {}
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {}
 }
 

@@ -22,6 +22,10 @@ public struct ChatFeatures: Equatable {
     public var showForwardedMark: Bool = true
     /// Показывать индикатор треда под сообщением
     public var showThreadIndicator: Bool = true
+    /// Показывать аватарки у входящих сообщений
+    public var showAvatars: Bool = false
+    /// Определять и подсвечивать ссылки и телефоны в тексте
+    public var linkDetectionEnabled: Bool = true
 
     // MARK: - Список
 

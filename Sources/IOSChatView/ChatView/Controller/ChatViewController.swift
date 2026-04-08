@@ -204,6 +204,7 @@ public final class ChatViewController: UIViewController {
         collectionView.register(MessageCell.self, forCellWithReuseIdentifier: MessageCell.reuseID)
         collectionView.register(DateSeparatorCell.self, forCellWithReuseIdentifier: DateSeparatorCell.reuseID)
         collectionView.register(LoadingCell.self, forCellWithReuseIdentifier: LoadingCell.reuseID)
+        collectionView.register(AvatarSupplementaryView.self, forSupplementaryViewOfKind: AvatarSupplementaryView.kind, withReuseIdentifier: AvatarSupplementaryView.reuseID)
         dataSource = ChatDataSource(controller: self)
         collectionView.dataSource = dataSource
     }
