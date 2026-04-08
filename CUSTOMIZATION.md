@@ -109,7 +109,7 @@ let paymentMessage = ChatMessage(
     ),
     timestamp: Date(),
     senderName: "Bob",
-    isMine: true,
+    ownership: .mine,
     groupDate: "2026-04-06",
     status: .delivered,
     reply: nil,
@@ -460,6 +460,15 @@ func chatDidTapReplyMessage(id: String)
 /// Called when a factory-created content view fires an interaction.
 /// ALL content-type-specific interactions go through this single method.
 func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)
+
+/// Called when the user taps a thread indicator on a message.
+func chatDidTapThread(messageId: String, threadId: String)
+
+/// Called when the user taps a detected link in a message.
+func chatDidTapLink(url: URL, messageId: String)
+
+/// Called when the user taps a detected phone number in a message.
+func chatDidTapPhoneNumber(phoneNumber: String, messageId: String)
 ```
 
 **Typical implementation:**
@@ -662,7 +671,7 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
                 ),
                 timestamp: Date(),
                 senderName: "Alice",
-                isMine: false,
+                ownership: .theirs,
                 groupDate: "2026-04-06",
                 status: .read,
                 reply: nil,
@@ -695,7 +704,7 @@ The factory protocol covers all customizable views:
 | Category | Methods |
 |----------|---------|
 | **Content** | `contentView(for:...)`, `contentHeight(for:...)`, `reconfigureContentView(_:for:...)` |
-| **Text** | `textView(text:...)`, `textHeight(text:...)` |
+| **Text** | `textView(text:ownership:theme:layout:linkDetectionEnabled:onLinkTap:)`, `textHeight(text:...)` |
 | **Emoji** | `emojiView(text:emojiCount:...)` |
 | **Reactions** | `reactionsView(reactions:...)` |
 | **Reply** | `replyPreviewView(reply:...)` |
@@ -705,6 +714,8 @@ The factory protocol covers all customizable views:
 | **Dates** | `dateSeparatorView(title:...)`, `dateSeparatorHeight(...)`, `floatingDateView(title:...)` |
 | **Empty State** | `emptyStateView(...)`, `emptyStateLoadingView(...)` |
 | **Loading** | `loadingIndicatorView(...)` |
+| **Thread** | `threadIndicatorView(thread:ownership:theme:layout:onTap:)` |
+| **Avatar** | `avatarView(name:url:size:theme:layout:)` |
 | **FAB** | `fabView(...)`, `fabBadgeView(...)` |
 
 Override any of these in your factory subclass to customize the corresponding UI element.

@@ -17,6 +17,9 @@ Production-ready iOS chat UI component library. Built with UIKit + DifferenceKit
 - [x] Forwarded messages (accent bar + sender label)
 - [x] Reply previews (quoted message with sender + text)
 - [x] Custom content types (via `MessageMedia.custom`)
+- [x] System messages (centered, neutral styling)
+- [x] Pinned messages (centered bubble, left-aligned content)
+- [x] Thread discussions (pinned root + replies pattern)
 
 ### Message Features
 - [x] Reactions (emoji chips with count, mine highlight)
@@ -25,6 +28,10 @@ Production-ready iOS chat UI component library. Built with UIKit + DifferenceKit
 - [x] Timestamp
 - [x] Sender name (never / incoming only / always)
 - [x] Message highlight on scroll-to
+- [x] Thread indicator (reply count, last replier, tap to open)
+- [x] Sticky avatars (grouped by sender, supplementary views)
+- [x] Link detection (URLs and phone numbers, tap callbacks)
+- [x] Message ownership (mine/theirs/system/pinned alignment)
 
 ### Input Bar
 - [x] Auto-growing text input (1-5 lines)
@@ -58,10 +65,11 @@ Production-ready iOS chat UI component library. Built with UIKit + DifferenceKit
 - [x] Spring animations
 
 ### Customization
-- [x] `ChatTheme` — 50+ color properties (light/dark presets)
+- [x] `ChatTheme` — 50+ color properties (light/dark presets), system/pinned message colors
 - [x] `ChatLayout` — 350+ layout constants (fonts, sizes, spacing)
-- [x] `ChatFeatures` — 25+ feature flags
+- [x] `ChatFeatures` — 30+ feature flags
 - [x] `ChatContentFactory` — full view customization via protocol
+- [x] Avatar views via factory protocol
 - [x] `InputBarTheme` — independent input bar theming
 - [x] `ContextMenuTheme` — context menu theming (light/dark presets)
 - [x] Custom content types via `ChatContent` protocol (type-safe, extensible)
@@ -230,7 +238,7 @@ let textMsg = ChatMessage(
     content: MessageBody(text: "Hello!"),
     timestamp: Date(),
     senderName: "Alice",
-    isMine: false,
+    ownership: .theirs,
     groupDate: "2026-04-06",
     status: .read,
     reply: nil,
@@ -251,7 +259,7 @@ let imageMsg = ChatMessage(
     ),
     timestamp: Date(),
     senderName: nil,
-    isMine: true,
+    ownership: .mine,
     groupDate: "2026-04-06",
     status: .sent,
     reply: nil,
@@ -303,6 +311,38 @@ let locationMsg = ChatMessage(
     ),
     // ...
 )
+// System message (centered, neutral styling)
+let systemMsg = ChatMessage(
+    id: "6",
+    content: MessageBody(text: "Alice joined the group"),
+    timestamp: Date(),
+    senderName: nil,
+    ownership: .system,
+    groupDate: "2026-04-06",
+    status: .read,
+    reply: nil,
+    forwardedFrom: nil,
+    reactions: [],
+    isEdited: false,
+    actions: []
+)
+
+// Pinned message (centered bubble, left-aligned content)
+let pinnedMsg = ChatMessage(
+    id: "7",
+    content: MessageBody(text: "Meeting at 3 PM tomorrow"),
+    timestamp: Date(),
+    senderName: "Admin",
+    ownership: .pinned,
+    groupDate: "2026-04-06",
+    status: .read,
+    reply: nil,
+    forwardedFrom: nil,
+    reactions: [],
+    isEdited: false,
+    actions: []
+)
+
 // See CUSTOMIZATION.md for the full guide on custom content types
 ```
 
@@ -531,14 +571,14 @@ For the full guide on custom content types, factory patterns, and interaction ha
 | `contentView(for:message:width:theme:layout:onInteraction:)` | Content rendering (any type) |
 | `contentHeight(for:width:layout:)` | Height calculation for content |
 | `reconfigureContentView(_:for:message:...)` | In-place content update (animations) |
-| `textView(text:isMine:theme:layout:)` | Text portion of message |
+| `textView(text:ownership:theme:layout:)` | Text portion of message |
 | `textHeight(text:font:width:)` | Text height calculation |
 | `emojiView(text:emojiCount:layout:)` | Emoji-only messages (1-3 emojis) |
 | `reactionsView(reactions:theme:maxWidth:layout:onTap:)` | Reaction chip bar |
-| `replyPreviewView(reply:resolved:isMine:theme:layout:onTap:)` | Quoted message block |
+| `replyPreviewView(reply:resolved:ownership:theme:layout:onTap:)` | Quoted message block |
 | `footerView(message:theme:layout:features:)` | Time + edited mark + status icon |
 | `senderNameView(name:theme:layout:)` | Sender name label |
-| `forwardedHeaderView(from:isMine:theme:layout:)` | "Forwarded from X" header |
+| `forwardedHeaderView(from:ownership:theme:layout:)` | "Forwarded from X" header |
 | `dateSeparatorView(title:theme:layout:)` | Date separator pill |
 | `dateSeparatorHeight(layout:)` | Date separator height |
 | `floatingDateView(title:theme:layout:)` | Floating date during scroll |

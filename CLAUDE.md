@@ -59,7 +59,7 @@ Extracted managers:
 ChatViewControllerDelegate (typealias combining 4 focused protocols):
   ├── ChatScrollDelegate       — scroll, pagination, FAB tap
   ├── ChatVisibilityDelegate   — message visibility tracking
-  ├── ChatMessageDelegate      — tap, long press, reactions, replies, chatDidContentInteraction
+  ├── ChatMessageDelegate      — tap, long press, reactions, replies, threads, links, chatDidContentInteraction
   └── ChatInputDelegate        — send, edit, attachment, voice recording
 
 InputBarDelegate               — input bar events → ChatViewController → ChatViewControllerDelegate
@@ -71,12 +71,23 @@ ContextMenuDelegate            — context menu events (emoji, actions, dismiss)
 ```
 ChatViewController properties:
   .theme: ChatTheme        — 50+ color properties, light/dark presets
+                             New: systemBubble, systemText, systemTime (system messages)
+                             New: pinnedBubble, pinnedText, pinnedTime (pinned messages)
   .layout: ChatLayout      — 350+ sizing/spacing/font parameters
+                             New: threadBarHeight, threadBarFont, threadBarSpacing,
+                                  threadBarIconSize, threadBarChevronSize (thread indicator)
+                             New: systemCellBottomSpacing (system message extra spacing)
+                             New: pinnedCellBottomSpacing (pinned message extra spacing)
+                             New: avatarSize (36), avatarLeadingMargin (6),
+                                  avatarBubbleSpacing (2) (sticky avatars)
   .features: ChatFeatures  — behavioral flags (show/hide UI elements)
   .contentFactory: ChatContentFactory — custom view creation (protocol)
 
 batchUpdate { } — apply multiple config changes atomically (single reload)
 ```
+
+Context menu: `ContextMenuTheme.snapOpenShift: CGFloat = 6` — subtle horizontal shift on open.
+`snapX` now uses `sourceFrame.minX` directly (no clamp).
 
 ## Project Structure
 
@@ -102,21 +113,22 @@ Sources/IOSChatView/
 │   │   ├── KeyboardFreezeManager.swift        # Keyboard freeze/restore for context menu
 │   │   └── UnreadManager.swift                # Unread message tracking
 │   ├── Views/
-│   │   ├── ChatCollectionViewLayout.swift     # Custom layout (pre-computed, binary search)
+│   │   ├── ChatCollectionViewLayout.swift     # Custom layout (pre-computed, binary search, avatar supplementary views)
 │   │   ├── MessageCell.swift                  # Message cell with gesture handlers
 │   │   ├── MessageBubbleView.swift            # Bubble assembly (text, content, footer, etc.)
+│   │   ├── AvatarSupplementaryView.swift      # Sticky avatar supplementary view
 │   │   ├── DateSeparatorCell.swift            # Date separator cell
 │   │   ├── LoadingCell.swift                  # Loading indicator cell (view from factory)
 │   │   ├── PaddedLabel.swift                  # Utility label
 │   │   └── Content/
-│   │       ├── TextContentView.swift          # Text with link detection
+│   │       ├── TextContentView.swift          # Text with NSDataDetector link/phone detection
 │   │       ├── ReactionsView.swift            # Emoji reaction chips
 │   │       ├── ReplyPreviewView.swift         # Quoted message preview
 │   │       └── MessageStatusView.swift        # Sent/delivered/read indicators
 │   ├── Factory/
 │   │   └── ChatContentFactory.swift           # Protocol — all views delegated here
 │   ├── Models/
-│   │   ├── ChatModels.swift                   # ChatContent, AnyChatContent, MessageBody, ChatMessage, etc.
+│   │   ├── ChatModels.swift                   # ChatContent, AnyChatContent, MessageBody, MessageOwnership, ThreadInfo, ChatMessage, etc.
 │   │   ├── ChatTheme.swift                    # 50+ colors, light/dark presets, contextMenuTheme
 │   │   ├── ChatLayout.swift                   # 350+ layout parameters
 │   │   └── ChatFeatures.swift                 # Feature flags
@@ -241,6 +253,9 @@ public protocol ChatMessageDelegate: AnyObject {
     func chatDidTapReplyMessage(id: String)
     func chatDidTapPollOption(messageId: String, pollId: String, optionId: String)
     func chatDidTapPollDetail(messageId: String, pollId: String)
+    func chatDidTapThread(messageId: String, threadId: String)
+    func chatDidTapLink(url: URL, messageId: String)
+    func chatDidTapPhoneNumber(phoneNumber: String, messageId: String)
 }
 
 public protocol ChatInputDelegate: AnyObject {
@@ -271,19 +286,40 @@ public struct MessageBody: Equatable, Hashable {
     public let content: AnyChatContent?    // any ChatContent type
 }
 
+// Message ownership — replaces old isMine: Bool
+public enum MessageOwnership: Equatable, Hashable {
+    case mine       // → MessageAlignment.trailing
+    case theirs     // → MessageAlignment.leading
+    case system     // → MessageAlignment.center (centered bubble, neutral colors)
+    case pinned     // → MessageAlignment.center (centered bubble, left-aligned content)
+}
+
+public enum MessageAlignment {
+    case leading, trailing, center
+}
+
+// Thread info — optional thread metadata on ChatMessage
+public struct ThreadInfo: Equatable, Hashable {
+    public let threadId: String
+    public let replyCount: Int
+    public let lastReplierName: String?
+}
+
 public struct ChatMessage: Equatable, Hashable {
     public let id: String
     public let content: MessageBody        // text + optional content
     public let timestamp: Date
     public let senderName: String?
-    public let isMine: Bool
+    public let senderAvatarUrl: String?    // avatar URL for sticky avatars
+    public let ownership: MessageOwnership // .mine, .theirs, .system, .pinned
     public let groupDate: String           // "yyyy-MM-dd" for date separators
     public let status: MessageStatus       // .sending, .sent, .delivered, .read
     public let reply: ReplyInfo?
     public let forwardedFrom: String?
-    public let reactions: [Reaction]
+    public let reactions: [Reaction]       // Reaction.isSelected replaces old isMine
     public let isEdited: Bool
     public let actions: [MessageAction]    // context menu actions
+    public let thread: ThreadInfo?         // thread indicator (default nil)
 }
 
 // Generic interaction — library routes without inspecting
@@ -303,7 +339,7 @@ public protocol ChatContentFactory: AnyObject {
     func reconfigureContentView(_ view: UIView, for media: AnyChatContent, ...) -> Bool
 
     // Universal elements
-    func textView(text: String, ...) -> UIView
+    func textView(text: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout, linkDetectionEnabled: Bool, onLinkTap: ((URL) -> Void)?) -> UIView
     func textHeight(text: String, ...) -> CGFloat
     func emojiView(text: String, emojiCount: Int, ...) -> UIView
     func reactionsView(reactions: [Reaction], ...) -> UIView
@@ -314,6 +350,12 @@ public protocol ChatContentFactory: AnyObject {
     func dateSeparatorView(title: String, ...) -> UIView
     func dateSeparatorHeight(layout: ChatLayout) -> CGFloat
     func floatingDateView(title: String, ...) -> UIView
+
+    // Thread indicator
+    func threadIndicatorView(thread: ThreadInfo, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout, onTap: (() -> Void)?) -> UIView
+
+    // Avatars
+    func avatarView(name: String, url: String?, size: CGFloat, theme: ChatTheme, layout: ChatLayout) -> UIView
 
     // UI components
     func emptyStateView(...) -> UIView
@@ -351,6 +393,15 @@ public struct ChatFeatures {
     public var showInputBar: Bool
     public var showAttachButton: Bool
     public var showVoiceRecording: Bool
+
+    // Threads
+    public var showThreadIndicator: Bool       // default true
+
+    // Avatars
+    public var showAvatars: Bool               // default false — sticky avatars for .theirs messages
+
+    // Link Detection
+    public var linkDetectionEnabled: Bool       // default true — URLs and phone numbers
 
     // Context Menu
     public var contextMenuEnabled: Bool
@@ -448,6 +499,13 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
     }
     func chatDidTapPollOption(messageId: String, pollId: String, optionId: String) {}
     func chatDidTapPollDetail(messageId: String, pollId: String) {}
+    func chatDidTapThread(messageId: String, threadId: String) {
+        // Open thread view
+    }
+    func chatDidTapLink(url: URL, messageId: String) {
+        UIApplication.shared.open(url)
+    }
+    func chatDidTapPhoneNumber(phoneNumber: String, messageId: String) {}
     func chatDidEditMessage(text: String, messageId: String) {}
     func chatDidCancelInputAction(type: String) {}
     func chatDidTapAttachment() {}
