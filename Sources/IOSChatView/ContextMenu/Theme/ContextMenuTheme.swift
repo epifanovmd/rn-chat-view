@@ -45,6 +45,8 @@ public struct ContextMenuTheme {
     public let horizontalPadding: CGFloat
     public let verticalPadding:   CGFloat
     public let menuWidth:         CGFloat
+    /// Максимальное горизонтальное смещение превью при открытии (в сторону бо́льшего отступа).
+    public let snapOpenShift:     CGFloat
 }
 
 // MARK: - Built-in themes
@@ -83,7 +85,8 @@ public extension ContextMenuTheme {
         menuSpacing:                 6,
         horizontalPadding:           12,
         verticalPadding:             10,
-        menuWidth:                   220
+        menuWidth:                   220,
+        snapOpenShift:               6
     )
 
     static let dark = ContextMenuTheme(
@@ -118,6 +121,7 @@ public extension ContextMenuTheme {
         menuSpacing:                 6,
         horizontalPadding:           12,
         verticalPadding:             10,
-        menuWidth:                   220
+        menuWidth:                   220,
+        snapOpenShift:               6
     )
 }

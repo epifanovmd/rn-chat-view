@@ -20,6 +20,8 @@ public struct ChatFeatures: Equatable {
     public var showReplyPreview: Bool = true
     /// Показывать метку «переслано»
     public var showForwardedMark: Bool = true
+    /// Показывать индикатор треда под сообщением
+    public var showThreadIndicator: Bool = true
 
     // MARK: - Список
 

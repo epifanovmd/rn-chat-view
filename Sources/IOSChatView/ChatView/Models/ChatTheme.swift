@@ -42,6 +42,24 @@ public struct ChatTheme {
     /// Цвет ссылок во входящем сообщении
     public var incomingLink: UIColor
 
+    // MARK: - Системное сообщение
+
+    /// Фон пузыря системного сообщения
+    public var systemBubble: UIColor
+    /// Цвет текста системного сообщения
+    public var systemText: UIColor
+    /// Цвет метки времени системного сообщения
+    public var systemTime: UIColor
+
+    // MARK: - Закреплённое сообщение
+
+    /// Фон пузыря закреплённого сообщения
+    public var pinnedBubble: UIColor
+    /// Цвет текста закреплённого сообщения
+    public var pinnedText: UIColor
+    /// Цвет метки времени закреплённого сообщения
+    public var pinnedTime: UIColor
+
     // MARK: - Превью цитаты внутри пузыря
 
     /// Фон превью цитаты в исходящем сообщении
@@ -91,6 +109,13 @@ public struct ChatTheme {
     public var reactionText: UIColor
     /// Цвет рамки чипа моей реакции
     public var reactionMineBorder: UIColor
+
+    // MARK: - Индикатор треда
+
+    /// Цвет текста индикатора треда
+    public var threadBarText: UIColor
+    /// Цвет иконки индикатора треда
+    public var threadBarIcon: UIColor
 
     // MARK: - Разделитель дат
 
@@ -180,6 +205,12 @@ public struct ChatTheme {
         incomingEdited: UIColor,
         incomingSenderName: UIColor,
         incomingLink: UIColor,
+        systemBubble: UIColor = UIColor(white: 0.5, alpha: 0.12),
+        systemText: UIColor = UIColor(white: 0.4, alpha: 1),
+        systemTime: UIColor = UIColor(white: 0.5, alpha: 1),
+        pinnedBubble: UIColor = UIColor(red: 0.91, green: 0.93, blue: 1.0, alpha: 1),
+        pinnedText: UIColor = UIColor(red: 0.15, green: 0.15, blue: 0.25, alpha: 1),
+        pinnedTime: UIColor = UIColor(red: 0.35, green: 0.4, blue: 0.6, alpha: 1),
         outgoingReplyBackground: UIColor,
         outgoingReplyAccent: UIColor,
         outgoingReplySender: UIColor,
@@ -195,6 +226,8 @@ public struct ChatTheme {
         outgoingFileBackground: UIColor,
         incomingFileBackground: UIColor,
         fileIconColor: UIColor,
+        threadBarText: UIColor = .systemBlue,
+        threadBarIcon: UIColor = .systemBlue,
         reactionBackground: UIColor,
         reactionMineBackground: UIColor,
         reactionText: UIColor,
@@ -240,6 +273,12 @@ public struct ChatTheme {
         self.incomingEdited = incomingEdited
         self.incomingSenderName = incomingSenderName
         self.incomingLink = incomingLink
+        self.systemBubble = systemBubble
+        self.systemText = systemText
+        self.systemTime = systemTime
+        self.pinnedBubble = pinnedBubble
+        self.pinnedText = pinnedText
+        self.pinnedTime = pinnedTime
         self.outgoingReplyBackground = outgoingReplyBackground
         self.outgoingReplyAccent = outgoingReplyAccent
         self.outgoingReplySender = outgoingReplySender
@@ -255,6 +294,8 @@ public struct ChatTheme {
         self.outgoingFileBackground = outgoingFileBackground
         self.incomingFileBackground = incomingFileBackground
         self.fileIconColor = fileIconColor
+        self.threadBarText = threadBarText
+        self.threadBarIcon = threadBarIcon
         self.reactionBackground = reactionBackground
         self.reactionMineBackground = reactionMineBackground
         self.reactionText = reactionText
@@ -368,6 +409,12 @@ public extension ChatTheme {
         incomingEdited: UIColor(white: 1.0, alpha: 0.45),
         incomingSenderName: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
         incomingLink: UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1),
+        systemBubble: UIColor(white: 1.0, alpha: 0.08),
+        systemText: UIColor(white: 1.0, alpha: 0.6),
+        systemTime: UIColor(white: 1.0, alpha: 0.4),
+        pinnedBubble: UIColor(red: 0.15, green: 0.18, blue: 0.28, alpha: 1),
+        pinnedText: UIColor(red: 0.82, green: 0.85, blue: 0.95, alpha: 1),
+        pinnedTime: UIColor(red: 0.5, green: 0.55, blue: 0.72, alpha: 1),
         outgoingReplyBackground: UIColor(red: 0.14, green: 0.27, blue: 0.40, alpha: 1),
         outgoingReplyAccent: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),
         outgoingReplySender: UIColor(red: 0.4, green: 0.8, blue: 0.55, alpha: 1),

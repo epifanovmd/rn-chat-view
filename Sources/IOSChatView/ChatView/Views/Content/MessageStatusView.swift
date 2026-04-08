@@ -18,8 +18,8 @@ public final class MessageStatusView: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    func configure(status: MessageStatus, isMine: Bool, theme: ChatTheme) {
-        guard isMine else {
+    func configure(status: MessageStatus, ownership: MessageOwnership, theme: ChatTheme) {
+        guard ownership == .mine else {
             isHidden = true
             return
         }

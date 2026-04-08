@@ -80,7 +80,7 @@ public enum MessageSizeCalculator {
                 h += CGFloat(reactionLines) * (L.reactionChipHeight + L.reactionChipSpacing)
             }
 
-            let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.isMine && features.showMessageStatus)
+            let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.ownership == .mine && features.showMessageStatus)
             if hasFooter { h += L.footerHeight }
             h += L.bubbleBottomPad
             return h
@@ -105,12 +105,16 @@ public enum MessageSizeCalculator {
 
         h += contentHeight(for: content, width: innerW, layout: L, factory: factory)
 
+        if features.showThreadIndicator, msg.thread != nil {
+            h += L.threadBarHeight + L.bubbleSpacing
+        }
+
         if features.showReactions, !msg.reactions.isEmpty {
             let reactionLines = reactionLinesCount(for: msg.reactions, maxWidth: bw - L.bubbleHPad * 2, layout: L)
             h += CGFloat(reactionLines) * (L.reactionChipHeight + L.reactionChipSpacing)
         }
 
-        let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.isMine && features.showMessageStatus)
+        let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.ownership == .mine && features.showMessageStatus)
         if hasFooter { h += L.footerHeight }
         h += L.bubbleBottomPad
         return h
@@ -175,7 +179,7 @@ public enum MessageSizeCalculator {
         if features.showTimestamp {
             w += ChatTextMeasurer.width(DateHelper.shared.timeString(from: msg.timestamp), font: L.timeFont)
         }
-        if msg.isMine && features.showMessageStatus {
+        if msg.ownership == .mine && features.showMessageStatus {
             w += L.statusIconSize + L.footerSpacing
         }
         if msg.isEdited && features.showEditedMark {

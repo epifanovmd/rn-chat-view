@@ -42,11 +42,11 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
         onInteraction: @escaping (ChatContentInteraction) -> Void
     ) -> UIView {
         if let payment = media.content(as: PaymentContent.self) {
-            return makePaymentView(payment: payment, isMine: message.isMine, theme: theme, layout: layout, width: width, onInteraction: onInteraction)
+            return makePaymentView(payment: payment, ownership: message.ownership, theme: theme, layout: layout, width: width, onInteraction: onInteraction)
         } else if let location = media.content(as: LocationContent.self) {
-            return makeLocationView(location: location, isMine: message.isMine, theme: theme, width: width, onInteraction: onInteraction)
+            return makeLocationView(location: location, ownership: message.ownership, theme: theme, width: width, onInteraction: onInteraction)
         } else if let contact = media.content(as: ContactContent.self) {
-            return makeContactView(contact: contact, isMine: message.isMine, theme: theme, width: width, onInteraction: onInteraction)
+            return makeContactView(contact: contact, ownership: message.ownership, theme: theme, width: width, onInteraction: onInteraction)
         }
         return super.contentView(for: media, message: message, width: width, theme: theme, layout: layout, onInteraction: onInteraction)
     }
@@ -67,7 +67,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
     // MARK: - Custom Text View (gradient background label)
 
-    nonisolated override func textView(text: String, isMine: Bool, theme: ChatTheme, layout: ChatLayout) -> UIView {
+    nonisolated override func textView(text: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout) -> UIView {
         let container = UIView()
 
         let label = UILabel()
@@ -75,7 +75,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
         label.font = layout.messageFont
         label.numberOfLines = 0
         label.lineBreakMode = .byWordWrapping
-        label.textColor = isMine ? .white : theme.incomingText
+        label.textColor = ownership == .mine ? .white : theme.incomingText
         label.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(label)
 
@@ -92,10 +92,11 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
     // MARK: - Custom Footer (colored time + icon)
 
     nonisolated override func footerView(message: ChatMessage, theme: ChatTheme, layout: ChatLayout, features: ChatFeatures) -> UIView? {
-        let isMine = message.isMine
+        let ownership = message.ownership
+        let isOutgoing = ownership == .mine
         let hasFooter = features.showTimestamp
             || (message.isEdited && features.showEditedMark)
-            || (isMine && features.showMessageStatus)
+            || (isOutgoing && features.showMessageStatus)
         guard hasFooter else { return nil }
 
         let stack = UIStackView()
@@ -105,7 +106,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
         // Custom "encrypted" icon
         let lockIcon = UIImageView(image: UIImage(systemName: "lock.fill"))
-        lockIcon.tintColor = isMine
+        lockIcon.tintColor = isOutgoing
             ? UIColor(red: 0.5, green: 1.0, blue: 0.5, alpha: 0.6)
             : UIColor(red: 0.5, green: 0.8, blue: 1.0, alpha: 0.6)
         lockIcon.translatesAutoresizingMaskIntoConstraints = false
@@ -119,7 +120,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
             let edited = UILabel()
             edited.font = .systemFont(ofSize: 10, weight: .medium)
             edited.text = "edited"
-            edited.textColor = isMine
+            edited.textColor = isOutgoing
                 ? UIColor(red: 1.0, green: 0.8, blue: 0.4, alpha: 0.7)
                 : UIColor(red: 0.8, green: 0.7, blue: 1.0, alpha: 0.7)
             stack.addArrangedSubview(edited)
@@ -129,13 +130,13 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
             let time = UILabel()
             time.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
             time.text = DateHelper.shared.timeString(from: message.timestamp)
-            time.textColor = isMine
+            time.textColor = isOutgoing
                 ? UIColor(white: 1, alpha: 0.5)
                 : UIColor(white: 1, alpha: 0.4)
             stack.addArrangedSubview(time)
         }
 
-        if isMine && features.showMessageStatus {
+        if isOutgoing && features.showMessageStatus {
             let iconName: String
             let iconColor: UIColor
             switch message.status {
@@ -249,13 +250,13 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
     // MARK: - Payment View
 
-    private func makePaymentView(payment: PaymentContent, isMine: Bool, theme: ChatTheme, layout: ChatLayout, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
+    private func makePaymentView(payment: PaymentContent, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
         let amount = payment.amount
         let currency = payment.currency
         let status = payment.status
 
         let container = UIView()
-        container.backgroundColor = isMine
+        container.backgroundColor = ownership == .mine
             ? UIColor(red: 0.1, green: 0.3, blue: 0.15, alpha: 1)
             : UIColor(red: 0.15, green: 0.15, blue: 0.25, alpha: 1)
         container.layer.cornerRadius = 12
@@ -324,7 +325,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
     // MARK: - Location View
 
-    private func makeLocationView(location: LocationContent, isMine: Bool, theme: ChatTheme, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
+    private func makeLocationView(location: LocationContent, ownership: MessageOwnership, theme: ChatTheme, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
         let address = location.address
         let lat = location.lat
         let lon = location.lon
@@ -367,7 +368,7 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
         // Address bar
         let addressBar = UIView()
-        addressBar.backgroundColor = isMine
+        addressBar.backgroundColor = ownership == .mine
             ? UIColor(red: 0.1, green: 0.25, blue: 0.35, alpha: 1)
             : UIColor(red: 0.12, green: 0.12, blue: 0.2, alpha: 1)
         addressBar.translatesAutoresizingMaskIntoConstraints = false
@@ -435,12 +436,12 @@ final class CustomChatContentFactory: DefaultChatContentFactory {
 
     // MARK: - Contact View
 
-    private func makeContactView(contact: ContactContent, isMine: Bool, theme: ChatTheme, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
+    private func makeContactView(contact: ContactContent, ownership: MessageOwnership, theme: ChatTheme, width: CGFloat, onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
         let name = contact.name
         let phone = contact.phone
 
         let container = UIView()
-        container.backgroundColor = isMine
+        container.backgroundColor = ownership == .mine
             ? UIColor(red: 0.15, green: 0.2, blue: 0.35, alpha: 1)
             : UIColor(red: 0.15, green: 0.15, blue: 0.22, alpha: 1)
         container.layer.cornerRadius = 12
@@ -581,12 +582,12 @@ enum CustomChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -26, to: now)!,
                 senderName: "Payment Bot",
-                isMine: false,
+                ownership: .theirs,
                 groupDate: yesterday,
                 status: .read,
                 reply: nil,
                 forwardedFrom: nil,
-                reactions: [Reaction(emoji: "💸", count: 2, isMine: true)],
+                reactions: [Reaction(emoji: "💸", count: 2, isSelected: true)],
                 isEdited: false,
                 actions: actions
             ),
@@ -597,7 +598,7 @@ enum CustomChatDemoData {
                 content: MessageBody(text: "Оплата получена, спасибо!", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -25, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: yesterday,
                 status: .read,
                 reply: nil,
@@ -620,7 +621,7 @@ enum CustomChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -24, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: yesterday,
                 status: .delivered,
                 reply: nil,
@@ -636,12 +637,12 @@ enum CustomChatDemoData {
                 content: MessageBody(text: "Отличное место! Буду через 20 минут", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -23, to: now)!,
                 senderName: "Elena",
-                isMine: false,
+                ownership: .theirs,
                 groupDate: yesterday,
                 status: .read,
                 reply: ReplyInfo(replyToId: "c3", senderName: "Вы", text: nil, hasImage: false),
                 forwardedFrom: nil,
-                reactions: [Reaction(emoji: "👍", count: 1, isMine: true)],
+                reactions: [Reaction(emoji: "👍", count: 1, isSelected: true)],
                 isEdited: false,
                 actions: actions
             ),
@@ -660,7 +661,7 @@ enum CustomChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!,
                 senderName: "Elena",
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -676,7 +677,7 @@ enum CustomChatDemoData {
                 content: MessageBody(text: "Вот контакт курьера, позвони ему когда будешь на месте", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(30),
                 senderName: "Elena",
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -699,7 +700,7 @@ enum CustomChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -4, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .sent,
                 reply: nil,
@@ -720,14 +721,14 @@ enum CustomChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -3, to: now)!,
                 senderName: "Elena",
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
                 forwardedFrom: nil,
                 reactions: [
-                    Reaction(emoji: "😍", count: 3, isMine: true),
-                    Reaction(emoji: "🔥", count: 1, isMine: false),
+                    Reaction(emoji: "😍", count: 3, isSelected: true),
+                    Reaction(emoji: "🔥", count: 1, isSelected: false),
                 ],
                 isEdited: false,
                 actions: actions
@@ -747,7 +748,7 @@ enum CustomChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -2, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .delivered,
                 reply: nil,
@@ -770,7 +771,7 @@ enum CustomChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -1, to: now)!,
                 senderName: "Elena",
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -786,7 +787,7 @@ enum CustomChatDemoData {
                 content: MessageBody(text: "Напоминаю: завтра дресс-код smart casual", content: nil),
                 timestamp: cal.date(byAdding: .minute, value: -30, to: now)!,
                 senderName: "Elena",
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -808,7 +809,7 @@ enum CustomChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .minute, value: -15, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -824,7 +825,7 @@ enum CustomChatDemoData {
                 content: MessageBody(text: "Договорились, до завтра!", content: nil),
                 timestamp: now,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .sending,
                 reply: ReplyInfo(replyToId: "c10", senderName: "Elena", text: "Встретимся здесь завтра", hasImage: false),
@@ -928,19 +929,19 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
 
         if let rIdx = reactions.firstIndex(where: { $0.emoji == emoji }) {
             let existing = reactions[rIdx]
-            if existing.isMine {
+            if existing.isSelected {
                 if existing.count <= 1 { reactions.remove(at: rIdx) }
-                else { reactions[rIdx] = Reaction(emoji: emoji, count: existing.count - 1, isMine: false) }
+                else { reactions[rIdx] = Reaction(emoji: emoji, count: existing.count - 1, isSelected: false) }
             } else {
-                reactions[rIdx] = Reaction(emoji: emoji, count: existing.count + 1, isMine: true)
+                reactions[rIdx] = Reaction(emoji: emoji, count: existing.count + 1, isSelected: true)
             }
         } else {
-            reactions.append(Reaction(emoji: emoji, count: 1, isMine: true))
+            reactions.append(Reaction(emoji: emoji, count: 1, isSelected: true))
         }
 
         msgs[idx] = ChatMessage(
             id: msg.id, content: msg.content, timestamp: msg.timestamp,
-            senderName: msg.senderName, isMine: msg.isMine, groupDate: msg.groupDate,
+            senderName: msg.senderName, ownership: msg.ownership, groupDate: msg.groupDate,
             status: msg.status, reply: msg.reply, forwardedFrom: msg.forwardedFrom,
             reactions: reactions, isEdited: msg.isEdited, actions: msg.actions
         )
@@ -970,7 +971,7 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
             content: MessageBody(text: text, content: nil),
             timestamp: now,
             senderName: nil,
-            isMine: true,
+            ownership: .mine,
             groupDate: DateHelper.shared.groupKey(from: now),
             status: .sending,
             reply: replyToId.flatMap { id in
@@ -993,7 +994,7 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
         let old = msgs[idx]
         msgs[idx] = ChatMessage(
             id: old.id, content: MessageBody(text: text, content: old.content.content),
-            timestamp: old.timestamp, senderName: old.senderName, isMine: old.isMine,
+            timestamp: old.timestamp, senderName: old.senderName, ownership: old.ownership,
             groupDate: old.groupDate, status: old.status, reply: old.reply,
             forwardedFrom: old.forwardedFrom, reactions: old.reactions,
             isEdited: true, actions: old.actions

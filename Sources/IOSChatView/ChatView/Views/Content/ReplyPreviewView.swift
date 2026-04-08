@@ -61,14 +61,15 @@ public final class ReplyPreviewView: UIView {
         contentLabel.font = L.replyFont
     }
 
-    func configure(reply: ReplyInfo, resolved: ReplyDisplayInfo?, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(reply: ReplyInfo, resolved: ReplyDisplayInfo?, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
         applyLayout(layout)
-        backgroundColor = isMine ? theme.outgoingReplyBackground : theme.incomingReplyBackground
-        accentBar.backgroundColor = isMine ? theme.outgoingReplyAccent : theme.incomingReplyAccent
+        let isOutgoing = ownership == .mine
+        backgroundColor = isOutgoing ? theme.outgoingReplyBackground : theme.incomingReplyBackground
+        accentBar.backgroundColor = isOutgoing ? theme.outgoingReplyAccent : theme.incomingReplyAccent
 
         let sender = resolved?.senderName ?? reply.senderName ?? ""
         senderLabel.text = sender
-        senderLabel.textColor = isMine ? theme.outgoingReplySender : theme.incomingReplySender
+        senderLabel.textColor = isOutgoing ? theme.outgoingReplySender : theme.incomingReplySender
 
         if let text = resolved?.text ?? reply.text, !text.isEmpty {
             contentLabel.text = text
@@ -77,7 +78,7 @@ public final class ReplyPreviewView: UIView {
         } else {
             contentLabel.text = "…"
         }
-        contentLabel.textColor = isMine ? theme.outgoingReplyText : theme.incomingReplyText
+        contentLabel.textColor = isOutgoing ? theme.outgoingReplyText : theme.incomingReplyText
     }
 
     @objc private func tapped() { onTap?() }

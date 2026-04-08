@@ -52,7 +52,13 @@ enum ContextMenuLayoutEngine {
         let topLimit    = safeArea.top    + vPad
         let bottomLimit = screen.height - safeArea.bottom - vPad
 
-        let snapX  = clamp(sourceFrame.minX, lo: hPad, hi: screen.width - snapW - hPad)
+        let leftMargin  = sourceFrame.minX
+        let rightMargin = screen.width - sourceFrame.minX - snapW
+        let marginDiff  = rightMargin - leftMargin
+        let shift: CGFloat = abs(marginDiff) < 1
+            ? 0
+            : clamp(marginDiff * 0.15, lo: -theme.snapOpenShift, hi: theme.snapOpenShift)
+        let snapX = sourceFrame.minX + shift
         let emojiX = hasEmoji   ? clamp(snapX + snapW - emojiW, lo: hPad, hi: screen.width - emojiW - hPad) : 0
         let menuX  = hasActions ? (snapX + menuW > screen.width - hPad ? screen.width - hPad - menuW : snapX) : 0
 

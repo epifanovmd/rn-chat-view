@@ -82,9 +82,10 @@ public final class PollContentView: UIView {
         ])
     }
 
-    func configure(poll: PollPayload, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(poll: PollPayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
         currentLayout = layout
         let L = currentLayout
+        let isOutgoing = ownership == .mine
 
         questionLabel.font = L.pollQuestionFont
         subtitleLabel.font = L.pollSubtitleFont
@@ -94,7 +95,7 @@ public final class PollContentView: UIView {
         optionsTopConstraint.constant = L.pollHeaderSpacing
 
         questionLabel.text = poll.question
-        questionLabel.textColor = isMine ? theme.outgoingText : theme.incomingText
+        questionLabel.textColor = isOutgoing ? theme.outgoingText : theme.incomingText
 
         var parts: [String] = ["Опрос"]
         if poll.isMultipleChoice { parts.append("множественный выбор") }
@@ -118,14 +119,14 @@ public final class PollContentView: UIView {
         for (i, option) in poll.options.enumerated() {
             let row = optionRows[i]
             let isSelected = poll.selectedOptionIds.contains(option.id)
-            row.update(option: option, isSelected: isSelected, isMine: isMine, theme: theme, layout: L)
+            row.update(option: option, isSelected: isSelected, ownership: ownership, theme: theme, layout: L)
             row.onTap = poll.isClosed ? nil : { [weak self] in self?.onOptionTap?(option.id) }
         }
 
         votesLabel.text = "\(poll.totalVotes) голосов"
-        votesLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
+        votesLabel.textColor = isOutgoing ? theme.outgoingTime : theme.incomingTime
         resultsLabel.isHidden = poll.isAnonymous
-        resultsLabel.textColor = isMine ? theme.outgoingStatusRead : theme.voiceWaveformActive
+        resultsLabel.textColor = isOutgoing ? theme.outgoingStatusRead : theme.voiceWaveformActive
     }
 
     @objc private func detailTapped() { onDetailTap?() }
@@ -204,9 +205,10 @@ private final class PollOptionRow: UIView {
         addGestureRecognizer(tap)
     }
 
-    func update(option: PollOption, isSelected: Bool, isMine: Bool, theme: ChatTheme, layout: ChatLayout) {
+    func update(option: PollOption, isSelected: Bool, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout) {
         currentLayout = layout
         let L = currentLayout
+        let isOutgoing = ownership == .mine
 
         // Corner radius — always set immediately with disabled implicit animations
         CATransaction.begin()
@@ -232,14 +234,14 @@ private final class PollOptionRow: UIView {
         let pctColor: UIColor
         if isSelected {
             label.font = UIFont.systemFont(ofSize: L.pollOptionFont.pointSize, weight: .bold)
-            textColor = isMine ? theme.outgoingText : theme.incomingText
+            textColor = isOutgoing ? theme.outgoingText : theme.incomingText
             fillColor = theme.pollBarFilled.withAlphaComponent(0.5)
             pctColor = theme.pollBarFilled
         } else {
             label.font = L.pollOptionFont
-            textColor = (isMine ? theme.outgoingText : theme.incomingText).withAlphaComponent(0.8)
+            textColor = (isOutgoing ? theme.outgoingText : theme.incomingText).withAlphaComponent(0.8)
             fillColor = theme.pollBarFilled.withAlphaComponent(0.1)
-            pctColor = isMine ? theme.outgoingTime : theme.incomingTime
+            pctColor = isOutgoing ? theme.outgoingTime : theme.incomingTime
         }
 
         // Update fill width constraint

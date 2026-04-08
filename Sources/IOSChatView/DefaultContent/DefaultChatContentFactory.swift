@@ -17,7 +17,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         layout: ChatLayout,
         onInteraction: @escaping (ChatContentInteraction) -> Void
     ) -> UIView {
-        let isMine = message.isMine
+        let ownership = message.ownership
 
         if let images = media.content(as: ImagesContent.self) {
             let grid = MediaGridView()
@@ -28,14 +28,14 @@ open class DefaultChatContentFactory: ChatContentFactory {
 
         if let voice = media.content(as: VoicePayload.self) {
             let view = VoiceContentView()
-            view.configure(voice: voice, isMine: isMine, theme: theme, layout: layout)
+            view.configure(voice: voice, ownership: ownership, theme: theme, layout: layout)
             view.onPlayTap = { onInteraction(.voiceTap(url: voice.url)) }
             return view
         }
 
         if let poll = media.content(as: PollPayload.self) {
             let view = PollContentView()
-            view.configure(poll: poll, isMine: isMine, theme: theme, layout: layout)
+            view.configure(poll: poll, ownership: ownership, theme: theme, layout: layout)
             view.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
             view.onDetailTap = { onInteraction(.pollDetailTap(pollId: poll.id)) }
             return view
@@ -47,7 +47,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
             stack.spacing = layout.fileRowSpacing
             for (i, file) in files.items.enumerated() {
                 let view = FileContentView()
-                view.configure(file: file, isMine: isMine, theme: theme, layout: layout)
+                view.configure(file: file, ownership: ownership, theme: theme, layout: layout)
                 view.onTap = { onInteraction(.fileTap(index: i)) }
                 stack.addArrangedSubview(view)
             }
@@ -93,16 +93,16 @@ open class DefaultChatContentFactory: ChatContentFactory {
         layout: ChatLayout,
         onInteraction: @escaping (ChatContentInteraction) -> Void
     ) -> Bool {
-        let isMine = message.isMine
+        let ownership = message.ownership
 
         if let poll = media.content(as: PollPayload.self), let pollView = view as? PollContentView {
-            pollView.configure(poll: poll, isMine: isMine, theme: theme, layout: layout)
+            pollView.configure(poll: poll, ownership: ownership, theme: theme, layout: layout)
             pollView.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
             pollView.onDetailTap = { onInteraction(.pollDetailTap(pollId: poll.id)) }
             return true
         }
         if let voice = media.content(as: VoicePayload.self), let voiceView = view as? VoiceContentView {
-            voiceView.configure(voice: voice, isMine: isMine, theme: theme, layout: layout)
+            voiceView.configure(voice: voice, ownership: ownership, theme: theme, layout: layout)
             voiceView.onPlayTap = { onInteraction(.voiceTap(url: voice.url)) }
             return true
         }
@@ -114,7 +114,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         if let files = media.content(as: FilesContent.self), let filesStack = view as? UIStackView {
             for (i, sub) in filesStack.arrangedSubviews.enumerated() {
                 if let fileView = sub as? FileContentView, i < files.items.count {
-                    fileView.configure(file: files.items[i], isMine: isMine, theme: theme, layout: layout)
+                    fileView.configure(file: files.items[i], ownership: ownership, theme: theme, layout: layout)
                     fileView.onTap = { onInteraction(.fileTap(index: i)) }
                 }
             }
@@ -138,12 +138,12 @@ open class DefaultChatContentFactory: ChatContentFactory {
 
     open func textView(
         text: String,
-        isMine: Bool,
+        ownership: MessageOwnership,
         theme: ChatTheme,
         layout: ChatLayout
     ) -> UIView {
         let view = TextContentView()
-        view.configure(text: text, isMine: isMine, theme: theme, layout: layout)
+        view.configure(text: text, ownership: ownership, theme: theme, layout: layout)
         return view
     }
 
@@ -176,18 +176,108 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return view
     }
 
+    // MARK: - Thread Indicator
+
+    open func threadIndicatorView(
+        thread: ThreadInfo,
+        ownership: MessageOwnership,
+        theme: ChatTheme,
+        layout: ChatLayout,
+        onTap: @escaping () -> Void
+    ) -> UIView {
+        let L = layout
+        let container = UIView()
+
+        let stack = UIStackView()
+        stack.axis = .horizontal
+        stack.spacing = L.threadBarSpacing
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        // Icon
+        let iconConfig = UIImage.SymbolConfiguration(pointSize: L.threadBarIconSize, weight: .medium)
+        let icon = UIImageView(image: UIImage(systemName: "bubble.left.and.bubble.right", withConfiguration: iconConfig))
+        icon.tintColor = theme.threadBarIcon
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            icon.widthAnchor.constraint(equalToConstant: L.threadBarIconSize),
+            icon.heightAnchor.constraint(equalToConstant: L.threadBarIconSize),
+        ])
+        stack.addArrangedSubview(icon)
+
+        // Reply count
+        let countLabel = UILabel()
+        countLabel.text = Self.threadReplySuffix(thread.replyCount)
+        countLabel.font = L.threadBarFont
+        countLabel.textColor = theme.threadBarText
+        stack.addArrangedSubview(countLabel)
+
+        // Last replier name
+        if let name = thread.lastReplierName {
+            let dot = UILabel()
+            dot.text = "·"
+            dot.font = L.threadBarFont
+            dot.textColor = theme.threadBarText.withAlphaComponent(0.5)
+            stack.addArrangedSubview(dot)
+
+            let nameLabel = UILabel()
+            nameLabel.text = name
+            nameLabel.font = L.threadBarFont
+            nameLabel.textColor = theme.threadBarText.withAlphaComponent(0.7)
+            nameLabel.lineBreakMode = .byTruncatingTail
+            stack.addArrangedSubview(nameLabel)
+        }
+
+        // Chevron
+        let chevronConfig = UIImage.SymbolConfiguration(pointSize: L.threadBarChevronSize, weight: .semibold)
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: chevronConfig))
+        chevron.tintColor = theme.threadBarText.withAlphaComponent(0.4)
+        chevron.contentMode = .scaleAspectFit
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            chevron.widthAnchor.constraint(equalToConstant: L.threadBarChevronSize),
+            chevron.heightAnchor.constraint(equalToConstant: L.threadBarChevronSize),
+        ])
+        stack.addArrangedSubview(chevron)
+
+        container.addSubview(stack)
+        NSLayoutConstraint.activate([
+            container.heightAnchor.constraint(equalToConstant: L.threadBarHeight),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor),
+            stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        ])
+
+        let target = ThreadTapTarget(action: onTap)
+        let tap = UITapGestureRecognizer(target: target, action: #selector(ThreadTapTarget.handleTap))
+        container.addGestureRecognizer(tap)
+        objc_setAssociatedObject(container, &ThreadTapTarget.key, target, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+
+        return container
+    }
+
+    private static func threadReplySuffix(_ count: Int) -> String {
+        let mod10 = count % 10
+        let mod100 = count % 100
+        if mod100 >= 11 && mod100 <= 19 { return "\(count) ответов" }
+        if mod10 == 1 { return "\(count) ответ" }
+        if mod10 >= 2 && mod10 <= 4 { return "\(count) ответа" }
+        return "\(count) ответов"
+    }
+
     // MARK: - Reply Preview
 
     open func replyPreviewView(
         reply: ReplyInfo,
         resolved: ReplyDisplayInfo?,
-        isMine: Bool,
+        ownership: MessageOwnership,
         theme: ChatTheme,
         layout: ChatLayout,
         onTap: @escaping () -> Void
     ) -> UIView {
         let view = ReplyPreviewView()
-        view.configure(reply: reply, resolved: resolved, isMine: isMine, theme: theme, layout: layout)
+        view.configure(reply: reply, resolved: resolved, ownership: ownership, theme: theme, layout: layout)
         view.onTap = onTap
         return view
     }
@@ -200,10 +290,11 @@ open class DefaultChatContentFactory: ChatContentFactory {
         layout: ChatLayout,
         features: ChatFeatures
     ) -> UIView? {
-        let isMine = message.isMine
+        let ownership = message.ownership
+        let isOutgoing = ownership == .mine
         let hasFooter = features.showTimestamp
             || (message.isEdited && features.showEditedMark)
-            || (isMine && features.showMessageStatus)
+            || (isOutgoing && features.showMessageStatus)
         guard hasFooter else { return nil }
 
         let stack = UIStackView()
@@ -215,7 +306,12 @@ open class DefaultChatContentFactory: ChatContentFactory {
         let editedLabel = UILabel()
         editedLabel.font = layout.editedFont
         editedLabel.text = "изм."
-        editedLabel.textColor = isMine ? theme.outgoingEdited : theme.incomingEdited
+        switch ownership {
+        case .mine:           editedLabel.textColor = theme.outgoingEdited
+        case .theirs:         editedLabel.textColor = theme.incomingEdited
+        case .system:         editedLabel.textColor = theme.systemTime
+        case .pinned:         editedLabel.textColor = theme.pinnedTime
+        }
         editedLabel.isHidden = !message.isEdited || !features.showEditedMark
         stack.addArrangedSubview(editedLabel)
 
@@ -223,14 +319,19 @@ open class DefaultChatContentFactory: ChatContentFactory {
         let timeLabel = UILabel()
         timeLabel.font = layout.timeFont
         timeLabel.text = DateHelper.shared.timeString(from: message.timestamp)
-        timeLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
+        switch ownership {
+        case .mine:           timeLabel.textColor = theme.outgoingTime
+        case .theirs:         timeLabel.textColor = theme.incomingTime
+        case .system:         timeLabel.textColor = theme.systemTime
+        case .pinned:         timeLabel.textColor = theme.pinnedTime
+        }
         timeLabel.isHidden = !features.showTimestamp
         stack.addArrangedSubview(timeLabel)
 
-        // Status
+        // Status (only for outgoing)
         let statusView = MessageStatusView()
-        statusView.configure(status: message.status, isMine: isMine, theme: theme)
-        statusView.isHidden = !isMine || !features.showMessageStatus
+        statusView.configure(status: message.status, ownership: ownership, theme: theme)
+        statusView.isHidden = !isOutgoing || !features.showMessageStatus
         statusView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             statusView.widthAnchor.constraint(equalToConstant: layout.statusIconSize),
@@ -242,9 +343,13 @@ open class DefaultChatContentFactory: ChatContentFactory {
         container.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(stack)
+
+        let isCenter = ownership == .system
         NSLayoutConstraint.activate([
             container.heightAnchor.constraint(equalToConstant: layout.footerHeight),
-            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            isCenter
+                ? stack.centerXAnchor.constraint(equalTo: container.centerXAnchor)
+                : stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
         return container
@@ -263,12 +368,12 @@ open class DefaultChatContentFactory: ChatContentFactory {
 
     // MARK: - Forwarded Header
 
-    open func forwardedHeaderView(from: String, isMine: Bool, theme: ChatTheme, layout: ChatLayout) -> UIView {
+    open func forwardedHeaderView(from: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout) -> UIView {
         let label = UILabel()
         label.font = layout.forwardedFont
         label.numberOfLines = 1
         label.text = "Переслано от \(from)"
-        label.textColor = isMine ? theme.outgoingForwardedLabel : theme.incomingForwardedLabel
+        label.textColor = ownership == .mine ? theme.outgoingForwardedLabel : theme.incomingForwardedLabel
         return label
     }
 
@@ -371,4 +476,13 @@ open class DefaultChatContentFactory: ChatContentFactory {
         badge.textColor = theme.fabBadgeTextColor
         return badge
     }
+}
+
+// MARK: - Thread Tap Target
+
+private final class ThreadTapTarget: NSObject {
+    static var key: UInt8 = 0
+    let action: () -> Void
+    init(action: @escaping () -> Void) { self.action = action }
+    @objc func handleTap() { action() }
 }

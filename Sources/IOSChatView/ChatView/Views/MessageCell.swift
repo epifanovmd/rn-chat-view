@@ -10,6 +10,7 @@ public final class MessageCell: UICollectionViewCell {
     var onReplyTap: (() -> Void)?
     var onContentInteraction: ((ChatContentInteraction) -> Void)?
     var onReactionTap: ((String) -> Void)?
+    var onThreadTap: (() -> Void)?
 
     // MARK: - State
 
@@ -21,6 +22,7 @@ public final class MessageCell: UICollectionViewCell {
     let bubbleView = MessageBubbleView()
     private var leadingConstraint: NSLayoutConstraint!
     private var trailingConstraint: NSLayoutConstraint!
+    private var centerXConstraint: NSLayoutConstraint!
 
     // MARK: - Init
 
@@ -42,6 +44,7 @@ public final class MessageCell: UICollectionViewCell {
                                                                  constant: ChatLayout().cellHMargin)
         trailingConstraint = bubbleView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor,
                                                                    constant: -ChatLayout().cellHMargin)
+        centerXConstraint = bubbleView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor)
 
         NSLayoutConstraint.activate([
             bubbleView.topAnchor.constraint(equalTo: contentView.topAnchor),
@@ -68,11 +71,15 @@ public final class MessageCell: UICollectionViewCell {
 
         leadingConstraint.isActive = false
         trailingConstraint.isActive = false
+        centerXConstraint.isActive = false
 
-        if message.isMine {
+        switch message.ownership.alignment {
+        case .trailing:
             trailingConstraint.isActive = true
-        } else {
+        case .leading:
             leadingConstraint.isActive = true
+        case .center:
+            centerXConstraint.isActive = true
         }
 
         for c in bubbleView.constraints where c.firstAttribute == .width { c.isActive = false }
@@ -84,6 +91,7 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.onReplyTap = onReplyTap
         bubbleView.onContentInteraction = onContentInteraction
         bubbleView.onReactionTap = onReactionTap
+        bubbleView.onThreadTap = onThreadTap
     }
 
     // MARK: - Reconfigure In-Place
@@ -103,6 +111,7 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.onReplyTap = onReplyTap
         bubbleView.onContentInteraction = onContentInteraction
         bubbleView.onReactionTap = onReactionTap
+        bubbleView.onThreadTap = onThreadTap
     }
 
     // MARK: - Highlight
@@ -130,6 +139,7 @@ public final class MessageCell: UICollectionViewCell {
         onReplyTap = nil
         onContentInteraction = nil
         onReactionTap = nil
+        onThreadTap = nil
         for c in bubbleView.constraints where c.firstAttribute == .width { c.isActive = false }
         bubbleView.prepareForReuse()
     }

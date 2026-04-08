@@ -30,6 +30,11 @@ public struct ChatLayout {
     public var cellVSpacing: CGFloat = 2
     /// Минимальная высота ячейки
     public var cellMinHeight: CGFloat = 36
+    /// Дополнительный вертикальный интервал вокруг системных сообщений
+    /// Дополнительный отступ снизу у системного сообщения (между ним и следующим)
+    public var systemCellBottomSpacing: CGFloat = 20
+    /// Дополнительный отступ снизу у закреплённого сообщения (между ним и следующим)
+    public var pinnedCellBottomSpacing: CGFloat = 32
 
     // MARK: - Шрифты контента
 
@@ -82,6 +87,19 @@ public struct ChatLayout {
     public var reactionBorderWidth: CGFloat = 1
     /// Шрифт текста реакции
     public var reactionFont: UIFont = .systemFont(ofSize: 13)
+
+    // MARK: - Тред
+
+    /// Высота бара индикатора треда
+    public var threadBarHeight: CGFloat = 28
+    /// Шрифт текста индикатора треда
+    public var threadBarFont: UIFont = .systemFont(ofSize: 13, weight: .medium)
+    /// Интервал между элементами внутри бара треда
+    public var threadBarSpacing: CGFloat = 4
+    /// Размер иконки треда
+    public var threadBarIconSize: CGFloat = 14
+    /// Размер шеврона в баре треда
+    public var threadBarChevronSize: CGFloat = 10
 
     // MARK: - Медиа / изображения
 

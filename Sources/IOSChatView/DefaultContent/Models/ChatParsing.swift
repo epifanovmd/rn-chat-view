@@ -9,7 +9,7 @@ extension ChatMessage {
 
         let text = dict["text"] as? String
         let senderName = dict["senderName"] as? String
-        let isMine = dict["isMine"] as? Bool ?? false
+        let ownership = (dict["ownership"] as? String).flatMap(MessageOwnership.init(rawValue:)) ?? .theirs
         let statusStr = dict["status"] as? String ?? "sent"
         let forwardedFrom = dict["forwardedFrom"] as? String
         let isEdited = dict["isEdited"] as? Bool ?? false
@@ -19,6 +19,7 @@ extension ChatMessage {
 
         let content = parseContent(dict: dict, text: text)
         let reactions = parseReactions(dict["reactions"] as? [NSDictionary])
+        let thread = parseThread(dict["thread"] as? NSDictionary)
         let reply = parseReply(dict["replyTo"] as? NSDictionary)
         let actions = parseActions(dict["actions"] as? [NSDictionary])
         let groupDate = ChatParsing.groupDateFormatter.string(from: date)
@@ -28,12 +29,13 @@ extension ChatMessage {
             content: content,
             timestamp: date,
             senderName: senderName,
-            isMine: isMine,
+            ownership: ownership,
             groupDate: groupDate,
             status: status,
             reply: reply,
             forwardedFrom: forwardedFrom,
             reactions: reactions,
+            thread: thread,
             isEdited: isEdited,
             actions: actions
         )
@@ -146,9 +148,18 @@ extension ChatMessage {
             return Reaction(
                 emoji: emoji,
                 count: (dict["count"] as? NSNumber)?.intValue ?? 0,
-                isMine: dict["isMine"] as? Bool ?? false
+                isSelected: dict["isSelected"] as? Bool ?? false
             )
         } ?? []
+    }
+
+    private static func parseThread(_ dict: NSDictionary?) -> ThreadInfo? {
+        guard let dict, let threadId = dict["threadId"] as? String else { return nil }
+        return ThreadInfo(
+            threadId: threadId,
+            replyCount: (dict["replyCount"] as? NSNumber)?.intValue ?? 0,
+            lastReplierName: dict["lastReplierName"] as? String
+        )
     }
 
     private static func parseReply(_ dict: NSDictionary?) -> ReplyInfo? {

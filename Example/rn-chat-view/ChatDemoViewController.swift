@@ -25,12 +25,12 @@ enum ChatDemoData {
                 content: MessageBody(text: "Привет! Как дела?", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -25, to: now)!,
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: yesterday,
                 status: .read,
                 reply: nil,
                 forwardedFrom: nil,
-                reactions: [Reaction(emoji: "👍", count: 1, isMine: true)],
+                reactions: [Reaction(emoji: "👍", count: 1, isSelected: true)],
                 isEdited: false,
                 actions: defaultActions
             ),
@@ -41,7 +41,7 @@ enum ChatDemoData {
                 content: MessageBody(text: "Привет, Алиса! Всё отлично, работаю над компонентом чата 🚀", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -24, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: yesterday,
                 status: .read,
                 reply: nil,
@@ -57,7 +57,7 @@ enum ChatDemoData {
                 content: MessageBody(text: "Звучит здорово! Можешь показать дизайн?", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -23, to: now)!,
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: yesterday,
                 status: .read,
                 reply: ReplyInfo(replyToId: "2", senderName: "Вы", text: "Привет, Алиса! Всё отлично, работаю над компонентом чата 🚀", hasImage: false),
@@ -82,14 +82,14 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -22, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: yesterday,
                 status: .read,
                 reply: nil,
                 forwardedFrom: nil,
                 reactions: [
-                    Reaction(emoji: "🔥", count: 2, isMine: false),
-                    Reaction(emoji: "❤️", count: 1, isMine: true)
+                    Reaction(emoji: "🔥", count: 2, isSelected: false),
+                    Reaction(emoji: "❤️", count: 1, isSelected: true)
                 ],
                 isEdited: false,
                 actions: defaultActions
@@ -108,7 +108,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -6, to: now)!,
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -130,7 +130,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-2400),
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -153,12 +153,12 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-1800),
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
                 forwardedFrom: nil,
-                reactions: [Reaction(emoji: "😍", count: 1, isMine: true)],
+                reactions: [Reaction(emoji: "😍", count: 1, isSelected: true)],
                 isEdited: false,
                 actions: defaultActions
             ),
@@ -177,7 +177,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-1200),
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .delivered,
                 reply: nil,
@@ -202,7 +202,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -5, to: now)!.addingTimeInterval(-600),
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -226,7 +226,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -4, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .delivered,
                 reply: nil,
@@ -250,7 +250,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -3, to: now)!.addingTimeInterval(-1800),
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -273,7 +273,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -3, to: now)!.addingTimeInterval(-1200),
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .delivered,
                 reply: nil,
@@ -298,7 +298,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -3, to: now)!.addingTimeInterval(-600),
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -321,7 +321,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -3, to: now)!,
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -353,7 +353,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -2, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .delivered,
                 reply: nil,
@@ -386,7 +386,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -1, to: now)!.addingTimeInterval(-1800),
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -418,7 +418,7 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .hour, value: -1, to: now)!.addingTimeInterval(-900),
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -434,7 +434,7 @@ enum ChatDemoData {
                 content: MessageBody(text: "Деплой запланирован на пятницу в 18:00 UTC. Убедитесь, что все PR смержены до конца четверга.", content: nil),
                 timestamp: cal.date(byAdding: .hour, value: -1, to: now)!,
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
@@ -450,7 +450,7 @@ enum ChatDemoData {
                 content: MessageBody(text: "Понял, закончу свой PR сегодня", content: nil),
                 timestamp: cal.date(byAdding: .minute, value: -30, to: now)!,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .sent,
                 reply: nil,
@@ -469,15 +469,16 @@ enum ChatDemoData {
                 ),
                 timestamp: cal.date(byAdding: .minute, value: -10, to: now)!,
                 senderName: otherUser,
-                isMine: false,
+                ownership: .theirs,
                 groupDate: today,
                 status: .read,
                 reply: nil,
                 forwardedFrom: nil,
                 reactions: [
-                    Reaction(emoji: "👍", count: 3, isMine: true),
-                    Reaction(emoji: "🙌", count: 1, isMine: false),
+                    Reaction(emoji: "👍", count: 3, isSelected: true),
+                    Reaction(emoji: "🙌", count: 1, isSelected: false),
                 ],
+                thread: ThreadInfo(threadId: "thread-1", replyCount: 5),
                 isEdited: false,
                 actions: defaultActions
             ),
@@ -488,12 +489,13 @@ enum ChatDemoData {
                 content: MessageBody(text: "Спасибо, сейчас посмотрю!", content: nil),
                 timestamp: now,
                 senderName: nil,
-                isMine: true,
+                ownership: .mine,
                 groupDate: today,
                 status: .sending,
                 reply: ReplyInfo(replyToId: "11", senderName: otherUser, text: "Кстати, хотела сказать, что новый API-эндпоинт...", hasImage: false),
                 forwardedFrom: nil,
                 reactions: [],
+                thread: ThreadInfo(threadId: "thread-2", replyCount: 12, lastReplierName: "Борис"),
                 isEdited: true,
                 actions: defaultActions
             ),
@@ -1118,15 +1120,15 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             messageCounter += 1
             let timestamp = cal.date(byAdding: .minute, value: i * 3, to: baseDate)!
             let groupDate = DateHelper.shared.groupKey(from: timestamp)
-            let isMine = i % 3 == 0
-            let sender = isMine ? nil : senders[i % senders.count]
+            let ownership: MessageOwnership = i % 3 == 0 ? .mine : .theirs
+            let sender = ownership == .mine ? nil : senders[i % senders.count]
 
             let msg = ChatMessage(
                 id: "gen-\(messageCounter)",
                 content: MessageBody(text: texts[i % texts.count], content: nil),
                 timestamp: timestamp,
                 senderName: sender,
-                isMine: isMine,
+                ownership: ownership,
                 groupDate: groupDate,
                 status: .read,
                 reply: nil,
@@ -1213,20 +1215,20 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
         if let rIdx = reactions.firstIndex(where: { $0.emoji == emoji }) {
             let existing = reactions[rIdx]
-            if existing.isMine {
+            if existing.isSelected {
                 // Remove my reaction
                 if existing.count <= 1 {
                     reactions.remove(at: rIdx)
                 } else {
-                    reactions[rIdx] = Reaction(emoji: emoji, count: existing.count - 1, isMine: false)
+                    reactions[rIdx] = Reaction(emoji: emoji, count: existing.count - 1, isSelected: false)
                 }
             } else {
                 // Add my reaction to existing
-                reactions[rIdx] = Reaction(emoji: emoji, count: existing.count + 1, isMine: true)
+                reactions[rIdx] = Reaction(emoji: emoji, count: existing.count + 1, isSelected: true)
             }
         } else {
             // New reaction
-            reactions.append(Reaction(emoji: emoji, count: 1, isMine: true))
+            reactions.append(Reaction(emoji: emoji, count: 1, isSelected: true))
         }
 
         msgs[idx] = ChatMessage(
@@ -1234,7 +1236,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             content: msg.content,
             timestamp: msg.timestamp,
             senderName: msg.senderName,
-            isMine: msg.isMine,
+            ownership: msg.ownership,
             groupDate: msg.groupDate,
             status: msg.status,
             reply: msg.reply,
@@ -1248,6 +1250,20 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
     func chatDidTapReplyMessage(id: String) {
         chatVC.scrollToMessage(id: id, position: "center", animated: true, highlight: true)
+    }
+
+    func chatDidTapThread(messageId: String, threadId: String) {
+        guard let msg = chatVC.message(forID: messageId) else { return }
+        let replies = ThreadDemoStore.replies(for: threadId)
+        let threadVC = ThreadDemoViewController(
+            rootMessage: msg,
+            existingReplies: replies,
+            theme: chatVC.theme
+        )
+        let nav = UINavigationController(rootViewController: threadVC)
+        nav.modalPresentationStyle = .pageSheet
+        nav.navigationBar.prefersLargeTitles = false
+        present(nav, animated: true)
     }
 
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {
@@ -1291,7 +1307,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         msgs[idx] = ChatMessage(
             id: msg.id,
             content: MessageBody(text: msg.content.text, content: AnyChatContent(updatedPoll)),
-            timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
+            timestamp: msg.timestamp, senderName: msg.senderName, ownership: msg.ownership,
             groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
             forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
             isEdited: msg.isEdited, actions: msg.actions
@@ -1358,7 +1374,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             msgs[i] = ChatMessage(
                 id: msg.id,
                 content: MessageBody(text: msg.content.text, content: AnyChatContent(updated)),
-                timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
+                timestamp: msg.timestamp, senderName: msg.senderName, ownership: msg.ownership,
                 groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
                 forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
                 isEdited: msg.isEdited, actions: msg.actions
@@ -1403,7 +1419,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
                 msgs[idx] = ChatMessage(
                     id: msg.id,
                     content: MessageBody(text: texts.randomElement()!, content: msg.content.content),
-                    timestamp: msg.timestamp, senderName: msg.senderName, isMine: msg.isMine,
+                    timestamp: msg.timestamp, senderName: msg.senderName, ownership: msg.ownership,
                     groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
                     forwardedFrom: msg.forwardedFrom,
                     reactions: msg.reactions, isEdited: true, actions: msg.actions
@@ -1415,11 +1431,11 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
                 let msg = msgs[idx]
                 let emojis = ["👍", "❤️", "😂", "🔥", "👀", "🎉"]
                 let newReactions = (0..<Int.random(in: 0...3)).map {
-                    Reaction(emoji: emojis[$0 % emojis.count], count: Int.random(in: 1...10), isMine: Bool.random())
+                    Reaction(emoji: emojis[$0 % emojis.count], count: Int.random(in: 1...10), isSelected: Bool.random())
                 }
                 msgs[idx] = ChatMessage(
                     id: msg.id, content: msg.content, timestamp: msg.timestamp,
-                    senderName: msg.senderName, isMine: msg.isMine, groupDate: msg.groupDate,
+                    senderName: msg.senderName, ownership: msg.ownership, groupDate: msg.groupDate,
                     status: msg.status, reply: msg.reply, forwardedFrom: msg.forwardedFrom,
                     reactions: newReactions, isEdited: msg.isEdited, actions: msg.actions
                 )
@@ -1431,7 +1447,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
                 let statuses: [MessageStatus] = [.sending, .sent, .delivered, .read]
                 msgs[idx] = ChatMessage(
                     id: msg.id, content: msg.content, timestamp: msg.timestamp,
-                    senderName: msg.senderName, isMine: msg.isMine, groupDate: msg.groupDate,
+                    senderName: msg.senderName, ownership: msg.ownership, groupDate: msg.groupDate,
                     status: statuses.randomElement()!, reply: msg.reply,
                     forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
                     isEdited: msg.isEdited, actions: msg.actions
@@ -1452,7 +1468,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             content: MessageBody(text: text, content: nil),
             timestamp: Date(),
             senderName: nil,
-            isMine: true,
+            ownership: .mine,
             groupDate: today,
             status: .sending,
             reply: replyToId.flatMap { id in
@@ -1478,7 +1494,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             content: MessageBody(text: text, content: msg.content.content),
             timestamp: msg.timestamp,
             senderName: msg.senderName,
-            isMine: msg.isMine,
+            ownership: msg.ownership,
             groupDate: msg.groupDate,
             status: msg.status,
             reply: msg.reply,
@@ -1514,7 +1530,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             ),
             timestamp: Date(),
             senderName: nil,
-            isMine: true,
+            ownership: .mine,
             groupDate: today,
             status: .sending,
             reply: nil,

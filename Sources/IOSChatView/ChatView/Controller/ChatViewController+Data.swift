@@ -55,7 +55,13 @@ extension ChatViewController {
             switch row {
             case .message(let msg):
                 let h = computeMessageHeight(forId: msg.id, width: width)
-                result.append(RowLayoutInfo(height: h, topInset: layout.cellVSpacing / 2, bottomInset: layout.cellVSpacing / 2))
+                let extraBottom: CGFloat
+                switch msg.ownership {
+                case .system: extraBottom = layout.systemCellBottomSpacing
+                case .pinned: extraBottom = layout.pinnedCellBottomSpacing
+                default:      extraBottom = 0
+                }
+                result.append(RowLayoutInfo(height: h, topInset: layout.cellVSpacing / 2, bottomInset: layout.cellVSpacing / 2 + extraBottom))
 
             case .dateSeparator(let gd):
                 let key = "date_\(gd)"

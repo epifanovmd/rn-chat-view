@@ -23,7 +23,7 @@ public protocol ChatContentFactory: AnyObject {
     ///
     /// - Parameters:
     ///   - media: Type-erased content payload. Use `content(as:)` to unwrap.
-    ///   - message: The full message (for accessing `isMine`, `id`, etc.).
+    ///   - message: The full message (for accessing `ownership`, `id`, etc.).
     ///   - width: Available width inside the bubble (after horizontal padding).
     ///   - theme: Current color theme.
     ///   - layout: Current sizing/spacing parameters.
@@ -92,13 +92,13 @@ public protocol ChatContentFactory: AnyObject {
     ///
     /// - Parameters:
     ///   - text: Message text string.
-    ///   - isMine: `true` for outgoing messages (affects text color).
+    ///   - ownership: Message ownership (affects text color).
     ///   - theme: Current color theme.
     ///   - layout: Current sizing/spacing parameters (font, etc.).
     /// - Returns: A configured text view.
     func textView(
         text: String,
-        isMine: Bool,
+        ownership: MessageOwnership,
         theme: ChatTheme,
         layout: ChatLayout
     ) -> UIView
@@ -153,6 +153,28 @@ public protocol ChatContentFactory: AnyObject {
         onTap: @escaping (String) -> Void
     ) -> UIView
 
+    // MARK: - Thread Indicator
+
+    /// Creates the thread indicator bar displayed below the message content.
+    ///
+    /// Shows reply count, optional last replier name, and a chevron.
+    /// Placed between content and reactions in the bubble stack.
+    ///
+    /// - Parameters:
+    ///   - thread: Thread info with reply count and last replier name.
+    ///   - ownership: Message ownership (affects colors).
+    ///   - theme: Current color theme.
+    ///   - layout: Current sizing/spacing parameters.
+    ///   - onTap: Callback fired when the user taps the thread bar.
+    /// - Returns: A configured thread indicator view.
+    func threadIndicatorView(
+        thread: ThreadInfo,
+        ownership: MessageOwnership,
+        theme: ChatTheme,
+        layout: ChatLayout,
+        onTap: @escaping () -> Void
+    ) -> UIView
+
     // MARK: - Reply Preview
 
     /// Creates the quoted message preview shown inside the bubble when replying.
@@ -163,7 +185,7 @@ public protocol ChatContentFactory: AnyObject {
     ///   - reply: Basic reply info from the message model (replyToId, sender, text).
     ///   - resolved: Full display info resolved from the original message (may be nil if the
     ///     original message is not in the current data set).
-    ///   - isMine: `true` for outgoing messages (affects colors).
+    ///   - ownership: Message ownership (affects colors).
     ///   - theme: Current color theme.
     ///   - layout: Current sizing/spacing parameters.
     ///   - onTap: Callback fired when the user taps the reply preview (typically scrolls to the original message).
@@ -171,7 +193,7 @@ public protocol ChatContentFactory: AnyObject {
     func replyPreviewView(
         reply: ReplyInfo,
         resolved: ReplyDisplayInfo?,
-        isMine: Bool,
+        ownership: MessageOwnership,
         theme: ChatTheme,
         layout: ChatLayout,
         onTap: @escaping () -> Void
@@ -222,13 +244,13 @@ public protocol ChatContentFactory: AnyObject {
     ///
     /// - Parameters:
     ///   - from: The name of the original sender.
-    ///   - isMine: `true` for outgoing messages (affects colors).
+    ///   - ownership: Message ownership (affects colors).
     ///   - theme: Current color theme.
     ///   - layout: Current sizing/spacing parameters.
     /// - Returns: A configured forwarded header view.
     func forwardedHeaderView(
         from: String,
-        isMine: Bool,
+        ownership: MessageOwnership,
         theme: ChatTheme,
         layout: ChatLayout
     ) -> UIView

@@ -1,5 +1,29 @@
 import UIKit
 
+// MARK: - Message Ownership
+
+public enum MessageOwnership: String, Sendable {
+    case mine
+    case theirs
+    case system
+    /// Закреплённое сообщение (пузырь по центру, контент без центрирования)
+    case pinned
+
+    public var alignment: MessageAlignment {
+        switch self {
+        case .mine: return .trailing
+        case .theirs: return .leading
+        case .system, .pinned: return .center
+        }
+    }
+}
+
+// MARK: - Message Alignment
+
+public enum MessageAlignment: Sendable {
+    case leading, trailing, center
+}
+
 // MARK: - Message Status
 
 public enum MessageStatus: String {
@@ -84,12 +108,12 @@ public struct ChatContentInteraction: Sendable {
 public struct Reaction: Equatable, Hashable {
     public let emoji: String
     public let count: Int
-    public let isMine: Bool
+    public let isSelected: Bool
 
-    public init(emoji: String, count: Int, isMine: Bool) {
+    public init(emoji: String, count: Int, isSelected: Bool) {
         self.emoji = emoji
         self.count = count
-        self.isMine = isMine
+        self.isSelected = isSelected
     }
 }
 
@@ -106,6 +130,20 @@ public struct ReplyInfo: Equatable, Hashable {
         self.senderName = senderName
         self.text = text
         self.hasImage = hasImage
+    }
+}
+
+// MARK: - Thread Info
+
+public struct ThreadInfo: Equatable, Hashable {
+    public let threadId: String
+    public let replyCount: Int
+    public let lastReplierName: String?
+
+    public init(threadId: String, replyCount: Int, lastReplierName: String? = nil) {
+        self.threadId = threadId
+        self.replyCount = replyCount
+        self.lastReplierName = lastReplierName
     }
 }
 
@@ -132,26 +170,28 @@ public struct ChatMessage: Equatable, Hashable {
     public let content: MessageBody
     public let timestamp: Date
     public let senderName: String?
-    public let isMine: Bool
+    public let ownership: MessageOwnership
     public let groupDate: String
     public let status: MessageStatus
     public let reply: ReplyInfo?
     public let forwardedFrom: String?
     public let reactions: [Reaction]
+    public let thread: ThreadInfo?
     public let isEdited: Bool
     public let actions: [MessageAction]
 
-    public init(id: String, content: MessageBody, timestamp: Date, senderName: String?, isMine: Bool, groupDate: String, status: MessageStatus, reply: ReplyInfo?, forwardedFrom: String?, reactions: [Reaction], isEdited: Bool, actions: [MessageAction]) {
+    public init(id: String, content: MessageBody, timestamp: Date, senderName: String?, ownership: MessageOwnership, groupDate: String, status: MessageStatus, reply: ReplyInfo?, forwardedFrom: String?, reactions: [Reaction], thread: ThreadInfo? = nil, isEdited: Bool, actions: [MessageAction]) {
         self.id = id
         self.content = content
         self.timestamp = timestamp
         self.senderName = senderName
-        self.isMine = isMine
+        self.ownership = ownership
         self.groupDate = groupDate
         self.status = status
         self.reply = reply
         self.forwardedFrom = forwardedFrom
         self.reactions = reactions
+        self.thread = thread
         self.isEdited = isEdited
         self.actions = actions
     }

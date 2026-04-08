@@ -30,7 +30,7 @@ final class UnreadManager {
         guard !isExternalManagement else { return }
         let delta = newMessages.count - oldCount
         guard delta > 0 else { return }
-        let newIDs = newMessages.suffix(delta).filter { !$0.isMine }.map { $0.id }
+        let newIDs = newMessages.suffix(delta).filter { $0.ownership != .mine }.map { $0.id }
         guard !newIDs.isEmpty else { return }
         unreadIDs.formUnion(newIDs)
         count = unreadIDs.count

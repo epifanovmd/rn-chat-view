@@ -77,10 +77,11 @@ public final class FileContentView: UIView {
         addGestureRecognizer(tap)
     }
 
-    func configure(file: FilePayload, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(file: FilePayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
         currentLayout = layout
         let L = currentLayout
         let pad = L.filePadding
+        let isOutgoing = ownership == .mine
 
         // Update fonts
         nameLabel.font = L.fileNameFont
@@ -97,12 +98,12 @@ public final class FileContentView: UIView {
         sizeLabelBottomConstraint.constant = -pad
         minHeightConstraint.constant = L.fileIconSize + pad * 2
 
-        backgroundColor = isMine ? theme.outgoingFileBackground : theme.incomingFileBackground
+        backgroundColor = isOutgoing ? theme.outgoingFileBackground : theme.incomingFileBackground
         nameLabel.text = file.name
-        nameLabel.textColor = isMine ? theme.outgoingText : theme.incomingText
+        nameLabel.textColor = isOutgoing ? theme.outgoingText : theme.incomingText
         sizeLabel.text = formatSize(file.size)
-        sizeLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
-        iconView.tintColor = isMine ? theme.outgoingText : theme.fileIconColor
+        sizeLabel.textColor = isOutgoing ? theme.outgoingTime : theme.incomingTime
+        iconView.tintColor = isOutgoing ? theme.outgoingText : theme.fileIconColor
 
         let ext = (file.name as NSString).pathExtension.lowercased()
         let icon: String

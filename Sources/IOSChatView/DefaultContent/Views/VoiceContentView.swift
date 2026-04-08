@@ -16,7 +16,7 @@ public final class VoiceContentView: UIView {
     private var voiceURL: String?
     private var voiceDuration: TimeInterval = 0
     private var currentTheme: ChatTheme = .light
-    private var isMineMessage = false
+    private var isOutgoingMessage = false
     private var accentColor: UIColor = .systemBlue
     private var isCached = false
     private var isPrefetching = false
@@ -136,15 +136,16 @@ public final class VoiceContentView: UIView {
 
     // MARK: - Configure
 
-    func configure(voice: VoicePayload, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(voice: VoicePayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
         currentLayout = layout
         let L = currentLayout
         let btnSize = L.voicePlaySize
 
         voiceURL = voice.url
         voiceDuration = voice.duration
+        let isOutgoing = ownership == .mine
         currentTheme = theme
-        isMineMessage = isMine
+        isOutgoingMessage = isOutgoing
 
         // Update layout-dependent values
         playButton.layer.cornerRadius = btnSize / 2
@@ -168,12 +169,12 @@ public final class VoiceContentView: UIView {
             clockwise: true
         ).cgPath
 
-        accentColor = isMine ? theme.outgoingStatusRead : theme.voiceWaveformActive
+        accentColor = isOutgoing ? theme.outgoingStatusRead : theme.voiceWaveformActive
         playButton.backgroundColor = accentColor
         playIcon.tintColor = .white
         loadingRing.strokeColor = UIColor.white.cgColor
 
-        durationLabel.textColor = isMine ? theme.outgoingTime : theme.incomingTime
+        durationLabel.textColor = isOutgoing ? theme.outgoingTime : theme.incomingTime
 
         waveformView.configure(
             waveform: voice.waveform,

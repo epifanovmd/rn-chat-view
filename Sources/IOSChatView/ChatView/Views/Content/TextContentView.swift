@@ -21,10 +21,16 @@ public final class TextContentView: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    func configure(text: String, isMine: Bool, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(text: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
         currentLayout = layout
         label.font = currentLayout.messageFont
         label.text = text
-        label.textColor = isMine ? theme.outgoingText : theme.incomingText
+        switch ownership {
+        case .mine:   label.textColor = theme.outgoingText
+        case .theirs: label.textColor = theme.incomingText
+        case .system: label.textColor = theme.systemText
+        case .pinned: label.textColor = theme.pinnedText
+        }
+        label.textAlignment = ownership == .system ? .center : .natural
     }
 }

@@ -27,4 +27,8 @@ extension ChatViewController {
     func messageSectionDidTapReaction(messageId: String, emoji: String) {
         delegate?.chatDidTapReaction(messageId: messageId, emoji: emoji)
     }
+
+    func messageSectionDidTapThread(messageId: String, threadId: String) {
+        delegate?.chatDidTapThread(messageId: messageId, threadId: threadId)
+    }
 }

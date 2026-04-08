@@ -7,11 +7,13 @@ public final class MessageBubbleView: UIView {
     var onReplyTap: (() -> Void)?
     var onContentInteraction: ((ChatContentInteraction) -> Void)?
     var onReactionTap: ((String) -> Void)?
+    var onThreadTap: (() -> Void)?
 
     // MARK: - Subviews
 
     private let stack = UIStackView()
     private var contentView: UIView?
+    private var threadView: UIView?
     private var reactionsView: UIView?
     private var footerView: UIView?
 
@@ -64,7 +66,7 @@ public final class MessageBubbleView: UIView {
 
     func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
         applyLayout(layout)
-        let isMine = message.isMine
+        let ownership = message.ownership
         let content = message.content
         isEmojiOnly = content.content == nil && EmojiHelper.emojiOnlyCount(content.text) != nil
 
@@ -73,7 +75,12 @@ public final class MessageBubbleView: UIView {
             backgroundColor = .clear
             layer.cornerRadius = 0
         } else {
-            backgroundColor = isMine ? theme.outgoingBubble : theme.incomingBubble
+            switch ownership {
+            case .mine:   backgroundColor = theme.outgoingBubble
+            case .theirs: backgroundColor = theme.incomingBubble
+            case .system: backgroundColor = theme.systemBubble
+            case .pinned: backgroundColor = theme.pinnedBubble
+            }
             layer.cornerRadius = currentLayout.bubbleCornerRadius
         }
 
@@ -89,9 +96,9 @@ public final class MessageBubbleView: UIView {
         let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
         if let fwd = message.forwardedFrom, features.showForwardedMark {
             let L = currentLayout
-            let accentColor = isMine ? theme.outgoingForwardedAccent : theme.incomingForwardedAccent
+            let accentColor = ownership == .mine ? theme.outgoingForwardedAccent : theme.incomingForwardedAccent
 
-            let forwardedHeaderLabel = factory.forwardedHeaderView(from: fwd, isMine: isMine, theme: theme, layout: currentLayout)
+            let forwardedHeaderLabel = factory.forwardedHeaderView(from: fwd, ownership: message.ownership, theme: theme, layout: currentLayout)
 
             let forwardedAccent = UIView()
             forwardedAccent.translatesAutoresizingMaskIntoConstraints = false
@@ -107,7 +114,7 @@ public final class MessageBubbleView: UIView {
 
             // Reply Preview inside forwarded
             if features.showReplyPreview, let reply = message.reply {
-                let replyView = factory.replyPreviewView(reply: reply, resolved: resolvedReply, isMine: isMine, theme: theme, layout: currentLayout) { [weak self] in
+                let replyView = factory.replyPreviewView(reply: reply, resolved: resolvedReply, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
                     self?.onReplyTap?()
                 }
                 forwardedStack.addArrangedSubview(replyView)
@@ -115,7 +122,7 @@ public final class MessageBubbleView: UIView {
 
             // Content inside forwarded
             let contentInnerW = bubbleWidth - L.bubbleHPad * 2 - L.forwardedAccentWidth - L.forwardedContentInset
-            let newContent = createContentView(for: message, width: contentInnerW, isMine: isMine, theme: theme, factory: factory)
+            let newContent = createContentView(for: message, width: contentInnerW, theme: theme, factory: factory)
             contentView = newContent
             forwardedStack.addArrangedSubview(newContent)
 
@@ -141,7 +148,7 @@ public final class MessageBubbleView: UIView {
         if !isForwarded {
             // Reply Preview
             if features.showReplyPreview, let reply = message.reply {
-                let replyView = factory.replyPreviewView(reply: reply, resolved: resolvedReply, isMine: isMine, theme: theme, layout: currentLayout) { [weak self] in
+                let replyView = factory.replyPreviewView(reply: reply, resolved: resolvedReply, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
                     self?.onReplyTap?()
                 }
                 stack.addArrangedSubview(replyView)
@@ -149,9 +156,19 @@ public final class MessageBubbleView: UIView {
 
             // Content
             let innerW = bubbleWidth - currentLayout.bubbleHPad * 2
-            let newContent = createContentView(for: message, width: innerW, isMine: isMine, theme: theme, factory: factory)
+            let newContent = createContentView(for: message, width: innerW, theme: theme, factory: factory)
             contentView = newContent
             stack.addArrangedSubview(newContent)
+        }
+
+        // Thread indicator
+        threadView = nil
+        if features.showThreadIndicator, let thread = message.thread {
+            let tv = factory.threadIndicatorView(thread: thread, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
+                self?.onThreadTap?()
+            }
+            threadView = tv
+            stack.addArrangedSubview(tv)
         }
 
         // Reactions
@@ -179,7 +196,7 @@ public final class MessageBubbleView: UIView {
 
     // MARK: - Content Factory
 
-    private func createContentView(for msg: ChatMessage, width: CGFloat, isMine: Bool, theme: ChatTheme, factory: ChatContentFactory) -> UIView {
+    private func createContentView(for msg: ChatMessage, width: CGFloat, theme: ChatTheme, factory: ChatContentFactory) -> UIView {
         let content = msg.content
 
         // Emoji-only (text without media, 1-3 emoji)
@@ -200,7 +217,7 @@ public final class MessageBubbleView: UIView {
 
         // Text (caption or standalone)
         if let text = content.text, !text.isEmpty {
-            views.append(factory.textView(text: text, isMine: isMine, theme: theme, layout: currentLayout))
+            views.append(factory.textView(text: text, ownership: msg.ownership, theme: theme, layout: currentLayout))
         }
 
         // Single view — return directly
@@ -218,7 +235,7 @@ public final class MessageBubbleView: UIView {
         }
 
         // Fallback: empty text
-        return factory.textView(text: "", isMine: isMine, theme: theme, layout: currentLayout)
+        return factory.textView(text: "", ownership: msg.ownership, theme: theme, layout: currentLayout)
     }
 
     // MARK: - Reconfigure In-Place
@@ -232,11 +249,15 @@ public final class MessageBubbleView: UIView {
         }
 
         applyLayout(layout)
-        let isMine = message.isMine
         let content = message.content
 
         // Background
-        backgroundColor = isMine ? theme.outgoingBubble : theme.incomingBubble
+        switch message.ownership {
+        case .mine:   backgroundColor = theme.outgoingBubble
+        case .theirs: backgroundColor = theme.incomingBubble
+        case .system: backgroundColor = theme.systemBubble
+        case .pinned: backgroundColor = theme.pinnedBubble
+        }
 
         // Update content view in-place
         let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
@@ -246,7 +267,7 @@ public final class MessageBubbleView: UIView {
         } else {
             innerW = bubbleWidth - currentLayout.bubbleHPad * 2
         }
-        reconfigureContentView(message: message, width: innerW, isMine: isMine, theme: theme, layout: layout, factory: factory)
+        reconfigureContentView(message: message, width: innerW, theme: theme, layout: layout, factory: factory)
 
         // Update reactions
         reconfigureReactions(message: message, bubbleWidth: bubbleWidth, theme: theme, features: features, layout: layout, factory: factory)
@@ -276,6 +297,7 @@ public final class MessageBubbleView: UIView {
         let isForwarded: Bool
         let hasReply: Bool
         let hasSenderName: Bool
+        let hasThread: Bool
         let isEmojiOnly: Bool
     }
 
@@ -287,6 +309,7 @@ public final class MessageBubbleView: UIView {
             isForwarded: features.showForwardedMark && msg.forwardedFrom != nil,
             hasReply: features.showReplyPreview && msg.reply != nil,
             hasSenderName: showSenderName && msg.senderName != nil,
+            hasThread: features.showThreadIndicator && msg.thread != nil,
             isEmojiOnly: msg.content.content == nil && EmojiHelper.emojiOnlyCount(msg.content.text) != nil
         )
     }
@@ -297,7 +320,7 @@ public final class MessageBubbleView: UIView {
     }
 
     /// Reconfigure the content view in-place via the factory.
-    private func reconfigureContentView(message: ChatMessage, width: CGFloat, isMine: Bool, theme: ChatTheme, layout: ChatLayout, factory: ChatContentFactory) {
+    private func reconfigureContentView(message: ChatMessage, width: CGFloat, theme: ChatTheme, layout: ChatLayout, factory: ChatContentFactory) {
         guard let cv = contentView else { return }
         let content = message.content
 
@@ -312,11 +335,11 @@ public final class MessageBubbleView: UIView {
         // Update text if present (standalone or mixed content with media)
         if let text = content.text, !text.isEmpty {
             if let textView = cv as? TextContentView {
-                textView.configure(text: text, isMine: isMine, theme: theme, layout: layout)
+                textView.configure(text: text, ownership: message.ownership, theme: theme, layout: layout)
             } else if let mixedStack = cv as? UIStackView {
                 for sub in mixedStack.arrangedSubviews {
                     if let tv = sub as? TextContentView {
-                        tv.configure(text: text, isMine: isMine, theme: theme, layout: layout)
+                        tv.configure(text: text, ownership: message.ownership, theme: theme, layout: layout)
                         break
                     }
                 }
@@ -359,11 +382,13 @@ public final class MessageBubbleView: UIView {
     func prepareForReuse() {
         stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
         contentView = nil
+        threadView = nil
         reactionsView = nil
         footerView = nil
         currentMessage = nil
         onReplyTap = nil
         onContentInteraction = nil
         onReactionTap = nil
+        onThreadTap = nil
     }
 }

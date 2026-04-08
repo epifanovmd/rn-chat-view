@@ -108,13 +108,17 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         cell.onReactionTap = { [weak vc] emoji in
             vc?.messageSectionDidTapReaction(messageId: msg.id, emoji: emoji)
         }
+        cell.onThreadTap = { [weak vc] in
+            guard let thread = msg.thread else { return }
+            vc?.messageSectionDidTapThread(messageId: msg.id, threadId: thread.threadId)
+        }
     }
 
     static func shouldShowSenderName(for msg: ChatMessage, mode: ChatFeatures.SenderNameMode) -> Bool {
         switch mode {
         case .never: return false
-        case .incomingOnly: return !msg.isMine && msg.senderName != nil
-        case .always: return msg.senderName != nil
+        case .incomingOnly: return msg.ownership == .theirs && msg.senderName != nil
+        case .always: return (msg.ownership == .mine || msg.ownership == .theirs) && msg.senderName != nil
         }
     }
 

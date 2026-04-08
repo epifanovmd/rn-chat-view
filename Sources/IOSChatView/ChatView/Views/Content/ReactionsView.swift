@@ -57,7 +57,7 @@ public final class ReactionsView: UIView {
         let L = currentLayout
         container.layer.cornerRadius = L.reactionChipHeight / 2
 
-        if reaction.isMine {
+        if reaction.isSelected {
             container.backgroundColor = theme.reactionMineBackground
             container.layer.borderWidth = L.reactionBorderWidth
             container.layer.borderColor = theme.reactionMineBorder.cgColor

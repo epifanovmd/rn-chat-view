@@ -9,7 +9,7 @@ public protocol ChatScrollDelegate: AnyObject {
     func chatDidTapFAB()
 }
 
-extension ChatScrollDelegate {
+public extension ChatScrollDelegate {
     func chatDidScroll(offset: CGPoint) {}
     func chatDidReachTop(distance: CGFloat) {}
     func chatDidReachBottom(distance: CGFloat) {}
@@ -22,7 +22,7 @@ public protocol ChatVisibilityDelegate: AnyObject {
     func chatMessagesDidAppear(ids: [String])
 }
 
-extension ChatVisibilityDelegate {
+public extension ChatVisibilityDelegate {
     func chatMessagesDidAppear(ids: [String]) {}
 }
 
@@ -34,18 +34,20 @@ public protocol ChatMessageDelegate: AnyObject {
     func chatDidSelectEmojiReaction(emoji: String, messageId: String)
     func chatDidTapReaction(messageId: String, emoji: String)
     func chatDidTapReplyMessage(id: String)
+    func chatDidTapThread(messageId: String, threadId: String)
 
     /// Generic content interaction from factory-created views.
     /// All media-type-specific interactions (poll tap, voice tap, etc.) go through this.
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)
 }
 
-extension ChatMessageDelegate {
+public extension ChatMessageDelegate {
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {}
     func chatDidSelectAction(actionId: String, messageId: String) {}
     func chatDidSelectEmojiReaction(emoji: String, messageId: String) {}
     func chatDidTapReaction(messageId: String, emoji: String) {}
     func chatDidTapReplyMessage(id: String) {}
+    func chatDidTapThread(messageId: String, threadId: String) {}
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {}
 }
 
@@ -60,7 +62,7 @@ public protocol ChatInputDelegate: AnyObject {
     func chatDidChangeInputText(_ text: String)
 }
 
-extension ChatInputDelegate {
+public extension ChatInputDelegate {
     func chatDidSendMessage(text: String, replyToId: String?) {}
     func chatDidEditMessage(text: String, messageId: String) {}
     func chatDidCancelInputAction(type: String) {}
