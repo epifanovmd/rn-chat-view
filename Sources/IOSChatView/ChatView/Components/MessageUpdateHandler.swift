@@ -58,6 +58,8 @@ final class MessageUpdateHandler {
 
     /// First batch of messages — reload + scroll to bottom.
     private func applyInitial(vc: ChatViewController, newRows: [ChatRow]) {
+        // Clear stale heights from previous session (e.g., clear → reload same IDs with different content)
+        vc.sizeCache.invalidateAll()
         vc.setRows(newRows)
         vc.applyLayoutData(vc.computeLayoutData())
         vc.collectionView.reloadData()
@@ -207,6 +209,7 @@ final class MessageUpdateHandler {
             }
 
             vc.collectionView.layoutIfNeeded()
+            reconfigureVisibleAvatars(vc: vc)
         }
 
         if shouldScroll {
@@ -250,6 +253,28 @@ final class MessageUpdateHandler {
     }
 
     // MARK: - Helpers
+
+    /// Reconfigure all visible avatar supplementary views to match current avatar groups.
+    /// UICollectionView does not reconfigure visible supplementary views after
+    /// performBatchUpdates — they keep stale content.
+    private func reconfigureVisibleAvatars(vc: ChatViewController) {
+        let cv = vc.collectionView!
+        let groups = vc.chatLayout.avatarGroups
+        let kind = AvatarSupplementaryView.kind
+        for i in 0..<groups.count {
+            let ip = IndexPath(item: i, section: 0)
+            guard let avatar = cv.supplementaryView(forElementKind: kind, at: ip) as? AvatarSupplementaryView else { continue }
+            let group = groups[i]
+            let view = vc.contentFactory.avatarView(
+                name: group.senderName,
+                url: group.senderAvatarUrl,
+                size: vc.layout.avatarSize,
+                theme: vc.theme,
+                layout: vc.layout
+            )
+            avatar.configure(view: view, size: vc.layout.avatarSize)
+        }
+    }
 
     /// Invalidate sizeCache only for messages whose content actually changed.
     private func invalidateChangedSizes(oldRows: [ChatRow], newRows: [ChatRow], vc: ChatViewController) {

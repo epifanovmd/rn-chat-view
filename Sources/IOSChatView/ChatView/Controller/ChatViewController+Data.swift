@@ -121,7 +121,7 @@ extension ChatViewController {
     /// Full reload — rebuild rows, layout data, and collection view.
     func reloadAll() {
         rows = buildRows(from: messages)
-        chatLayout.rowLayoutData = computeLayoutData()
+        applyLayoutData(computeLayoutData())
         collectionView.reloadData()
     }
 

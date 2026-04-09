@@ -343,7 +343,7 @@ public final class ChatViewController: UIViewController {
     private func reloadWithCrossfade() {
         sizeCache.invalidateAll()
         rows = buildRows(from: messages)
-        chatLayout.rowLayoutData = computeLayoutData()
+        applyLayoutData(computeLayoutData())
         UIView.transition(with: collectionView, duration: 0.25, options: .transitionCrossDissolve) {
             self.collectionView.reloadData()
         }
