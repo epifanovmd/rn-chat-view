@@ -77,20 +77,30 @@ final class MessageUpdateHandler {
         }
     }
 
-    /// Older messages inserted at the top — reload + offset compensation.
+    /// Older messages inserted at the top — incremental insert + offset compensation.
     private func applyPrepend(vc: ChatViewController, newRows: [ChatRow]) {
         let oldRowCount = vc.rows.count
+        let insertedCount = newRows.count - oldRowCount
+        guard insertedCount > 0 else { return }
+
+        // Extract only the prepended rows
+        let prependedRows = Array(newRows[0..<insertedCount])
+
+        // 1. Update model — rows and messageIndex must be consistent before layout
         vc.setRows(newRows)
 
-        let layoutData = vc.computeLayoutData()
-        vc.applyLayoutData(layoutData)
+        // 2. Compute layout ONLY for new rows — O(insertedCount)
+        let prependedLayout = vc.computeLayoutInfo(for: prependedRows)
 
-        // Sum heights of prepended rows to compute scroll compensation.
-        let insertedCount = newRows.count - oldRowCount
+        // 3. Sum heights for scroll compensation (before reloadData)
         var compensatingOffset: CGFloat = 0
-        for i in 0..<max(0, insertedCount) {
-            compensatingOffset += layoutData[i].totalHeight
+        for info in prependedLayout {
+            compensatingOffset += info.totalHeight
         }
+
+        // 4. Update all caches atomically, then reload
+        vc.rebuildCachesIncremental(insertedCount: insertedCount)
+        vc.prependLayoutData(prependedLayout, insertedRowCount: insertedCount)
 
         let savedOffset = vc.collectionView.contentOffset
         vc.collectionView.reloadData()

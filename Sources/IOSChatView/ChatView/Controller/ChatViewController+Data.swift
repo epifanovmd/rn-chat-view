@@ -45,43 +45,53 @@ extension ChatViewController {
     /// Compute layout data (heights + insets) for every row. Uses `sizeCache` for O(1) lookups.
     func computeLayoutData() -> [RowLayoutInfo] {
         rebuildCachesFromRows()
+        return computeLayoutInfo(for: rows)
+    }
+
+    /// Compute layout info for a subset of rows (used by incremental prepend).
+    func computeLayoutInfo(for rowSlice: [ChatRow]) -> [RowLayoutInfo] {
         var width = collectionView.bounds.width
         if width <= 0 { width = UIScreen.main.bounds.width }
 
         var result: [RowLayoutInfo] = []
-        result.reserveCapacity(rows.count)
+        result.reserveCapacity(rowSlice.count)
 
-        for row in rows {
-            switch row {
-            case .message(let msg):
-                let h = computeMessageHeight(forId: msg.id, width: width)
-                let extraBottom: CGFloat
-                switch msg.ownership {
-                case .system: extraBottom = layout.systemCellBottomSpacing
-                case .pinned: extraBottom = layout.pinnedCellBottomSpacing
-                default:      extraBottom = 0
-                }
-                result.append(RowLayoutInfo(height: h, topInset: layout.cellVSpacing / 2, bottomInset: layout.cellVSpacing / 2 + extraBottom))
-
-            case .dateSeparator(let gd):
-                let key = "date_\(gd)"
-                let h: CGFloat
-                if let cached = sizeCache.height(forKey: key, width: width) {
-                    h = cached
-                } else {
-                    let hh = contentFactory.dateSeparatorHeight(layout: layout)
-                    sizeCache.set(height: hh, forKey: key, width: width)
-                    h = hh
-                }
-                result.append(RowLayoutInfo(height: h, topInset: layout.sectionSpacing, bottomInset: layout.sectionSpacing))
-
-            case .loading(let pos):
-                let h: CGFloat = pos == "top" ? layout.dateSeparatorFont.lineHeight + layout.dateSeparatorVPad * 2 : 40
-                let inset: CGFloat = pos == "top" ? layout.sectionSpacing : 8
-                result.append(RowLayoutInfo(height: h, topInset: inset, bottomInset: inset))
-            }
+        for row in rowSlice {
+            result.append(layoutInfo(for: row, width: width))
         }
         return result
+    }
+
+    /// Compute layout info for a single row.
+    private func layoutInfo(for row: ChatRow, width: CGFloat) -> RowLayoutInfo {
+        switch row {
+        case .message(let msg):
+            let h = computeMessageHeight(forId: msg.id, width: width)
+            let extraBottom: CGFloat
+            switch msg.ownership {
+            case .system: extraBottom = layout.systemCellBottomSpacing
+            case .pinned: extraBottom = layout.pinnedCellBottomSpacing
+            default:      extraBottom = 0
+            }
+            return RowLayoutInfo(height: h, topInset: layout.cellVSpacing / 2, bottomInset: layout.cellVSpacing / 2 + extraBottom)
+
+        case .dateSeparator(let gd):
+            let key = "date_\(gd)"
+            let h: CGFloat
+            if let cached = sizeCache.height(forKey: key, width: width) {
+                h = cached
+            } else {
+                let hh = contentFactory.dateSeparatorHeight(layout: layout)
+                sizeCache.set(height: hh, forKey: key, width: width)
+                h = hh
+            }
+            return RowLayoutInfo(height: h, topInset: layout.sectionSpacing, bottomInset: layout.sectionSpacing)
+
+        case .loading(let pos):
+            let h: CGFloat = pos == "top" ? layout.dateSeparatorFont.lineHeight + layout.dateSeparatorVPad * 2 : 40
+            let inset: CGFloat = pos == "top" ? layout.sectionSpacing : 8
+            return RowLayoutInfo(height: h, topInset: inset, bottomInset: inset)
+        }
     }
 
     /// Compute height for a single message. Uses `sizeCache` for O(1) lookups.
@@ -131,17 +141,89 @@ extension ChatViewController {
 
     func applyLayoutData(_ data: [RowLayoutInfo]) {
         chatLayout.rowLayoutData = data
+        chatLayout.setNeedsFullPrepare()
         chatLayout.showAvatars = features.showAvatars
         chatLayout.avatarSize = layout.avatarSize
         chatLayout.avatarLeadingMargin = layout.avatarLeadingMargin
         chatLayout.avatarGroups = features.showAvatars ? computeAvatarGroups() : []
     }
 
+    /// Prepend layout data and update avatar groups incrementally.
+    /// Only computes avatar groups for prepended rows, shifts existing groups by offset.
+    func prependLayoutData(_ prependedData: [RowLayoutInfo], insertedRowCount: Int) {
+        chatLayout.rowLayoutData = prependedData + chatLayout.rowLayoutData
+        chatLayout.setNeedsFullPrepare()
+        chatLayout.showAvatars = features.showAvatars
+        chatLayout.avatarSize = layout.avatarSize
+        chatLayout.avatarLeadingMargin = layout.avatarLeadingMargin
+
+        if features.showAvatars {
+            // Shift existing avatar group indices
+            var shifted = chatLayout.avatarGroups.map { group in
+                AvatarGroup(
+                    firstIndex: group.firstIndex + insertedRowCount,
+                    lastIndex: group.lastIndex + insertedRowCount,
+                    senderName: group.senderName,
+                    senderAvatarUrl: group.senderAvatarUrl
+                )
+            }
+            // Compute avatar groups only for prepended rows
+            let prependedGroups = computeAvatarGroups(inRange: 0..<insertedRowCount)
+
+            // Merge: if last prepended group and first existing group share the same sender, combine
+            if let lastNew = prependedGroups.last, let firstOld = shifted.first,
+               lastNew.senderName == firstOld.senderName {
+                let merged = AvatarGroup(
+                    firstIndex: lastNew.firstIndex,
+                    lastIndex: firstOld.lastIndex,
+                    senderName: lastNew.senderName,
+                    senderAvatarUrl: lastNew.senderAvatarUrl ?? firstOld.senderAvatarUrl
+                )
+                shifted[0] = merged
+                chatLayout.avatarGroups = prependedGroups.dropLast() + shifted
+            } else {
+                chatLayout.avatarGroups = prependedGroups + shifted
+            }
+        } else {
+            chatLayout.avatarGroups = []
+        }
+    }
+
+    /// Incremental rebuild of caches: shifts existing indices by `offset` and indexes only new rows.
+    func rebuildCachesIncremental(insertedCount: Int) {
+        // Shift existing indices
+        var newCache: [String: Int] = Dictionary(minimumCapacity: rowIndexCache.count + insertedCount)
+        for (id, idx) in rowIndexCache {
+            newCache[id] = idx + insertedCount
+        }
+        // Index only inserted rows
+        var newSeps: [(rowIndex: Int, groupDate: String)] = []
+        for i in 0..<insertedCount {
+            switch rows[i] {
+            case .message(let msg): newCache[msg.id] = i
+            case .dateSeparator(let gd): newSeps.append((rowIndex: i, groupDate: gd))
+            case .loading: break
+            }
+        }
+        // Shift existing date separator indices
+        for sep in cachedDateSeparators {
+            newSeps.append((rowIndex: sep.rowIndex + insertedCount, groupDate: sep.groupDate))
+        }
+        rowIndexCache = newCache
+        cachedDateSeparators = newSeps.sorted { $0.rowIndex < $1.rowIndex }
+    }
+
     /// Groups consecutive `.theirs` messages from the same sender into avatar groups.
+    /// Full scan — used for initial load and non-prepend updates.
     private func computeAvatarGroups() -> [AvatarGroup] {
+        computeAvatarGroups(inRange: 0..<rows.count)
+    }
+
+    /// Groups consecutive `.theirs` messages within the given row range.
+    private func computeAvatarGroups(inRange range: Range<Int>) -> [AvatarGroup] {
         var groups: [AvatarGroup] = []
-        var i = 0
-        while i < rows.count {
+        var i = range.lowerBound
+        while i < range.upperBound {
             guard case .message(let msg) = rows[i],
                   msg.ownership == .theirs,
                   let name = msg.senderName else {
@@ -153,8 +235,7 @@ extension ChatViewController {
             var lastIdx = i
             let avatarUrl = msg.senderAvatarUrl
 
-            // Extend group while same sender
-            while lastIdx + 1 < rows.count {
+            while lastIdx + 1 < range.upperBound {
                 guard case .message(let next) = rows[lastIdx + 1],
                       next.ownership == .theirs,
                       next.senderName == name else { break }

@@ -61,6 +61,15 @@ final class ChatCollectionViewLayout: UICollectionViewLayout {
     private var totalHeight: CGFloat = 0
     private var cachedWidth: CGFloat = 0
 
+    /// Tracks whether rowLayoutData changed since last prepare().
+    private var lastPreparedDataCount = -1
+    private var needsFullPrepare = true
+
+    /// Call when rowLayoutData is replaced to force a full prepare on next layout pass.
+    func setNeedsFullPrepare() {
+        needsFullPrepare = true
+    }
+
     // MARK: - Content Size
 
     override var collectionViewContentSize: CGSize {
@@ -73,8 +82,16 @@ final class ChatCollectionViewLayout: UICollectionViewLayout {
         super.prepare()
         guard let cv = collectionView else { return }
 
+        let widthChanged = cv.bounds.width != cachedWidth
+        let dataChanged = needsFullPrepare || rowLayoutData.count != lastPreparedDataCount
+
+        // Skip expensive O(n) rebuild if only scrolling (bounds change without data change)
+        guard widthChanged || dataChanged else { return }
+
         cachedWidth = cv.bounds.width
         let count = rowLayoutData.count
+        lastPreparedDataCount = count
+        needsFullPrepare = false
 
         yOffsets.removeAll(keepingCapacity: true)
         yOffsets.reserveCapacity(count)
@@ -115,9 +132,16 @@ final class ChatCollectionViewLayout: UICollectionViewLayout {
         }
 
         // Avatar supplementary attributes — use actual visible content rect
-        if showAvatars {
+        if showAvatars, !avatarGroups.isEmpty {
             let viewport = actualVisibleRect()
-            for (groupIdx, group) in avatarGroups.enumerated() {
+            // Find first potentially visible group via binary search
+            let startGroup = lowerBoundGroup(for: viewport.minY)
+            for groupIdx in startGroup..<avatarGroups.count {
+                let group = avatarGroups[groupIdx]
+                guard group.firstIndex < yOffsets.count else { continue }
+                let groupTop = yOffsets[group.firstIndex]
+                // Stop if group starts well past visible bottom
+                if groupTop > viewport.maxY + avatarSize + 20 { break }
                 if let attrs = avatarAttributes(for: groupIdx, group: group, visibleRect: viewport) {
                     result.append(attrs)
                 }
@@ -234,6 +258,24 @@ final class ChatCollectionViewLayout: UICollectionViewLayout {
         while lo < hi {
             let mid = (lo + hi) >> 1
             if yOffsets[mid] + heights[mid] < targetY {
+                lo = mid + 1
+            } else {
+                hi = mid
+            }
+        }
+        return lo
+    }
+
+    /// Returns first avatar group whose last message's bottom >= targetY.
+    private func lowerBoundGroup(for targetY: CGFloat) -> Int {
+        var lo = 0, hi = avatarGroups.count
+        while lo < hi {
+            let mid = (lo + hi) >> 1
+            let group = avatarGroups[mid]
+            let lastIdx = group.lastIndex
+            guard lastIdx < yOffsets.count else { lo = mid + 1; continue }
+            let groupBottom = yOffsets[lastIdx] + heights[lastIdx]
+            if groupBottom + avatarSize + 20 < targetY {
                 lo = mid + 1
             } else {
                 hi = mid

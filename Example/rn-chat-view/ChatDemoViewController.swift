@@ -512,345 +512,26 @@ enum ChatDemoData {
     ]
 }
 
-// MARK: - Debug Panel
-
-private final class DebugPanelView: UIView {
-
-    var onToggleChanged: ((String, Bool) -> Void)?
-    var onThemeChanged: ((ChatTheme) -> Void)?
-    var onRandomizePolls: (() -> Void)?
-    var onShuffleMessages: (() -> Void)?
-    var onClearData: (() -> Void)?
-
-    private let scrollView = UIScrollView()
-    private let stackView = UIStackView()
-    private let separator = UIView()
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupLayout()
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
-
-    private func setupLayout() {
-        backgroundColor = .systemBackground
-
-        scrollView.showsHorizontalScrollIndicator = false
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(scrollView)
-
-        stackView.axis = .horizontal
-        stackView.spacing = 12
-        stackView.alignment = .bottom
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(stackView)
-
-        separator.backgroundColor = .separator
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(separator)
-
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: separator.topAnchor),
-
-            stackView.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 6),
-            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 12),
-            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -12),
-            stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -6),
-            stackView.heightAnchor.constraint(equalTo: scrollView.heightAnchor, constant: -12),
-
-            separator.leadingAnchor.constraint(equalTo: leadingAnchor),
-            separator.trailingAnchor.constraint(equalTo: trailingAnchor),
-            separator.bottomAnchor.constraint(equalTo: bottomAnchor),
-            separator.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
-
-            heightAnchor.constraint(equalToConstant: 70),
-        ])
-
-        // Theme
-        let themeItem = makeSegmentItem(title: "Theme", items: ["Light", "Dark"], selected: 1) { [weak self] index in
-            self?.onThemeChanged?(index == 0 ? .light : .dark)
-        }
-        stackView.addArrangedSubview(themeItem)
-
-        // Toggles
-        let toggles: [(String, String, Bool)] = [
-            ("Sender", "senderName", true),
-            ("Status", "status", true),
-            ("Time", "time", true),
-            ("Edited", "edited", true),
-            ("Reactions", "reactions", true),
-            ("Reply", "reply", true),
-            ("Forwarded", "forwarded", true),
-            ("FAB", "fab", true),
-            ("Float Date", "floatDate", true),
-            ("Date Sep", "dateSep", true),
-            ("Empty", "empty", true),
-            ("Input", "inputBar", true),
-            ("Attach", "attach", true),
-            ("Voice", "voice", true),
-            ("Ctx Menu", "ctxMenu", true),
-        ]
-
-        for (label, key, defaultOn) in toggles {
-            let item = makeToggleItem(title: label, key: key, isOn: defaultOn)
-            stackView.addArrangedSubview(item)
-        }
-
-        // Polls button
-        let pollsItem = makeButtonItem(title: "Polls", icon: "🎲") { [weak self] in
-            self?.onRandomizePolls?()
-        }
-        stackView.addArrangedSubview(pollsItem)
-
-        // Shuffle button
-        let shuffleItem = makeButtonItem(title: "Shuffle", icon: "🔀") { [weak self] in
-            self?.onShuffleMessages?()
-        }
-        stackView.addArrangedSubview(shuffleItem)
-
-        // Clear data button
-        let clearItem = makeButtonItem(title: "Clear", icon: "🗑") { [weak self] in
-            self?.onClearData?()
-        }
-        stackView.addArrangedSubview(clearItem)
-    }
-
-    // MARK: - Factory
-
-    private func makeToggleItem(title: String, key: String, isOn: Bool) -> UIView {
-        let container = UIView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-
-        let label = UILabel()
-        label.text = title
-        label.font = .systemFont(ofSize: 10, weight: .medium)
-        label.textColor = .secondaryLabel
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(label)
-
-        let toggle = UISwitch()
-        toggle.isOn = isOn
-        toggle.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
-        toggle.translatesAutoresizingMaskIntoConstraints = false
-        toggle.accessibilityIdentifier = key
-        toggle.addTarget(self, action: #selector(toggleChanged(_:)), for: .valueChanged)
-        container.addSubview(toggle)
-
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: container.topAnchor),
-            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            toggle.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 2),
-            toggle.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            toggle.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            container.widthAnchor.constraint(greaterThanOrEqualToConstant: 40),
-        ])
-
-        return container
-    }
-
-    private func makeSegmentItem(title: String, items: [String], selected: Int, onChange: @escaping (Int) -> Void) -> UIView {
-        let container = UIView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-
-        let label = UILabel()
-        label.text = title
-        label.font = .systemFont(ofSize: 10, weight: .medium)
-        label.textColor = .secondaryLabel
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(label)
-
-        let segment = UISegmentedControl(items: items)
-        segment.selectedSegmentIndex = selected
-        segment.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 11)], for: .normal)
-        segment.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(segment)
-
-        let handler = SegmentHandler(onChange: onChange)
-        segment.addTarget(handler, action: #selector(SegmentHandler.changed(_:)), for: .valueChanged)
-        objc_setAssociatedObject(segment, "handler", handler, .OBJC_ASSOCIATION_RETAIN)
-
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: container.topAnchor),
-            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            segment.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4),
-            segment.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            segment.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            segment.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-
-        return container
-    }
-
-    private func makeButtonItem(title: String, icon: String, action: @escaping () -> Void) -> UIView {
-        let container = UIView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-
-        let label = UILabel()
-        label.text = title
-        label.font = .systemFont(ofSize: 10, weight: .medium)
-        label.textColor = .secondaryLabel
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(label)
-
-        let button = UIButton(type: .system)
-        button.setTitle(icon, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 20)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(button)
-
-        let handler = ButtonHandler(action: action)
-        button.addTarget(handler, action: #selector(ButtonHandler.tapped), for: .touchUpInside)
-        objc_setAssociatedObject(button, "handler", handler, .OBJC_ASSOCIATION_RETAIN)
-
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: container.topAnchor),
-            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            button.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 2),
-            button.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            button.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            container.widthAnchor.constraint(greaterThanOrEqualToConstant: 36),
-        ])
-
-        return container
-    }
-
-    // MARK: - Actions
-
-    @objc private func toggleChanged(_ sender: UISwitch) {
-        guard let key = sender.accessibilityIdentifier else { return }
-        onToggleChanged?(key, sender.isOn)
-    }
-}
-
-// MARK: - Debug Scroll Panel (Layout / Theme toggles)
-
-private final class DebugScrollPanel: UIView {
-
-    var onChanged: ((String, Int) -> Void)?
-
-    private let scrollView = UIScrollView()
-    private let stackView = UIStackView()
-    private let separator = UIView()
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setup()
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
-
-    private func setup() {
-        scrollView.showsHorizontalScrollIndicator = false
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(scrollView)
-
-        stackView.axis = .horizontal
-        stackView.spacing = 10
-        stackView.alignment = .bottom
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(stackView)
-
-        separator.backgroundColor = .separator
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(separator)
-
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: separator.topAnchor),
-
-            stackView.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 4),
-            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 12),
-            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -12),
-            stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: -4),
-            stackView.heightAnchor.constraint(equalTo: scrollView.heightAnchor, constant: -8),
-
-            separator.leadingAnchor.constraint(equalTo: leadingAnchor),
-            separator.trailingAnchor.constraint(equalTo: trailingAnchor),
-            separator.bottomAnchor.constraint(equalTo: bottomAnchor),
-            separator.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
-
-            heightAnchor.constraint(equalToConstant: 50),
-        ])
-    }
-
-    func addToggle(label title: String, key: String, titleA: String, titleB: String) {
-        let container = UIView()
-        container.translatesAutoresizingMaskIntoConstraints = false
-
-        let label = UILabel()
-        label.text = title
-        label.font = .systemFont(ofSize: 9, weight: .medium)
-        label.textColor = .secondaryLabel
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(label)
-
-        let segment = UISegmentedControl(items: [titleA, titleB])
-        segment.selectedSegmentIndex = 0
-        segment.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 9)], for: .normal)
-        segment.translatesAutoresizingMaskIntoConstraints = false
-        segment.accessibilityIdentifier = key
-        segment.addTarget(self, action: #selector(segmentChanged(_:)), for: .valueChanged)
-        container.addSubview(segment)
-
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: container.topAnchor),
-            label.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            segment.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 2),
-            segment.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            segment.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            segment.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-
-        stackView.addArrangedSubview(container)
-    }
-
-    @objc private func segmentChanged(_ sender: UISegmentedControl) {
-        guard let key = sender.accessibilityIdentifier else { return }
-        onChanged?(key, sender.selectedSegmentIndex)
-    }
-}
-
-// MARK: - Action Handlers
-
-private final class SegmentHandler: NSObject {
-    let onChange: (Int) -> Void
-    init(onChange: @escaping (Int) -> Void) { self.onChange = onChange }
-    @objc func changed(_ sender: UISegmentedControl) { onChange(sender.selectedSegmentIndex) }
-}
-
-private final class ButtonHandler: NSObject {
-    let action: () -> Void
-    init(action: @escaping () -> Void) { self.action = action }
-    @objc func tapped() { action() }
-}
-
 // MARK: - Demo ViewController
 
 final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate {
 
     private let chatVC = ChatViewController()
-    private let debugPanel = DebugPanelView()
-    private let layoutPanel = DebugScrollPanel()
-    private let themePanel = DebugScrollPanel()
     private var messageCounter = 1000
+
+    private let countLabel: UILabel = {
+        let l = UILabel()
+        l.font = .monospacedDigitSystemFont(ofSize: 13, weight: .medium)
+        l.textColor = .white
+        l.textAlignment = .center
+        l.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+        l.translatesAutoresizingMaskIntoConstraints = false
+        return l
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = ChatTheme.dark.backgroundColor
-
-        setupDebugPanel()
 
         chatVC.delegate = self
         chatVC.theme = .dark
@@ -858,242 +539,41 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         chatVC.features.showAvatars = true
         chatVC.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
 
-        setupLayoutPanel()
-        setupThemePanel()
-
         addChild(chatVC)
         view.addSubview(chatVC.view)
         chatVC.view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            chatVC.view.topAnchor.constraint(equalTo: themePanel.bottomAnchor),
+            chatVC.view.topAnchor.constraint(equalTo: view.topAnchor),
             chatVC.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             chatVC.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             chatVC.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         chatVC.didMove(toParent: self)
 
+        view.addSubview(countLabel)
+        NSLayoutConstraint.activate([
+            countLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            countLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            countLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            countLabel.heightAnchor.constraint(equalToConstant: 24),
+        ])
+
         chatVC.hasMore = true
-        chatVC.updateMessages(ChatDemoData.makeSampleMessages())
+        chatVC.hasNewer = true
+        updateMessages(ChatDemoData.makeSampleMessages())
     }
 
-    private func setupDebugPanel() {
-        debugPanel.translatesAutoresizingMaskIntoConstraints = false
-        debugPanel.backgroundColor = .black
-        view.addSubview(debugPanel)
-
-        NSLayoutConstraint.activate([
-            debugPanel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            debugPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            debugPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-        ])
-
-        debugPanel.onThemeChanged = { [weak self] theme in
-            guard let self else { return }
-            self.chatVC.theme = theme
-            self.view.backgroundColor = theme.backgroundColor
-            self.debugPanel.backgroundColor = theme.isDark ? .black : .systemBackground
-        }
-
-        debugPanel.onToggleChanged = { [weak self] key, isOn in
-            guard let self else { return }
-            switch key {
-            case "senderName": self.chatVC.features.senderNameMode = isOn ? .incomingOnly : .never
-            case "status":     self.chatVC.features.showMessageStatus = isOn
-            case "time":       self.chatVC.features.showTimestamp = isOn
-            case "edited":     self.chatVC.features.showEditedMark = isOn
-            case "reactions":  self.chatVC.features.showReactions = isOn
-            case "reply":      self.chatVC.features.showReplyPreview = isOn
-            case "forwarded":  self.chatVC.features.showForwardedMark = isOn
-            case "fab":        self.chatVC.features.showFab = isOn
-            case "floatDate":  self.chatVC.features.showFloatingDate = isOn
-            case "dateSep":    self.chatVC.features.showDateSeparators = isOn
-            case "empty":      self.chatVC.features.showEmptyState = isOn
-            case "inputBar":   self.chatVC.features.showInputBar = isOn
-            case "attach":     self.chatVC.features.showAttachButton = isOn
-            case "voice":      self.chatVC.features.showVoiceRecording = isOn
-            case "ctxMenu":    self.chatVC.features.contextMenuEnabled = isOn
-            default: break
-            }
-        }
-
-        debugPanel.onRandomizePolls = { [weak self] in
-            self?.randomizePolls()
-        }
-
-        debugPanel.onShuffleMessages = { [weak self] in
-            self?.shuffleMessages()
-        }
-
-        debugPanel.onClearData = { [weak self] in
-            guard let self else { return }
-            if self.chatVC.messages.isEmpty {
-                self.chatVC.isLoading = false
-                self.chatVC.updateMessages(ChatDemoData.makeSampleMessages())
-            } else {
-                self.chatVC.updateMessages([])
-            }
-        }
+    private func updateMessages(_ msgs: [ChatMessage]) {
+        chatVC.updateMessages(msgs)
+        countLabel.text = "Messages: \(msgs.count)"
     }
-
-    private func setupLayoutPanel() {
-        layoutPanel.translatesAutoresizingMaskIntoConstraints = false
-        layoutPanel.backgroundColor = debugPanel.backgroundColor
-        view.addSubview(layoutPanel)
-
-        NSLayoutConstraint.activate([
-            layoutPanel.topAnchor.constraint(equalTo: debugPanel.bottomAnchor),
-            layoutPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            layoutPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-        ])
-
-        let items: [(String, String, CGFloat, CGFloat)] = [
-            ("Corner", "bubbleCornerRadius", 18, 6),
-            ("MaxW", "bubbleMaxWidthRatio", 0.78, 0.55),
-            ("HPad", "bubbleHPad", 12, 20),
-            ("VPad", "bubbleVPad", 6, 12),
-            ("CellH", "cellHMargin", 8, 20),
-            ("CellV", "cellVSpacing", 2, 8),
-            ("Font", "messageFont", 15, 18),
-            ("ImgH", "imageMaxHeight", 280, 180),
-            ("ReplyH", "replyHeight", 38, 50),
-        ]
-
-        for (label, key, valA, valB) in items {
-            layoutPanel.addToggle(label: label, key: key, titleA: "\(Int(valA))", titleB: "\(Int(valB))")
-        }
-
-        layoutPanel.onChanged = { [weak self] key, index in
-            guard let self else { return }
-            var L = self.chatVC.layout
-            switch key {
-            case "bubbleCornerRadius": L.bubbleCornerRadius = index == 0 ? 18 : 6
-            case "bubbleMaxWidthRatio": L.bubbleMaxWidthRatio = index == 0 ? 0.78 : 0.55
-            case "bubbleHPad": L.bubbleHPad = index == 0 ? 12 : 20
-            case "bubbleVPad": L.bubbleVPad = index == 0 ? 6 : 12
-            case "cellHMargin": L.cellHMargin = index == 0 ? 8 : 20
-            case "cellVSpacing": L.cellVSpacing = index == 0 ? 2 : 8
-            case "messageFont": L.messageFont = .systemFont(ofSize: index == 0 ? 15 : 18)
-            case "imageMaxHeight": L.imageMaxHeight = index == 0 ? 280 : 180
-            case "replyHeight": L.replyHeight = index == 0 ? 38 : 50
-            default: break
-            }
-            self.chatVC.layout = L
-        }
-    }
-
-    private var currentInputBarTheme: InputBarTheme = .dark
-
-    private func setupThemePanel() {
-        themePanel.translatesAutoresizingMaskIntoConstraints = false
-        themePanel.backgroundColor = debugPanel.backgroundColor
-        view.addSubview(themePanel)
-
-        NSLayoutConstraint.activate([
-            themePanel.topAnchor.constraint(equalTo: layoutPanel.bottomAnchor),
-            themePanel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            themePanel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-        ])
-
-        let items: [(String, String)] = [
-            // Chat colors
-            ("OutBbl", "outBubble"),
-            ("InBbl", "inBubble"),
-            ("OutTxt", "outText"),
-            ("InTxt", "inText"),
-            ("OutTime", "outTime"),
-            ("Sender", "senderName"),
-            ("DateBg", "dateSepBg"),
-            ("DateTxt", "dateSepTxt"),
-            ("ReactBg", "reactBg"),
-            ("FabBg", "fabBg"),
-            ("Wave", "waveform"),
-            ("PollBar", "pollBar"),
-            ("Highlight", "highlight"),
-            // InputBar colors
-            ("IB Bg", "ibBg"),
-            ("IB Txt", "ibText"),
-            ("IB Tint", "ibTint"),
-            ("IB Brd", "ibBorder"),
-            ("IB Mic", "ibMic"),
-        ]
-
-        for (label, key) in items {
-            themePanel.addToggle(label: label, key: key, titleA: "A", titleB: "B")
-        }
-
-        themePanel.onChanged = { [weak self] key, index in
-            guard let self else { return }
-            var T = self.chatVC.theme
-            var IB = self.currentInputBarTheme
-
-            switch key {
-            // Chat theme
-            case "outBubble": T.outgoingBubble = index == 0
-                ? UIColor(red: 0.17, green: 0.32, blue: 0.47, alpha: 1)
-                : UIColor(red: 0.13, green: 0.45, blue: 0.27, alpha: 1)
-            case "inBubble": T.incomingBubble = index == 0
-                ? UIColor(red: 0.11, green: 0.15, blue: 0.20, alpha: 1)
-                : UIColor(red: 0.18, green: 0.12, blue: 0.22, alpha: 1)
-            case "outText": T.outgoingText = index == 0 ? .white : .yellow
-            case "inText": T.incomingText = index == 0 ? .white : UIColor(red: 0.8, green: 0.9, blue: 1.0, alpha: 1)
-            case "outTime": T.outgoingTime = index == 0
-                ? UIColor(white: 1.0, alpha: 0.5)
-                : UIColor(red: 0.6, green: 0.9, blue: 0.6, alpha: 0.7)
-            case "senderName": T.incomingSenderName = index == 0
-                ? UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
-                : .systemOrange
-            case "dateSepBg": T.dateSeparatorBackground = index == 0
-                ? UIColor(white: 1.0, alpha: 0.08)
-                : UIColor(red: 0.2, green: 0.3, blue: 0.5, alpha: 0.3)
-            case "dateSepTxt": T.dateSeparatorText = index == 0
-                ? UIColor(white: 1.0, alpha: 0.5)
-                : UIColor.systemCyan
-            case "reactBg": T.reactionBackground = index == 0
-                ? UIColor(white: 0.2, alpha: 1)
-                : UIColor(red: 0.3, green: 0.15, blue: 0.4, alpha: 1)
-            case "fabBg": T.fabBackground = index == 0
-                ? UIColor(red: 0.15, green: 0.19, blue: 0.25, alpha: 1)
-                : UIColor.systemIndigo
-            case "waveform": T.voiceWaveformActive = index == 0
-                ? UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
-                : .systemGreen
-            case "pollBar": T.pollBarFilled = index == 0
-                ? UIColor(red: 0.35, green: 0.6, blue: 0.9, alpha: 1)
-                : .systemOrange
-            case "highlight": T.messageHighlightColor = index == 0
-                ? UIColor.systemYellow.withAlphaComponent(0.3)
-                : UIColor.systemRed.withAlphaComponent(0.3)
-            // InputBar theme
-            case "ibBg": IB.background = index == 0
-                ? UIColor(red: 0.15, green: 0.19, blue: 0.25, alpha: 1)
-                : UIColor(red: 0.12, green: 0.12, blue: 0.18, alpha: 1)
-            case "ibText": IB.text = index == 0 ? .white : .systemGreen
-            case "ibTint": IB.tint = index == 0
-                ? UIColor(red: 0.45, green: 0.75, blue: 1.0, alpha: 1)
-                : .systemOrange
-            case "ibBorder": IB.border = index == 0
-                ? UIColor(white: 0.25, alpha: 1)
-                : UIColor.systemPurple.withAlphaComponent(0.5)
-            case "ibMic": IB.recordingMicFill = index == 0
-                ? UIColor(red: 0.35, green: 0.6, blue: 0.95, alpha: 1)
-                : .systemGreen
-            default: break
-            }
-
-            self.chatVC.theme = T
-            self.currentInputBarTheme = IB
-            self.chatVC.inputBar.applyTheme(IB)
-        }
-    }
-
-    // MARK: - Alert Helper
 
     // MARK: - Load Older Messages
 
     private func loadOlderMessages() {
         let cal = Calendar.current
         var msgs = chatVC.messages
-        let batchSize = 50
+        let batchSize = 1000
 
         // Determine base date: earlier than the first message
         let baseDate: Date
@@ -1144,7 +624,61 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
 
         msgs = newBatch + msgs
         chatVC.isLoadingTop = false
-        chatVC.updateMessages(msgs)
+        updateMessages(msgs)
+    }
+
+    private func loadNewerMessages() {
+        let cal = Calendar.current
+        var msgs = chatVC.messages
+        let batchSize = 100
+
+        let baseDate: Date
+        if let lastTimestamp = msgs.last?.timestamp {
+            baseDate = cal.date(byAdding: .minute, value: 3, to: lastTimestamp)!
+        } else {
+            baseDate = Date()
+        }
+
+        let senders = ["Alice", "Bob", "Charlie", "Diana"]
+        let texts = [
+            "Новое сообщение снизу!",
+            "Ещё одно новое 🎉",
+            "Что думаешь?",
+            "Отличная идея",
+            "Скоро буду",
+            "Подожди минутку",
+            "Готово!",
+            "Проверь пожалуйста",
+            "Всё работает",
+            "Супер, спасибо!",
+        ]
+
+        for i in 0..<batchSize {
+            messageCounter += 1
+            let timestamp = cal.date(byAdding: .minute, value: i * 3, to: baseDate)!
+            let groupDate = DateHelper.shared.groupKey(from: timestamp)
+            let ownership: MessageOwnership = i % 3 == 0 ? .mine : .theirs
+            let sender = ownership == .mine ? nil : senders[i % senders.count]
+
+            let msg = ChatMessage(
+                id: "gen-\(messageCounter)",
+                content: MessageBody(text: texts[i % texts.count], content: nil),
+                timestamp: timestamp,
+                senderName: sender,
+                ownership: ownership,
+                groupDate: groupDate,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: ChatDemoData.defaultActions
+            )
+            msgs.append(msg)
+        }
+
+        chatVC.isLoadingBottom = false
+        updateMessages(msgs)
     }
 
     private func showAlert(_ title: String, _ message: String? = nil) {
@@ -1161,7 +695,11 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         chatVC.isLoadingTop = true
         loadOlderMessages()
     }
-    func chatDidReachBottom(distance: CGFloat) {}
+    func chatDidReachBottom(distance: CGFloat) {
+        guard !chatVC.isLoadingBottom else { return }
+        chatVC.isLoadingBottom = true
+        loadNewerMessages()
+    }
 
     func chatDidTapFAB() {
         chatVC.clearUnread()
@@ -1194,7 +732,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         case "delete":
             var msgs = chatVC.messages
             msgs.removeAll { $0.id == messageId }
-            chatVC.updateMessages(msgs)
+            updateMessages(msgs)
         default:
             showAlert("Action: \(actionId)", "message: \(messageId)")
         }
@@ -1247,7 +785,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             isEdited: msg.isEdited,
             actions: msg.actions
         )
-        chatVC.updateMessages(msgs)
+        updateMessages(msgs)
     }
 
     func chatDidTapReplyMessage(id: String) {
@@ -1330,7 +868,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
             isEdited: msg.isEdited, actions: msg.actions
         )
-        chatVC.updateMessages(msgs)
+        updateMessages(msgs)
     }
 
     private func recalculatePoll(_ poll: PollPayload, selectedIds: [String]) -> PollPayload {
@@ -1364,117 +902,6 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         )
     }
 
-    private func randomizePolls() {
-        var msgs = chatVC.messages
-        for i in 0..<msgs.count {
-            guard let poll = msgs[i].content.content?.content(as: PollPayload.self), !poll.isClosed else { continue }
-
-            var options: [PollOption] = []
-            var totalVotes = 0
-            for opt in poll.options {
-                let votes = Int.random(in: 0...20)
-                options.append(PollOption(id: opt.id, text: opt.text, votes: votes, percentage: 0))
-                totalVotes += votes
-            }
-            for j in 0..<options.count {
-                let pct: CGFloat = totalVotes > 0 ? CGFloat(options[j].votes) / CGFloat(totalVotes) : 0
-                options[j] = PollOption(id: options[j].id, text: options[j].text, votes: options[j].votes, percentage: pct)
-            }
-
-            let randomSelected = options.filter { _ in Bool.random() }.map(\.id)
-            let updated = PollPayload(
-                id: poll.id, question: poll.question, options: options,
-                totalVotes: totalVotes, selectedOptionIds: randomSelected,
-                isMultipleChoice: poll.isMultipleChoice, isClosed: poll.isClosed, isAnonymous: poll.isAnonymous
-            )
-
-            let msg = msgs[i]
-            msgs[i] = ChatMessage(
-                id: msg.id,
-                content: MessageBody(text: msg.content.text, content: AnyChatContent(updated)),
-                timestamp: msg.timestamp, senderName: msg.senderName, ownership: msg.ownership,
-                groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
-                forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
-                isEdited: msg.isEdited, actions: msg.actions
-            )
-        }
-        chatVC.updateMessages(msgs)
-    }
-
-    private func shuffleMessages() {
-        var msgs = chatVC.messages
-        guard msgs.count > 1 else { return }
-
-        // Shuffle order of some messages
-        let swapCount = min(msgs.count / 3, Int.random(in: 2...6))
-        for _ in 0..<swapCount {
-            let a = Int.random(in: 0..<msgs.count)
-            let b = Int.random(in: 0..<msgs.count)
-            if a != b { msgs.swapAt(a, b) }
-        }
-
-        // Randomly apply several content mutations
-        let mutations = Int.random(in: 1...4)
-        for _ in 0..<mutations {
-            let op = Int.random(in: 0...3)
-            switch op {
-            case 0 where msgs.count > 3:
-                // Delete random message
-                let idx = Int.random(in: 0..<msgs.count)
-                msgs.remove(at: idx)
-
-            case 1:
-                // Edit random message text
-                let idx = Int.random(in: 0..<msgs.count)
-                let msg = msgs[idx]
-                let texts = [
-                    "Отредактировано! 📝",
-                    "Новый текст после shuffle",
-                    "Lorem ipsum dolor sit amet",
-                    "Короткий",
-                    "Очень длинный текст сообщения который должен занимать несколько строк в бабле чата и проверять что размеры правильно пересчитываются при редактировании 🔄",
-                ]
-                msgs[idx] = ChatMessage(
-                    id: msg.id,
-                    content: MessageBody(text: texts.randomElement()!, content: msg.content.content),
-                    timestamp: msg.timestamp, senderName: msg.senderName, ownership: msg.ownership,
-                    groupDate: msg.groupDate, status: msg.status, reply: msg.reply,
-                    forwardedFrom: msg.forwardedFrom,
-                    reactions: msg.reactions, isEdited: true, actions: msg.actions
-                )
-
-            case 2:
-                // Toggle reactions on random message
-                let idx = Int.random(in: 0..<msgs.count)
-                let msg = msgs[idx]
-                let emojis = ["👍", "❤️", "😂", "🔥", "👀", "🎉"]
-                let newReactions = (0..<Int.random(in: 0...3)).map {
-                    Reaction(emoji: emojis[$0 % emojis.count], count: Int.random(in: 1...10), isSelected: Bool.random())
-                }
-                msgs[idx] = ChatMessage(
-                    id: msg.id, content: msg.content, timestamp: msg.timestamp,
-                    senderName: msg.senderName, ownership: msg.ownership, groupDate: msg.groupDate,
-                    status: msg.status, reply: msg.reply, forwardedFrom: msg.forwardedFrom,
-                    reactions: newReactions, isEdited: msg.isEdited, actions: msg.actions
-                )
-
-            default:
-                // Change status of random message
-                let idx = Int.random(in: 0..<msgs.count)
-                let msg = msgs[idx]
-                let statuses: [MessageStatus] = [.sending, .sent, .delivered, .read]
-                msgs[idx] = ChatMessage(
-                    id: msg.id, content: msg.content, timestamp: msg.timestamp,
-                    senderName: msg.senderName, ownership: msg.ownership, groupDate: msg.groupDate,
-                    status: statuses.randomElement()!, reply: msg.reply,
-                    forwardedFrom: msg.forwardedFrom, reactions: msg.reactions,
-                    isEdited: msg.isEdited, actions: msg.actions
-                )
-            }
-        }
-        chatVC.updateMessages(msgs)
-    }
-
     func chatDidSendMessage(text: String, replyToId: String?) {
         print("[Demo] Send: \"\(text)\", reply to: \(replyToId ?? "none")")
 
@@ -1500,7 +927,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             actions: []
         )
         msgs.append(newMsg)
-        chatVC.updateMessages(msgs)
+        updateMessages(msgs)
     }
 
     func chatDidEditMessage(text: String, messageId: String) {
@@ -1521,7 +948,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             isEdited: true,
             actions: msg.actions
         )
-        chatVC.updateMessages(msgs)
+        updateMessages(msgs)
     }
 
     func chatDidCancelInputAction(type: String) {
@@ -1558,7 +985,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
             actions: []
         )
         msgs.append(voiceMsg)
-        chatVC.updateMessages(msgs)
+        updateMessages(msgs)
     }
 
     func chatDidChangeInputText(_ text: String) {}
