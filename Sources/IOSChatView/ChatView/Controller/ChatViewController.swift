@@ -503,8 +503,14 @@ public final class ChatViewController: UIViewController {
         let distanceFromEnd = cv.contentSize.height - cv.contentOffset.y - cv.bounds.height + oldBottom
         cv.contentInset.bottom = newBottom
         cv.verticalScrollIndicatorInsets.bottom = newIndicatorBottom
+
+        let maxOffsetY = cv.contentSize.height - cv.bounds.height + newBottom
+        let minOffsetY = -cv.contentInset.top
+        // When content is too small to fill the visible area, keep it pinned at top
+        guard maxOffsetY > minOffsetY else { return }
+
         let newOffsetY = cv.contentSize.height - cv.bounds.height + newBottom - distanceFromEnd
-        cv.contentOffset = CGPoint(x: 0, y: max(-cv.contentInset.top, newOffsetY))
+        cv.contentOffset = CGPoint(x: 0, y: max(minOffsetY, min(newOffsetY, maxOffsetY)))
     }
 
     @objc func dismissKeyboard() { view.endEditing(true) }
