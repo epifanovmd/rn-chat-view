@@ -218,10 +218,13 @@ extension InputBarView {
         leftButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
         leftButton.alpha = 0
 
+        let iconCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
         if trashAnimation {
-            let trashCfg = UIImage.SymbolConfiguration(pointSize: L.inputIconSize, weight: .medium)
-            leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: trashCfg), for: .normal)
+            leftButton.setImage(UIImage(systemName: "trash.fill", withConfiguration: iconCfg), for: .normal)
             leftButton.tintColor = currentTheme.recordingCancel
+        } else {
+            leftButton.setImage(UIImage(systemName: "paperclip", withConfiguration: iconCfg), for: .normal)
+            leftButton.tintColor = currentTheme.tint
         }
 
         UIView.animate(withDuration: 0.25, delay: 0, usingSpringWithDamping: 0.65, initialSpringVelocity: 0.8, animations: {
