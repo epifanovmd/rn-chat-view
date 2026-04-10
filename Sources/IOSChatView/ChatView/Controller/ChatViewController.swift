@@ -134,9 +134,12 @@ public final class ChatViewController: UIViewController {
 
     // MARK: - Lifecycle
 
+    private var isFirstLayoutDone = false
+
     public override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
+        view.alpha = 0
         isInitialScrollProtected = true
         setupCollectionView()
         setupDataSource()
@@ -155,6 +158,10 @@ public final class ChatViewController: UIViewController {
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateCollectionInsets()
+        if !isFirstLayoutDone {
+            isFirstLayoutDone = true
+            view.alpha = 1
+        }
     }
 
     public override func viewSafeAreaInsetsDidChange() {

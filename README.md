@@ -213,6 +213,9 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
     func chatDidReachBottom(distance: CGFloat) {}
     func chatMessagesDidAppear(ids: [String]) { /* mark as read on backend */ }
     func chatDidTapMessage(id: String, attachmentIndex: Int?) { /* open media viewer */ }
+    func chatDidTapThread(messageId: String, threadId: String) { /* open thread view */ }
+    func chatDidTapLink(url: URL, messageId: String) { UIApplication.shared.open(url) }
+    func chatDidTapPhoneNumber(phoneNumber: String, messageId: String) {}
     func chatDidCancelInputAction(type: String) {}
     func chatDidTapAttachment() { /* show image picker */ }
     func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval, waveform: [Float]) {
@@ -264,7 +267,7 @@ let imageMsg = ChatMessage(
     status: .sent,
     reply: nil,
     forwardedFrom: nil,
-    reactions: [Reaction(emoji: "👍", count: 2, isMine: true)],
+    reactions: [Reaction(emoji: "👍", count: 2, isSelected: true)],
     isEdited: false,
     actions: []
 )
@@ -621,6 +624,9 @@ func chatDidSelectAction(actionId: String, messageId: String)           // conte
 func chatDidSelectEmojiReaction(emoji: String, messageId: String)       // emoji from context menu
 func chatDidTapReaction(messageId: String, emoji: String)               // reaction chip tap
 func chatDidTapReplyMessage(id: String)                                 // quoted message tap
+func chatDidTapThread(messageId: String, threadId: String)              // thread indicator tap
+func chatDidTapLink(url: URL, messageId: String)                        // detected link tap
+func chatDidTapPhoneNumber(phoneNumber: String, messageId: String)      // detected phone tap
 func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)  // all content interactions
 ```
 
