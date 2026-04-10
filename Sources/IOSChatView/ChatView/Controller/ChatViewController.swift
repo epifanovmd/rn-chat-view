@@ -149,6 +149,7 @@ public final class ChatViewController: UIViewController {
         setupFAB()
         setupFloatingDate()
         applyTheme()
+        updateEmptyState()
     }
 
     public override func viewDidLayoutSubviews() {

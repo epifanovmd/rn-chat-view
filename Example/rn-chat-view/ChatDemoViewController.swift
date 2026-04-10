@@ -559,8 +559,22 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         ])
 
         chatVC.hasMore = true
-        chatVC.hasNewer = true
-        updateMessages(ChatDemoData.makeSampleMessages())
+        chatVC.hasNewer = false
+
+        // Phase 1: show empty state (no messages, no loading)
+        // Phase 2: after 1s, start "loading"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self else { return }
+            self.chatVC.isLoading = true
+
+            // Phase 3: after 1.5s more, messages arrive
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                guard let self else { return }
+                self.chatVC.isLoading = false
+                self.chatVC.hasNewer = true
+                self.updateMessages(ChatDemoData.makeSampleMessages())
+            }
+        }
     }
 
     private func updateMessages(_ msgs: [ChatMessage]) {
@@ -693,12 +707,16 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     func chatDidReachTop(distance: CGFloat) {
         guard !chatVC.isLoadingTop else { return }
         chatVC.isLoadingTop = true
-        loadOlderMessages()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.loadOlderMessages()
+        }
     }
     func chatDidReachBottom(distance: CGFloat) {
         guard !chatVC.isLoadingBottom else { return }
         chatVC.isLoadingBottom = true
-        loadNewerMessages()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.loadNewerMessages()
+        }
     }
 
     func chatDidTapFAB() {

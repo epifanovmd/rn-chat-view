@@ -81,6 +81,7 @@ public final class EmptyStateManager: NSObject {
             container.isHidden = true
             return
         }
+        let wasHidden = container.isHidden
         container.isHidden = !isEmpty
         if isEmpty && isLoading {
             contentView?.isHidden = true
@@ -88,6 +89,10 @@ public final class EmptyStateManager: NSObject {
         } else {
             loadingView?.isHidden = true
             contentView?.isHidden = false
+        }
+        // Force layout before first show to prevent "fly in" animation
+        if wasHidden && !container.isHidden {
+            container.superview?.layoutIfNeeded()
         }
     }
 
