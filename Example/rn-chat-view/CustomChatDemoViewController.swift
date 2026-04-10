@@ -875,15 +875,142 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
         ])
         chatVC.didMove(toParent: self)
 
-        chatVC.hasMore = false
-        chatVC.updateMessages(CustomChatDemoData.makeSampleMessages())
+        chatVC.hasMore = true
+        chatVC.hasNewer = false
+
+        // Phase 1: empty state
+        // Phase 2: loading indicator after 1s
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self else { return }
+            self.chatVC.isLoading = true
+
+            // Phase 3: messages arrive after 1.5s
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                guard let self else { return }
+                self.chatVC.isLoading = false
+                self.chatVC.hasNewer = true
+                self.chatVC.updateMessages(CustomChatDemoData.makeSampleMessages())
+            }
+        }
     }
 
     // MARK: - ChatViewControllerDelegate
 
+    private var messageCounter = 1000
+
     func chatDidScroll(offset: CGPoint) {}
-    func chatDidReachTop(distance: CGFloat) {}
-    func chatDidReachBottom(distance: CGFloat) {}
+    func chatDidReachTop(distance: CGFloat) {
+        guard !chatVC.isLoadingTop else { return }
+        chatVC.isLoadingTop = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.loadOlderMessages()
+        }
+    }
+    func chatDidReachBottom(distance: CGFloat) {
+        guard !chatVC.isLoadingBottom else { return }
+        chatVC.isLoadingBottom = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.loadNewerMessages()
+        }
+    }
+
+    private func loadOlderMessages() {
+        let cal = Calendar.current
+        var msgs = chatVC.messages
+        let batchSize = 50
+
+        let baseDate: Date
+        if let firstTimestamp = msgs.first?.timestamp {
+            baseDate = cal.date(byAdding: .hour, value: -batchSize, to: firstTimestamp)!
+        } else {
+            baseDate = Date()
+        }
+
+        let senders = ["Alice", "Bob", "Charlie", "Diana"]
+        let texts = [
+            "Custom older message 🎨",
+            "Another older one",
+            "Check this out",
+            "Purple vibes ✨",
+            "Let me know",
+        ]
+
+        var newBatch: [ChatMessage] = []
+        for i in 0..<batchSize {
+            messageCounter += 1
+            let timestamp = cal.date(byAdding: .minute, value: i * 3, to: baseDate)!
+            let groupDate = DateHelper.shared.groupKey(from: timestamp)
+            let ownership: MessageOwnership = i % 3 == 0 ? .mine : .theirs
+            let sender = ownership == .mine ? nil : senders[i % senders.count]
+
+            newBatch.append(ChatMessage(
+                id: "cgen-\(messageCounter)",
+                content: MessageBody(text: texts[i % texts.count], content: nil),
+                timestamp: timestamp,
+                senderName: sender,
+                ownership: ownership,
+                groupDate: groupDate,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: ChatDemoData.defaultActions
+            ))
+        }
+
+        msgs = newBatch + msgs
+        chatVC.isLoadingTop = false
+        chatVC.updateMessages(msgs)
+    }
+
+    private func loadNewerMessages() {
+        let cal = Calendar.current
+        var msgs = chatVC.messages
+        let batchSize = 30
+
+        let baseDate: Date
+        if let lastTimestamp = msgs.last?.timestamp {
+            baseDate = cal.date(byAdding: .minute, value: 3, to: lastTimestamp)!
+        } else {
+            baseDate = Date()
+        }
+
+        let senders = ["Alice", "Bob", "Charlie", "Diana"]
+        let texts = [
+            "New message from below 🆕",
+            "What do you think?",
+            "Almost done!",
+            "Great progress 💪",
+            "See you later",
+        ]
+
+        for i in 0..<batchSize {
+            messageCounter += 1
+            let timestamp = cal.date(byAdding: .minute, value: i * 3, to: baseDate)!
+            let groupDate = DateHelper.shared.groupKey(from: timestamp)
+            let ownership: MessageOwnership = i % 3 == 0 ? .mine : .theirs
+            let sender = ownership == .mine ? nil : senders[i % senders.count]
+
+            msgs.append(ChatMessage(
+                id: "cgen-\(messageCounter)",
+                content: MessageBody(text: texts[i % texts.count], content: nil),
+                timestamp: timestamp,
+                senderName: sender,
+                ownership: ownership,
+                groupDate: groupDate,
+                status: .read,
+                reply: nil,
+                forwardedFrom: nil,
+                reactions: [],
+                isEdited: false,
+                actions: ChatDemoData.defaultActions
+            ))
+        }
+
+        chatVC.isLoadingBottom = false
+        chatVC.updateMessages(msgs)
+    }
     func chatDidTapFAB() { chatVC.scrollToBottom(animated: true) }
     func chatMessagesDidAppear(ids: [String]) {}
 

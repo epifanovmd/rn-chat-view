@@ -43,6 +43,9 @@ public final class ChatViewController: UIViewController {
     public var hasMore = false
     public var hasNewer = false
     public var isLoading = false { didSet { emptyStateManager.update(isEmpty: messages.isEmpty, isLoading: isLoading, showEmptyState: features.showEmptyState) } }
+    public var emptyStateText: String? {
+        didSet { emptyStateManager.updateText(emptyStateText) }
+    }
     public var isLoadingTop = false {
         didSet { if oldValue != isLoadingTop, isViewLoaded { updateTopLoadingOverlay() } }
     }
@@ -134,12 +137,9 @@ public final class ChatViewController: UIViewController {
 
     // MARK: - Lifecycle
 
-    private var isFirstLayoutDone = false
-
     public override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
-        view.alpha = 0
         isInitialScrollProtected = true
         setupCollectionView()
         setupDataSource()
@@ -158,10 +158,6 @@ public final class ChatViewController: UIViewController {
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateCollectionInsets()
-        if !isFirstLayoutDone {
-            isFirstLayoutDone = true
-            view.alpha = 1
-        }
     }
 
     public override func viewSafeAreaInsetsDidChange() {

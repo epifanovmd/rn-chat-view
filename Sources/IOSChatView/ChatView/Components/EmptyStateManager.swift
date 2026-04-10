@@ -74,6 +74,13 @@ public final class EmptyStateManager: NSObject {
         ])
     }
 
+    // MARK: - Text
+
+    func updateText(_ text: String?) {
+        guard let label = contentView as? UILabel else { return }
+        label.text = text ?? NSLocalizedString("chat.empty", value: "Сообщений пока нет.\nНапишите первым!", comment: "")
+    }
+
     // MARK: - Update
 
     func update(isEmpty: Bool, isLoading: Bool, showEmptyState: Bool) {
