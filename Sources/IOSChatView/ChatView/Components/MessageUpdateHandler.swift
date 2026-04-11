@@ -119,8 +119,11 @@ private extension MessageUpdateHandler {
         cv.layoutIfNeeded()
 
         if let scrollId = vc.pendingScrollMessageId {
-            vc.scrollToMessage(id: scrollId, position: "center", animated: false, highlight: true)
+            let position = vc.pendingScrollMessagePosition ?? "center"
+            let highlight = position == "center"
+            vc.scrollToMessage(id: scrollId, position: position, animated: false, highlight: highlight)
             vc.pendingScrollMessageId = nil
+            vc.pendingScrollMessagePosition = nil
         }
 
         vc.isInitialScrollProtected = false

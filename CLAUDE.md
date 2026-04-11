@@ -24,7 +24,7 @@ Delegate-based composition. `ChatViewController` is the main orchestrator, split
 - `+MessageActions` — routes cell interaction callbacks to delegate
 
 Extracted managers:
-- `MessageUpdateHandler` — detects update type (initial/prepend/append/content) and applies optimal strategy
+- `MessageUpdateHandler` — routes updates (initial/prepend/append/content/replace/structural), bottom-edge-stable offset, incremental patching
 - `FloatingDateManager` — floating date pill during scrolling
 - `FABManager` — scroll-to-bottom button + unread badge (views from factory)
 - `EmptyStateManager` — empty state view (views from factory)
@@ -48,10 +48,26 @@ Extracted managers:
 
 | Strategy | When | Method |
 |----------|------|--------|
-| Initial | First batch (was empty) | `reloadData` + deferred scroll to bottom |
-| Prepend | Older messages loaded | `reloadData` + manual contentOffset compensation |
+| Initial | First batch (was empty) | `reloadData` + sync scroll to bottom |
+| Prepend | Older messages loaded | `reloadData` + offset compensation |
 | Append | New messages at bottom | `reloadData` + auto-scroll if near bottom |
-| Content | Edit/delete/reactions/polls | DifferenceKit `StagedChangeset` → animated `performBatchUpdates` |
+| Content | Edit/reactions/polls (same IDs) | Incremental patch + in-place reconfigure |
+| Replace | Delete+insert at same position | Targeted `reloadItems(at:)` + offset fix |
+| Structural | Row count changed | DifferenceKit `StagedChangeset` → animated batch |
+
+**Bottom-edge-stable offset**: content and replace updates pin the
+bottommost visible message's bottom edge to its screen position.
+Height changes expand upward. Uses prefix sums for O(1) cell Y lookup.
+
+**Incremental patching** (content/replace paths):
+- `analyzeContent()` — single O(messages) pass: classifies, collects changedIDs, invalidates size cache
+- `patchLayoutData()` — recomputes layout only for changed rows, O(changed) not O(n)
+- messageIndex/rows/rowIndexCache patched incrementally
+
+**DifferenceKit** used only in `applyStructural` (row count differs).
+All other paths bypass it for better performance.
+
+**Performance (90k messages):** content ~142ms, replace ~92ms, structural ~465ms.
 
 ### Delegate Hierarchy
 
@@ -106,7 +122,7 @@ Sources/IOSChatView/
 │   │   ├── ChatDataSource.swift               # UICollectionViewDataSource
 │   │   └── ChatRow.swift                      # Differentiable row enum
 │   ├── Components/
-│   │   ├── MessageUpdateHandler.swift         # Update strategy dispatcher
+│   │   ├── MessageUpdateHandler.swift         # Update router + incremental patch + offset calculator
 │   │   ├── FloatingDateManager.swift          # Floating date pill
 │   │   ├── FABManager.swift                   # Scroll-to-bottom FAB + badge (views from factory)
 │   │   ├── EmptyStateManager.swift            # Empty state (views from factory)

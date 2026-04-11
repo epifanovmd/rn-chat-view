@@ -82,6 +82,8 @@ public final class ChatViewController: UIViewController {
 
     public var isInitialScrollProtected = false
     public var pendingScrollMessageId: String?
+    /// Position for initial scroll: "top", "center" (default), "bottom".
+    public var pendingScrollMessagePosition: String?
 
     // MARK: - Data (internal — mutated by extensions, read by MessageUpdateHandler/DataSource)
 
