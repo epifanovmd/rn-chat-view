@@ -19,11 +19,11 @@ public extension ChatScrollDelegate {
 // MARK: - Visibility
 
 public protocol ChatVisibilityDelegate: AnyObject {
-    func chatMessagesDidAppear(ids: [String])
+    func chatMessagesDidAppear(ids: [String], unreadIds: [String])
 }
 
 public extension ChatVisibilityDelegate {
-    func chatMessagesDidAppear(ids: [String]) {}
+    func chatMessagesDidAppear(ids: [String], unreadIds: [String]) {}
 }
 
 // MARK: - Message Interactions

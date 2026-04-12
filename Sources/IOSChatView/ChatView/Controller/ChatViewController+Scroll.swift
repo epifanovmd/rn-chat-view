@@ -54,29 +54,43 @@ extension ChatViewController: UICollectionViewDelegate {
 extension ChatViewController {
     public func updateVisibleMessages() {
         guard !messages.isEmpty else { return }
-        var ids: Set<String> = []
+
+        // Collect ALL visible message IDs (for scroll position tracking)
+        // and unread IDs separately (for mark-as-read).
+        var allVisibleIDs: [String] = []
+        var unreadIDs: Set<String> = []
+
         let cells = Array(collectionView.visibleCells)
         for cell in cells {
             guard let indexPath = collectionView.indexPath(for: cell),
                   indexPath.item < rows.count,
-                  case .message(let msg) = rows[indexPath.item],
-                  msg.status != .read else { continue }
-            ids.insert(msg.id)
+                  case .message(let msg) = rows[indexPath.item] else { continue }
+            allVisibleIDs.append(msg.id)
+            if msg.status != .read {
+                unreadIDs.insert(msg.id)
+            }
         }
 
-        let newIDs = ids.subtracting(visibleMessageIDs)
-        guard !newIDs.isEmpty else { return }
-        visibleMessageIDs = ids
+        guard !allVisibleIDs.isEmpty else { return }
 
-        unreadManager.markAsRead(newIDs)
+        // Mark-as-read: only new unread IDs
+        let newUnread = unreadIDs.subtracting(visibleMessageIDs)
+        if !newUnread.isEmpty {
+            visibleMessageIDs = unreadIDs
+            unreadManager.markAsRead(newUnread)
+        }
 
-        pendingVisibleIDs.formUnion(newIDs)
+        // Notify delegate with both arrays (debounced)
+        pendingVisibleIDs.formUnion(allVisibleIDs)
+        pendingUnreadIDs.formUnion(newUnread)
         visibilityDebounceTask?.cancel()
         let task = DispatchWorkItem { [weak self] in
             guard let self, !self.pendingVisibleIDs.isEmpty else { return }
-            let batch = Array(self.pendingVisibleIDs)
+            let allBatch = Array(self.pendingVisibleIDs)
+            let unreadBatch = Array(self.pendingUnreadIDs)
             self.pendingVisibleIDs.removeAll()
-            self.delegate?.chatMessagesDidAppear(ids: batch)
+            self.pendingUnreadIDs.removeAll()
+            self.delegate?.chatMessagesDidAppear(ids: allBatch, unreadIds: unreadBatch)
         }
         visibilityDebounceTask = task
         DispatchQueue.main.asyncAfter(deadline: .now() + layout.visibilityDebounceInterval, execute: task)

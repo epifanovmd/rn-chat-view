@@ -1012,7 +1012,7 @@ final class CustomChatDemoViewController: UIViewController, ChatViewControllerDe
         chatVC.updateMessages(msgs)
     }
     func chatDidTapFAB() { chatVC.scrollToBottom(animated: true) }
-    func chatMessagesDidAppear(ids: [String]) {}
+    func chatMessagesDidAppear(ids: [String], unreadIds: [String]) {}
 
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {
         let alert = UIAlertController(title: "Tap", message: "Message: \(id)\(attachmentIndex.map { ", content: \($0)" } ?? "")", preferredStyle: .alert)

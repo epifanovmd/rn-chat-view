@@ -122,6 +122,7 @@ public final class ChatViewController: UIViewController {
     var lastScrollEventTime: CFTimeInterval = 0
     var visibleMessageIDs: Set<String> = []
     var pendingVisibleIDs: Set<String> = []
+    var pendingUnreadIDs: Set<String> = []
     var visibilityDebounceTask: DispatchWorkItem?
     var pendingHighlightId: String?
     var isUserDragging = false
@@ -452,12 +453,12 @@ public final class ChatViewController: UIViewController {
 
     public func message(forID id: String) -> ChatMessage? { messageIndex[id] }
 
-    func distanceFromBottom() -> CGFloat {
+    public func distanceFromBottom() -> CGFloat {
         guard let cv = collectionView else { return 0 }
         return max(0, cv.contentSize.height - cv.contentOffset.y - cv.bounds.height + cv.contentInset.bottom)
     }
 
-    func isNearBottom() -> Bool {
+    public func isNearBottom() -> Bool {
         guard collectionView.contentSize.height > 0 else { return true }
         return distanceFromBottom() <= features.scrollToBottomThreshold
     }
