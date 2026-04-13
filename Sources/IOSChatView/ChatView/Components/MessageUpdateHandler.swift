@@ -121,7 +121,10 @@ private extension MessageUpdateHandler {
         if let scrollId = vc.pendingScrollMessageId {
             let position = vc.pendingScrollMessagePosition ?? "center"
             let highlight = position == "center"
-            vc.scrollToMessage(id: scrollId, position: position, animated: false, highlight: highlight)
+            let found = vc.rowIndexCache[scrollId] != nil
+            if found {
+                vc.scrollToMessage(id: scrollId, position: position, animated: false, highlight: highlight)
+            }
             vc.pendingScrollMessageId = nil
             vc.pendingScrollMessagePosition = nil
         }
@@ -242,6 +245,11 @@ private extension MessageUpdateHandler {
         let shouldScroll = vc.pendingScrollToBottom
         if shouldScroll { vc.pendingScrollToBottom = false }
 
+        // Capture pending scroll BEFORE analysis — fetch after cache restore
+        // may arrive as content update, not initial.
+        let pendingScrollId = vc.pendingScrollMessageId
+        let pendingScrollPos = vc.pendingScrollMessagePosition
+
         let analysis = analyzeContent(oldMessages: s.oldMessages, newMessages: newMessages, vc: vc)
 
         switch analysis.kind {
@@ -264,7 +272,21 @@ private extension MessageUpdateHandler {
                             snapshot: s, shouldScroll: shouldScroll)
         }
 
-        if shouldScroll { vc.scrollToBottom(animated: true) }
+        if shouldScroll {
+            vc.scrollToBottom(animated: true)
+        }
+
+        // Handle pending scroll (e.g., fetch after cache restore arrives as content update)
+        if let scrollId = pendingScrollId {
+            let position = pendingScrollPos ?? "center"
+            let highlight = position == "center"
+            let found = vc.rowIndexCache[scrollId] != nil
+            if found {
+                vc.scrollToMessage(id: scrollId, position: position, animated: false, highlight: highlight)
+            }
+            vc.pendingScrollMessageId = nil
+            vc.pendingScrollMessagePosition = nil
+        }
 
         vc.finalizeUpdate(count: vc.rows.count, animated: true)
         vc.flushPendingMessages()

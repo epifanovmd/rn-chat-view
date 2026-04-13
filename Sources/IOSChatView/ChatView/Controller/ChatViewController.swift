@@ -78,6 +78,13 @@ public final class ChatViewController: UIViewController {
         didSet { guard isViewLoaded else { return }; view.setNeedsLayout() }
     }
 
+    // MARK: - Visibility Intervals
+
+    /// Throttle interval for visible messages snapshot (seconds). Default 0.3.
+    public var visibleMessagesThrottleInterval: TimeInterval = 0.3
+    /// Debounce interval for unread messages batch (seconds). Default 0.3.
+    public var unreadMessagesDebounceInterval: TimeInterval = 0.3
+
     // MARK: - Initial Scroll
 
     public var isInitialScrollProtected = false
@@ -121,9 +128,10 @@ public final class ChatViewController: UIViewController {
     var isProgrammaticScroll = false
     var lastScrollEventTime: CFTimeInterval = 0
     var visibleMessageIDs: Set<String> = []
-    var pendingVisibleIDs: Set<String> = []
+    var lastVisibleThrottleTime: CFTimeInterval = 0
+    var pendingVisibleThrottleTask: DispatchWorkItem?
     var pendingUnreadIDs: Set<String> = []
-    var visibilityDebounceTask: DispatchWorkItem?
+    var unreadDebounceTask: DispatchWorkItem?
     var pendingHighlightId: String?
     var isUserDragging = false
     var lastKnownMessageCount = 0
@@ -170,7 +178,8 @@ public final class ChatViewController: UIViewController {
 
     deinit {
         floatingDateManager.cancelPendingTasks()
-        visibilityDebounceTask?.cancel()
+        pendingVisibleThrottleTask?.cancel()
+        unreadDebounceTask?.cancel()
         pendingLoadingRebuild?.cancel()
     }
 

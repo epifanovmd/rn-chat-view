@@ -724,7 +724,8 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         chatVC.scrollToBottom(animated: true)
     }
 
-    func chatMessagesDidAppear(ids: [String], unreadIds: [String]) {}
+    func chatVisibleMessagesDidChange(ids: [String]) {}
+    func chatUnreadMessagesDidAppear(ids: [String]) {}
 
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {
         if let idx = attachmentIndex {

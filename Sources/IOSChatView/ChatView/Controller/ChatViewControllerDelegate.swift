@@ -19,11 +19,15 @@ public extension ChatScrollDelegate {
 // MARK: - Visibility
 
 public protocol ChatVisibilityDelegate: AnyObject {
-    func chatMessagesDidAppear(ids: [String], unreadIds: [String])
+    /// Snapshot of currently visible message IDs (throttled).
+    func chatVisibleMessagesDidChange(ids: [String])
+    /// Accumulated unread message IDs that appeared on screen (debounced).
+    func chatUnreadMessagesDidAppear(ids: [String])
 }
 
 public extension ChatVisibilityDelegate {
-    func chatMessagesDidAppear(ids: [String], unreadIds: [String]) {}
+    func chatVisibleMessagesDidChange(ids: [String]) {}
+    func chatUnreadMessagesDidAppear(ids: [String]) {}
 }
 
 // MARK: - Message Interactions

@@ -409,8 +409,6 @@ public struct ChatLayout {
 
     /// Интервал троттлинга событий скролла (секунды)
     public var scrollThrottleInterval: TimeInterval = 1.0 / 30
-    /// Интервал дебаунса отслеживания видимости (секунды)
-    public var visibilityDebounceInterval: TimeInterval = 0.3
     /// Интервал дебаунса подгрузки сообщений при скролле (секунды)
     public var paginationDebounceInterval: TimeInterval = 0.5
 

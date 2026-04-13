@@ -55,8 +55,7 @@ extension ChatViewController {
     public func updateVisibleMessages() {
         guard !messages.isEmpty else { return }
 
-        // Collect ALL visible message IDs (for scroll position tracking)
-        // and unread IDs separately (for mark-as-read).
+        // Collect visible message IDs and unread IDs in one pass.
         var allVisibleIDs: [String] = []
         var unreadIDs: Set<String> = []
 
@@ -73,26 +72,71 @@ extension ChatViewController {
 
         guard !allVisibleIDs.isEmpty else { return }
 
-        // Mark-as-read: only new unread IDs
+        // --- Mark-as-read (internal) ---
         let newUnread = unreadIDs.subtracting(visibleMessageIDs)
         if !newUnread.isEmpty {
             visibleMessageIDs = unreadIDs
             unreadManager.markAsRead(newUnread)
         }
 
-        // Notify delegate with both arrays (debounced)
-        pendingVisibleIDs.formUnion(allVisibleIDs)
-        pendingUnreadIDs.formUnion(newUnread)
-        visibilityDebounceTask?.cancel()
-        let task = DispatchWorkItem { [weak self] in
-            guard let self, !self.pendingVisibleIDs.isEmpty else { return }
-            let allBatch = Array(self.pendingVisibleIDs)
-            let unreadBatch = Array(self.pendingUnreadIDs)
-            self.pendingVisibleIDs.removeAll()
-            self.pendingUnreadIDs.removeAll()
-            self.delegate?.chatMessagesDidAppear(ids: allBatch, unreadIds: unreadBatch)
+        // --- Visible messages → throttle ---
+        notifyVisibleMessages()
+
+        // --- Unread messages → debounce ---
+        if !newUnread.isEmpty {
+            notifyUnreadMessages(newUnread)
         }
-        visibilityDebounceTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + layout.visibilityDebounceInterval, execute: task)
+    }
+
+    // MARK: - Throttle: visible messages snapshot
+
+    private func notifyVisibleMessages() {
+        let now = CACurrentMediaTime()
+        let interval = visibleMessagesThrottleInterval
+
+        if now - lastVisibleThrottleTime >= interval {
+            // Enough time passed — fire immediately
+            lastVisibleThrottleTime = now
+            fireVisibleSnapshot()
+        } else {
+            // Schedule trailing edge if not already scheduled
+            guard pendingVisibleThrottleTask == nil else { return }
+            let remaining = interval - (now - lastVisibleThrottleTime)
+            let task = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.lastVisibleThrottleTime = CACurrentMediaTime()
+                self.pendingVisibleThrottleTask = nil
+                self.fireVisibleSnapshot()
+            }
+            pendingVisibleThrottleTask = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + remaining, execute: task)
+        }
+    }
+
+    private func fireVisibleSnapshot() {
+        var ids: [String] = []
+        for cell in collectionView.visibleCells {
+            guard let indexPath = collectionView.indexPath(for: cell),
+                  indexPath.item < rows.count,
+                  case .message(let msg) = rows[indexPath.item] else { continue }
+            ids.append(msg.id)
+        }
+        guard !ids.isEmpty else { return }
+        delegate?.chatVisibleMessagesDidChange(ids: ids)
+    }
+
+    // MARK: - Debounce: unread messages batch
+
+    private func notifyUnreadMessages(_ newUnread: Set<String>) {
+        pendingUnreadIDs.formUnion(newUnread)
+        unreadDebounceTask?.cancel()
+        let task = DispatchWorkItem { [weak self] in
+            guard let self, !self.pendingUnreadIDs.isEmpty else { return }
+            let batch = Array(self.pendingUnreadIDs)
+            self.pendingUnreadIDs.removeAll()
+            self.delegate?.chatUnreadMessagesDidAppear(ids: batch)
+        }
+        unreadDebounceTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + unreadMessagesDebounceInterval, execute: task)
     }
 }
