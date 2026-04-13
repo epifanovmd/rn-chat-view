@@ -139,23 +139,26 @@ private extension MessageUpdateHandler {
 private extension MessageUpdateHandler {
 
     func applyPrepend(vc: ChatViewController, newRows: [ChatRow]) {
-        let insertedCount = newRows.count - vc.rows.count
-        guard insertedCount > 0 else { return }
+        let oldRowCount = vc.rows.count
+        guard newRows.count > oldRowCount else { return }
 
-        let prependedRows = Array(newRows[0..<insertedCount])
         vc.setRows(newRows)
+        let newLayout = vc.computeLayoutData()
 
-        let prependedLayout = vc.computeLayoutInfo(for: prependedRows)
-        var compensating: CGFloat = 0
-        for info in prependedLayout { compensating += info.totalHeight }
+        // Compute compensating offset = total height of new rows minus old rows
+        let oldLayout = vc.chatLayout.rowLayoutData
+        var oldTotalH: CGFloat = 0
+        for info in oldLayout { oldTotalH += info.totalHeight }
+        var newTotalH: CGFloat = 0
+        for info in newLayout { newTotalH += info.totalHeight }
+        let compensating = newTotalH - oldTotalH
 
-        vc.rebuildCachesIncremental(insertedCount: insertedCount)
-        vc.prependLayoutData(prependedLayout, insertedRowCount: insertedCount)
+        vc.applyLayoutData(newLayout)
 
         let saved = vc.collectionView.contentOffset
         vc.collectionView.reloadData()
-        vc.collectionView.layoutIfNeeded()
         vc.collectionView.contentOffset = CGPoint(x: saved.x, y: saved.y + compensating)
+        vc.collectionView.layoutIfNeeded()
 
         vc.finalizeUpdate(count: newRows.count, animated: false)
         vc.flushPendingMessages()

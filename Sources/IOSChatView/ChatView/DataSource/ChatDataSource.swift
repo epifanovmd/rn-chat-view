@@ -97,7 +97,6 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
 
         let reply = resolveReply(for: msg, vc: vc)
         let showName = Self.shouldShowSenderName(for: msg, mode: vc.features.senderNameMode)
-
         cell.configure(
             message: msg,
             resolvedReply: reply,

@@ -52,23 +52,69 @@ extension ChatViewController: UICollectionViewDelegate {
 // MARK: - Visibility Tracking
 
 extension ChatViewController {
-    public func updateVisibleMessages() {
-        guard !messages.isEmpty else { return }
 
-        // Collect visible message IDs and unread IDs in one pass.
-        var allVisibleIDs: [String] = []
-        var unreadIDs: Set<String> = []
+    /// Collects message IDs from visible cells using hysteresis for the visible snapshot
+    /// and a separate threshold for mark-as-read.
+    ///
+    /// Hysteresis: a cell enters `allIDs` at `visibilityThreshold` (0.8),
+    /// stays until it drops below `visibilityExitThreshold` (0.5).
+    func collectVisibleMessageIDs() -> (all: [String], unread: Set<String>) {
+        let visibleRect = CGRect(
+            origin: collectionView.contentOffset,
+            size: collectionView.bounds.size
+        )
+        let enterThreshold = visibilityThreshold
+        let exitThreshold = visibilityExitThreshold
+        let unreadThreshold = unreadVisibilityThreshold
 
-        let cells = Array(collectionView.visibleCells)
-        for cell in cells {
+        // Collect (indexPath.item, cell) pairs and sort by index (top to bottom)
+        var sorted: [(index: Int, cell: UICollectionViewCell, msg: ChatMessage)] = []
+
+        for cell in collectionView.visibleCells {
             guard let indexPath = collectionView.indexPath(for: cell),
                   indexPath.item < rows.count,
                   case .message(let msg) = rows[indexPath.item] else { continue }
-            allVisibleIDs.append(msg.id)
-            if msg.status != .read {
+            sorted.append((indexPath.item, cell, msg))
+        }
+
+        sorted.sort { $0.index < $1.index }
+
+        var allIDs: [String] = []
+        var unreadIDs: Set<String> = []
+        var newActiveIDs: Set<String> = []
+
+        for (_, cell, msg) in sorted {
+            let cellFrame = cell.frame
+            let intersection = visibleRect.intersection(cellFrame)
+
+            guard !intersection.isNull else { continue }
+
+            let visibleFraction = intersection.height / max(cellFrame.height, 1)
+
+            let wasActive = activeVisibleIDs.contains(msg.id)
+            let isActive = wasActive
+                ? visibleFraction >= exitThreshold
+                : visibleFraction >= enterThreshold
+
+            if isActive {
+                allIDs.append(msg.id)
+                newActiveIDs.insert(msg.id)
+            }
+
+            if visibleFraction >= unreadThreshold && msg.status != .read {
                 unreadIDs.insert(msg.id)
             }
         }
+
+        activeVisibleIDs = newActiveIDs
+
+        return (allIDs, unreadIDs)
+    }
+
+    public func updateVisibleMessages() {
+        guard !messages.isEmpty else { return }
+
+        let (allVisibleIDs, unreadIDs) = collectVisibleMessageIDs()
 
         guard !allVisibleIDs.isEmpty else { return }
 
@@ -80,6 +126,7 @@ extension ChatViewController {
         }
 
         // --- Visible messages → throttle ---
+        latestVisibleIDs = allVisibleIDs
         notifyVisibleMessages()
 
         // --- Unread messages → debounce ---
@@ -95,7 +142,6 @@ extension ChatViewController {
         let interval = visibleMessagesThrottleInterval
 
         if now - lastVisibleThrottleTime >= interval {
-            // Enough time passed — fire immediately
             lastVisibleThrottleTime = now
             fireVisibleSnapshot()
         } else {
@@ -114,14 +160,11 @@ extension ChatViewController {
     }
 
     private func fireVisibleSnapshot() {
-        var ids: [String] = []
-        for cell in collectionView.visibleCells {
-            guard let indexPath = collectionView.indexPath(for: cell),
-                  indexPath.item < rows.count,
-                  case .message(let msg) = rows[indexPath.item] else { continue }
-            ids.append(msg.id)
-        }
+        let ids = latestVisibleIDs
         guard !ids.isEmpty else { return }
+        let idSet = Set(ids)
+        guard idSet != lastFiredVisibleIDs else { return }
+        lastFiredVisibleIDs = idSet
         delegate?.chatVisibleMessagesDidChange(ids: ids)
     }
 

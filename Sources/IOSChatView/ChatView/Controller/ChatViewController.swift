@@ -84,6 +84,12 @@ public final class ChatViewController: UIViewController {
     public var visibleMessagesThrottleInterval: TimeInterval = 0.3
     /// Debounce interval for unread messages batch (seconds). Default 0.3.
     public var unreadMessagesDebounceInterval: TimeInterval = 0.3
+    /// Minimum fraction of cell height to enter "visible" set (0..1). Default 0.8.
+    public var visibilityThreshold: CGFloat = 0.8
+    /// Fraction below which a cell exits the "visible" set (hysteresis). Default 0.5.
+    public var visibilityExitThreshold: CGFloat = 0.5
+    /// Minimum fraction of cell height visible on screen for mark-as-read (0..1). Default 0.5.
+    public var unreadVisibilityThreshold: CGFloat = 0.5
 
     // MARK: - Initial Scroll
 
@@ -130,6 +136,9 @@ public final class ChatViewController: UIViewController {
     var visibleMessageIDs: Set<String> = []
     var lastVisibleThrottleTime: CFTimeInterval = 0
     var pendingVisibleThrottleTask: DispatchWorkItem?
+    var lastFiredVisibleIDs: Set<String> = []
+    var activeVisibleIDs: Set<String> = []
+    var latestVisibleIDs: [String] = []
     var pendingUnreadIDs: Set<String> = []
     var unreadDebounceTask: DispatchWorkItem?
     var pendingHighlightId: String?
