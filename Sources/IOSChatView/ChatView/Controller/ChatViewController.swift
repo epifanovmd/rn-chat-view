@@ -98,6 +98,14 @@ public final class ChatViewController: UIViewController {
     /// Position for initial scroll: "top", "center" (default), "bottom".
     public var pendingScrollMessagePosition: String?
 
+    /// Pending initial scroll target set by applyInitial.
+    /// Executed by viewDidLayoutSubviews once bounds > 0 and contentInset settles.
+    enum PendingInitialScroll {
+        case toMessage(id: String, position: String)
+        case toBottom
+    }
+    var pendingInitialScroll: PendingInitialScroll?
+
     // MARK: - Data (internal — mutated by extensions, read by MessageUpdateHandler/DataSource)
 
     public internal(set) var messages: [ChatMessage] = []
@@ -178,6 +186,56 @@ public final class ChatViewController: UIViewController {
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateCollectionInsets()
+        executePendingInitialScroll()
+    }
+
+    /// Execute pending initial scroll when the view is fully laid out:
+    /// bounds > 0 and contentInset has settled (not a temporary RN value).
+    func executePendingInitialScroll() {
+        guard let scroll = pendingInitialScroll else { return }
+
+        let cv = collectionView!
+        let frameH = cv.bounds.height
+        let insetBottom = cv.contentInset.bottom
+
+        // Wait until view has real dimensions and inset has settled
+        guard frameH > 0, cv.bounds.width > 0,
+              insetBottom < frameH * 0.5 else { return }
+
+        guard let layout = chatLayout else { return }
+
+        let topInset = cv.adjustedContentInset.top
+        let contentH = cv.contentSize.height
+
+        switch scroll {
+        case .toMessage(let id, let position):
+            if let rowIndex = rowIndexCache[id], rowIndex < layout.yOffsets.count {
+                let targetY = layout.yOffsets[rowIndex] - layout.rowLayoutData[rowIndex].topInset
+                let maxOffset = max(contentH - frameH + insetBottom, -topInset)
+                let clampedY = min(max(targetY, -topInset), maxOffset)
+                cv.contentOffset = CGPoint(x: 0, y: clampedY)
+
+                if position == "center" {
+                    pendingHighlightId = id
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                        self?.performHighlight()
+                    }
+                }
+            } else {
+                let maxY = max(contentH - frameH + insetBottom, -topInset)
+                cv.contentOffset = CGPoint(x: 0, y: maxY)
+            }
+
+        case .toBottom:
+            let maxY = max(contentH - frameH + insetBottom, -topInset)
+            cv.contentOffset = CGPoint(x: 0, y: maxY)
+        }
+
+        pendingInitialScroll = nil
+        pendingScrollMessageId = nil
+        pendingScrollMessagePosition = nil
+        isInitialScrollProtected = false
+        finalizeUpdate(count: rows.count, animated: false)
     }
 
     public override func viewSafeAreaInsetsDidChange() {

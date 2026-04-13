@@ -104,33 +104,21 @@ private extension MessageUpdateHandler {
         vc.setRows(newRows)
         vc.applyLayoutData(vc.computeLayoutData())
 
-        // Pre-set offset to bottom BEFORE reloadData so the first rendered
-        // frame already shows the bottom — no flash of top content.
-        let layoutData = vc.chatLayout.rowLayoutData
-        var totalH: CGFloat = 0
-        for info in layoutData { totalH += info.totalHeight }
-        let cv = vc.collectionView!
-        let maxY = totalH - cv.bounds.height + cv.contentInset.bottom
-        if maxY > -cv.adjustedContentInset.top {
-            cv.contentOffset = CGPoint(x: 0, y: maxY)
+        vc.collectionView.reloadData()
+        vc.collectionView.layoutIfNeeded()
+
+        // Don't scroll here — bounds and contentInset may be temporary RN values
+        // (width=0, inset=852). Save scroll target and let executePendingInitialScroll
+        // handle it. If the view is ready now, it executes immediately.
+        // If not, viewDidLayoutSubviews will catch it once layout settles.
+        if let id = vc.pendingScrollMessageId {
+            let pos = vc.pendingScrollMessagePosition ?? "center"
+            vc.pendingInitialScroll = .toMessage(id: id, position: pos)
+        } else {
+            vc.pendingInitialScroll = .toBottom
         }
 
-        cv.reloadData()
-        cv.layoutIfNeeded()
-
-        if let scrollId = vc.pendingScrollMessageId {
-            let position = vc.pendingScrollMessagePosition ?? "center"
-            let highlight = position == "center"
-            let found = vc.rowIndexCache[scrollId] != nil
-            if found {
-                vc.scrollToMessage(id: scrollId, position: position, animated: false, highlight: highlight)
-            }
-            vc.pendingScrollMessageId = nil
-            vc.pendingScrollMessagePosition = nil
-        }
-
-        vc.isInitialScrollProtected = false
-        vc.finalizeUpdate(count: newRows.count, animated: false)
+        vc.executePendingInitialScroll()
     }
 }
 

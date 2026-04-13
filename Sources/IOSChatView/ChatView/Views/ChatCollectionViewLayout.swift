@@ -56,8 +56,8 @@ final class ChatCollectionViewLayout: UICollectionViewLayout {
 
     // MARK: - Computed Cache
 
-    private var yOffsets = ContiguousArray<CGFloat>()
-    private var heights = ContiguousArray<CGFloat>()
+    private(set) var yOffsets = ContiguousArray<CGFloat>()
+    private(set) var heights = ContiguousArray<CGFloat>()
     private var totalHeight: CGFloat = 0
     private var cachedWidth: CGFloat = 0
 
