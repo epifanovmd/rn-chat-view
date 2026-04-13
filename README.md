@@ -211,7 +211,8 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
 
     func chatDidScroll(offset: CGPoint) {}
     func chatDidReachBottom(distance: CGFloat) {}
-    func chatMessagesDidAppear(ids: [String]) { /* mark as read on backend */ }
+    func chatVisibleMessagesDidChange(ids: [String]) { /* scroll tracking */ }
+    func chatUnreadMessagesDidAppear(ids: [String]) { /* mark as read on backend */ }
     func chatDidTapMessage(id: String, attachmentIndex: Int?) { /* open media viewer */ }
     func chatDidTapThread(messageId: String, threadId: String) { /* open thread view */ }
     func chatDidTapLink(url: URL, messageId: String) { UIApplication.shared.open(url) }
@@ -613,7 +614,8 @@ func chatDidTapFAB()                         // scroll-to-bottom button tapped
 ### ChatVisibilityDelegate
 
 ```swift
-func chatMessagesDidAppear(ids: [String])    // messages became visible (for read receipts)
+func chatVisibleMessagesDidChange(ids: [String])  // throttled snapshot of visible messages
+func chatUnreadMessagesDidAppear(ids: [String])   // debounced unread batch (for read receipts)
 ```
 
 ### ChatMessageDelegate

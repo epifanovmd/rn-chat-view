@@ -426,15 +426,22 @@ func chatDidTapFAB() {
 ### ChatVisibilityDelegate
 
 ```swift
-/// Called when messages become visible on screen (debounced).
+/// Snapshot of currently visible message IDs (throttled).
+func chatVisibleMessagesDidChange(ids: [String])
+
+/// Accumulated unread message IDs that appeared on screen (debounced).
 /// Use this to send read receipts.
-func chatMessagesDidAppear(ids: [String])
+func chatUnreadMessagesDidAppear(ids: [String])
 ```
 
 **Typical implementation:**
 
 ```swift
-func chatMessagesDidAppear(ids: [String]) {
+func chatVisibleMessagesDidChange(ids: [String]) {
+    // Track scroll position, analytics, etc.
+}
+
+func chatUnreadMessagesDidAppear(ids: [String]) {
     api.markAsRead(messageIds: ids)
 }
 ```

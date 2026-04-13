@@ -49,7 +49,7 @@ Extracted managers:
 | Strategy | When | Method |
 |----------|------|--------|
 | Initial | First batch (was empty) | `reloadData` + sync scroll to bottom |
-| Prepend | Older messages loaded | `reloadData` + offset compensation |
+| Prepend | Older messages loaded | Full layout recompute + `reloadData` + offset compensation |
 | Append | New messages at bottom | `reloadData` + auto-scroll if near bottom |
 | Content | Edit/reactions/polls (same IDs) | Incremental patch + in-place reconfigure |
 | Replace | Delete+insert at same position | Targeted `reloadItems(at:)` + offset fix |
@@ -74,7 +74,7 @@ All other paths bypass it for better performance.
 ```
 ChatViewControllerDelegate (typealias combining 4 focused protocols):
   ├── ChatScrollDelegate       — scroll, pagination, FAB tap
-  ├── ChatVisibilityDelegate   — message visibility tracking
+  ├── ChatVisibilityDelegate   — visible messages (throttle) + unread messages (debounce)
   ├── ChatMessageDelegate      — tap, long press, reactions, replies, threads, links, chatDidContentInteraction
   └── ChatInputDelegate        — send, edit, attachment, voice recording
 
@@ -98,6 +98,13 @@ ChatViewController properties:
                                   avatarBubbleSpacing (2) (sticky avatars)
   .features: ChatFeatures  — behavioral flags (show/hide UI elements)
   .contentFactory: ChatContentFactory — custom view creation (protocol)
+
+  // Visibility tracking (direct properties, not in layout)
+  .visibleMessagesThrottleInterval: TimeInterval  — throttle for visible snapshot (default 0.3s)
+  .unreadMessagesDebounceInterval: TimeInterval   — debounce for unread batch (default 0.3s)
+  .visibilityThreshold: CGFloat                   — enter visible set at 80% cell height visible
+  .visibilityExitThreshold: CGFloat               — exit visible set below 50% (hysteresis)
+  .unreadVisibilityThreshold: CGFloat             — mark-as-read at 50% visible
 
 batchUpdate { } — apply multiple config changes atomically (single reload)
 ```
@@ -258,7 +265,8 @@ public protocol ChatScrollDelegate: AnyObject {
 }
 
 public protocol ChatVisibilityDelegate: AnyObject {
-    func chatMessagesDidAppear(ids: [String])      // mark as read
+    func chatVisibleMessagesDidChange(ids: [String])  // throttled snapshot of visible messages
+    func chatUnreadMessagesDidAppear(ids: [String])   // debounced unread messages batch
 }
 
 public protocol ChatMessageDelegate: AnyObject {
@@ -507,7 +515,8 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
     func chatDidScroll(offset: CGPoint) {}
     func chatDidReachBottom(distance: CGFloat) {}
     func chatDidTapFAB() { chatVC.scrollToBottom(animated: true) }
-    func chatMessagesDidAppear(ids: [String]) { /* mark as read */ }
+    func chatVisibleMessagesDidChange(ids: [String]) { /* scroll position tracking */ }
+    func chatUnreadMessagesDidAppear(ids: [String]) { /* mark as read on backend */ }
     func chatDidTapMessage(id: String, attachmentIndex: Int?) {}
     func chatDidTapReaction(messageId: String, emoji: String) {}
     func chatDidTapReplyMessage(id: String) {
