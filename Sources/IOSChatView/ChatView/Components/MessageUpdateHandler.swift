@@ -305,44 +305,38 @@ private extension MessageUpdateHandler {
                 }
                 log("  Метод: crossfade (полная замена)")
             } else {
-                // Собираем все insert/delete из stages
+                // Собираем все операции из stages
                 var allDeleted: [IndexPath] = []
                 var allInserted: [IndexPath] = []
+                var allUpdated: [IndexPath] = []
                 for stage in changeset {
                     allDeleted += stage.elementDeleted.map { IndexPath(item: $0.element, section: $0.section) }
                     allInserted += stage.elementInserted.map { IndexPath(item: $0.element, section: $0.section) }
+                    allUpdated += stage.elementUpdated.map { IndexPath(item: $0.element, section: $0.section) }
                 }
 
-                let hasMixedInsertDelete = !allDeleted.isEmpty || !allInserted.isEmpty
+                let hasInsertDelete = !allDeleted.isEmpty || !allInserted.isEmpty
 
-                if hasMixedInsertDelete && changeset.count > 1 {
-                    // Есть insert/delete в нескольких stages — схлопываем в один performBatchUpdates
+                if hasInsertDelete && changeset.count > 1 {
+                    // Multi-stage — схлопываем в один performBatchUpdates
                     cv.performBatchUpdates({
                         vc.setRows(newRows)
                         vc.applyLayoutData(vc.computeLayoutData())
                         if !allDeleted.isEmpty { cv.deleteItems(at: allDeleted) }
                         if !allInserted.isEmpty { cv.insertItems(at: allInserted) }
+                        if !allUpdated.isEmpty { cv.reloadItems(at: allUpdated) }
                     })
                     cv.layoutIfNeeded()
-                    log("  Метод: merged batch (del=\(allDeleted.count) ins=\(allInserted.count), анимация: одновременная)")
-                } else if !hasMixedInsertDelete {
-                    // Только moves/updates — DK анимирует напрямую
-                    cv.reload(using: changeset) { [weak vc] data in
-                        guard let vc else { return }
-                        vc.setRows(data)
-                        vc.applyLayoutData(vc.computeLayoutData())
-                    }
-                    cv.layoutIfNeeded()
-                    log("  Метод: DK batch (moves, анимация: DifferenceKit)")
+                    log("  Метод: merged batch (del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count))")
                 } else {
-                    // 1 stage с insert/delete — DK анимирует напрямую
+                    // 1 stage или только moves/updates — DK анимирует напрямую
                     cv.reload(using: changeset) { [weak vc] data in
                         guard let vc else { return }
                         vc.setRows(data)
                         vc.applyLayoutData(vc.computeLayoutData())
                     }
                     cv.layoutIfNeeded()
-                    log("  Метод: DK batch (1 stage, анимация: DifferenceKit)")
+                    log("  Метод: DK batch (stages=\(changeset.count), анимация: DifferenceKit)")
                 }
             }
 
@@ -362,17 +356,8 @@ private extension MessageUpdateHandler {
                 self.scrollToBottom(cv: cv, animated: animateScroll)
                 log("  Скролл: → scrollToBottom (animated=\(animateScroll))")
             } else if let anchor {
-                let before = cv.contentOffset.y
                 vc.restoreScrollAnchor(anchor)
-                let after = cv.contentOffset.y
-                log("  Скролл: → restore anchor \(anchor.messageId.prefix(12)), offset: \(f(before)) → \(f(after)), delta=\(f(after - offsetBefore))")
-            }
-
-            // Рекофигурация только ячеек с изменённым контентом (DK elementUpdated)
-            let updatedIndices = Set(changeset.flatMap { $0.elementUpdated.map(\.element) })
-            if !updatedIndices.isEmpty {
-                self.reconfigureUpdatedCells(vc: vc, newRows: newRows, indices: updatedIndices)
-                log("  Reconfigure: \(updatedIndices.count) ячеек")
+                log("  Скролл: → restore anchor \(anchor.messageId.prefix(12)), offset: \(f(offsetAfter)) → \(f(cv.contentOffset.y))")
             }
 
             if !s.wasAtBottom && !wantScroll {
