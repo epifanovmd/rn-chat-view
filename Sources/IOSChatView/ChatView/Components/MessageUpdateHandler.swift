@@ -63,6 +63,7 @@ final class MessageUpdateHandler {
         // Prepend / Append — дешёвая O(n) проверка по порядку ID
         if MessageDiff.isPrependOnly(old: snap.oldMessages, new: newMessages) {
             log("  Стратегия: PREPEND (+\(newCount - oldCount) сообщений сверху)")
+            invalidateChangedMessages(vc: vc, oldMessages: snap.oldMessages, newMessages: newMessages)
             vc.setMessages(newMessages)
             vc.rebuildMessageIndex()
             applyPrepend(vc: vc, newRows: vc.buildRows(from: newMessages), snap: snap)
@@ -70,6 +71,7 @@ final class MessageUpdateHandler {
         }
         if MessageDiff.isAppendOnly(old: snap.oldMessages, new: newMessages) {
             log("  Стратегия: APPEND (+\(newCount - oldCount) сообщений снизу)")
+            invalidateChangedMessages(vc: vc, oldMessages: snap.oldMessages, newMessages: newMessages)
             vc.setMessages(newMessages)
             vc.rebuildMessageIndex()
             applyAppend(vc: vc, newRows: vc.buildRows(from: newMessages), snap: snap)
@@ -559,14 +561,19 @@ private extension MessageUpdateHandler {
 
 private extension MessageUpdateHandler {
 
-    /// Инвалидация sizeCache для изменённых и pending сообщений.
-    func invalidateCaches(vc: ChatViewController, oldMessages: [ChatMessage], newMessages: [ChatMessage], pendingMapping: MessageDiff.PendingMapping) {
+    /// Инвалидация sizeCache для сообщений с изменённым контентом (prepend/append путь).
+    func invalidateChangedMessages(vc: ChatViewController, oldMessages: [ChatMessage], newMessages: [ChatMessage]) {
         let oldById = Dictionary(oldMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, l in l })
         for msg in newMessages {
             if let prev = oldById[msg.id], prev != msg {
                 vc.invalidateSizeCache(forKey: msg.id)
             }
         }
+    }
+
+    /// Инвалидация sizeCache для изменённых и pending сообщений.
+    func invalidateCaches(vc: ChatViewController, oldMessages: [ChatMessage], newMessages: [ChatMessage], pendingMapping: MessageDiff.PendingMapping) {
+        invalidateChangedMessages(vc: vc, oldMessages: oldMessages, newMessages: newMessages)
         for oldId in pendingMapping.oldToNew.keys {
             vc.invalidateSizeCache(forKey: oldId)
         }

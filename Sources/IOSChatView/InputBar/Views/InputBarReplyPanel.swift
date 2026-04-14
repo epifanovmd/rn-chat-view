@@ -65,11 +65,7 @@ final class InputBarReplyPanel: UIView {
         let sepBottom = separator.bottomAnchor.constraint(equalTo: bottomAnchor)
         let sepHeight = separator.heightAnchor.constraint(equalToConstant: L.inputSeparatorHeight)
 
-        for c in [accentTop, accentBottom, senderTop, sepBottom, sepHeight] {
-            c.priority = .defaultHigh
-        }
-
-        NSLayoutConstraint.activate([
+        let constraints = [
             accentBar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: sp + 2),
             accentTop,
             accentBottom,
@@ -96,7 +92,10 @@ final class InputBarReplyPanel: UIView {
             separator.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -sp),
             sepBottom,
             sepHeight,
-        ])
+        ]
+        // RN bridge начинает с width=0 — все horizontal constraints уступают
+        constraints.forEach { $0.priority = .defaultHigh }
+        NSLayoutConstraint.activate(constraints)
     }
 
     // MARK: - Theme

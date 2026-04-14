@@ -150,10 +150,15 @@ public final class InputBarView: UIView {
         replyPanel.textLabel.text = text
         textView.text = text
         placeholderLabel.isHidden = true
-        updateTextViewHeight()
         updateRightButton()
         replyPanel.show(in: self, height: L.inputReplyPanelHeight)
+        // Программная установка текста не вызывает textViewDidChange — уведомляем вручную
+        delegate?.inputBarDidChangeText(text)
         textView.becomeFirstResponder()
+        // Пересчёт высоты после layout — textView.bounds.width может быть неактуальной до layout pass
+        DispatchQueue.main.async { [weak self] in
+            self?.updateTextViewHeight()
+        }
     }
 
     public func cancelMode(dismissKeyboard: Bool = false) {
@@ -228,10 +233,11 @@ public final class InputBarView: UIView {
         leftButton.translatesAutoresizingMaskIntoConstraints = false
         leftButton.layer.cornerRadius = L.inputButtonSize / 2
         leftButton.layer.borderWidth = L.inputBorderWidth
-        NSLayoutConstraint.activate([
-            leftButton.widthAnchor.constraint(equalToConstant: L.inputButtonSize),
-            leftButton.heightAnchor.constraint(equalToConstant: L.inputButtonSize),
-        ])
+        let lw = leftButton.widthAnchor.constraint(equalToConstant: L.inputButtonSize)
+        let lh = leftButton.heightAnchor.constraint(equalToConstant: L.inputButtonSize)
+        lw.priority = .defaultHigh
+        lh.priority = .defaultHigh
+        NSLayoutConstraint.activate([lw, lh])
     }
 
     private func setupRightButton() {
@@ -241,10 +247,11 @@ public final class InputBarView: UIView {
         rightButton.translatesAutoresizingMaskIntoConstraints = false
         rightButton.layer.cornerRadius = L.inputButtonSize / 2
         rightButton.layer.borderWidth = L.inputBorderWidth
-        NSLayoutConstraint.activate([
-            rightButton.widthAnchor.constraint(equalToConstant: L.inputButtonSize),
-            rightButton.heightAnchor.constraint(equalToConstant: L.inputButtonSize),
-        ])
+        let rw = rightButton.widthAnchor.constraint(equalToConstant: L.inputButtonSize)
+        let rh = rightButton.heightAnchor.constraint(equalToConstant: L.inputButtonSize)
+        rw.priority = .defaultHigh
+        rh.priority = .defaultHigh
+        NSLayoutConstraint.activate([rw, rh])
 
         let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleRecordGesture(_:)))
         lp.minimumPressDuration = L.recordMinPressDuration
@@ -320,9 +327,12 @@ public final class InputBarView: UIView {
         internalSendButton.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
         mainContainer.addSubview(internalSendButton)
 
+        let sw = internalSendButton.widthAnchor.constraint(equalToConstant: size)
+        let sh = internalSendButton.heightAnchor.constraint(equalToConstant: size)
+        sw.priority = .defaultHigh
+        sh.priority = .defaultHigh
         NSLayoutConstraint.activate([
-            internalSendButton.widthAnchor.constraint(equalToConstant: size),
-            internalSendButton.heightAnchor.constraint(equalToConstant: size),
+            sw, sh,
             internalSendButton.trailingAnchor.constraint(equalTo: mainContainer.trailingAnchor, constant: -L.inputSendButtonInset),
             internalSendButton.bottomAnchor.constraint(equalTo: mainContainer.bottomAnchor, constant: -L.inputSendButtonInset),
         ])
