@@ -284,7 +284,7 @@ private extension MessageUpdateHandler {
             return oldIDs.subtracting(newIDs)
         }()
 
-        let doApply = { [weak self] in
+        let doApply = { [weak self] (suppressAnimation: Bool) in
             guard let self else { return }
 
             let offsetBefore = cv.contentOffset.y
@@ -319,24 +319,30 @@ private extension MessageUpdateHandler {
 
                 if hasInsertDelete && changeset.count > 1 {
                     // Multi-stage — схлопываем в один performBatchUpdates
-                    cv.performBatchUpdates({
-                        vc.setRows(newRows)
-                        vc.applyLayoutData(vc.computeLayoutData())
-                        if !allDeleted.isEmpty { cv.deleteItems(at: allDeleted) }
-                        if !allInserted.isEmpty { cv.insertItems(at: allInserted) }
-                        if !allUpdated.isEmpty { cv.reloadItems(at: allUpdated) }
-                    })
-                    cv.layoutIfNeeded()
-                    log("  Метод: merged batch (del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count))")
-                } else {
-                    // 1 stage или только moves/updates — DK анимирует напрямую
-                    cv.reload(using: changeset) { [weak vc] data in
-                        guard let vc else { return }
-                        vc.setRows(data)
-                        vc.applyLayoutData(vc.computeLayoutData())
+                    let applyMerged = {
+                        cv.performBatchUpdates({
+                            vc.setRows(newRows)
+                            vc.applyLayoutData(vc.computeLayoutData())
+                            if !allDeleted.isEmpty { cv.deleteItems(at: allDeleted) }
+                            if !allInserted.isEmpty { cv.insertItems(at: allInserted) }
+                            if !allUpdated.isEmpty { cv.reloadItems(at: allUpdated) }
+                        })
+                        cv.layoutIfNeeded()
                     }
-                    cv.layoutIfNeeded()
-                    log("  Метод: DK batch (stages=\(changeset.count), анимация: DifferenceKit)")
+                    if suppressAnimation { UIView.performWithoutAnimation(applyMerged) } else { applyMerged() }
+                    log("  Метод: merged batch (del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count), animated=\(!suppressAnimation))")
+                } else {
+                    // 1 stage или только moves/updates — DK
+                    let applyDK = {
+                        cv.reload(using: changeset) { [weak vc] data in
+                            guard let vc else { return }
+                            vc.setRows(data)
+                            vc.applyLayoutData(vc.computeLayoutData())
+                        }
+                        cv.layoutIfNeeded()
+                    }
+                    if suppressAnimation { UIView.performWithoutAnimation(applyDK) } else { applyDK() }
+                    log("  Метод: DK batch (stages=\(changeset.count), animated=\(!suppressAnimation))")
                 }
             }
 
@@ -372,9 +378,12 @@ private extension MessageUpdateHandler {
         let hasInserts = changeset.contains { !$0.elementInserted.isEmpty }
         if vc.disintegrationEnabled && !deletedIDs.isEmpty && !isFullReplace && !hasInserts {
             log("  Анимация: disintegration (\(deletedIDs.count) удалений)")
-            animateDisintegrationThen(vc: vc, deletedIDs: deletedIDs, then: doApply)
+            animateDisintegrationThen(vc: vc, deletedIDs: deletedIDs) { hadVisibleAnimation in
+                // Если удаление было вне viewport (конфетти не играло) — подавляем DK анимацию
+                doApply(!hadVisibleAnimation)
+            }
         } else {
-            doApply()
+            doApply(false)
         }
     }
 
@@ -518,7 +527,7 @@ private extension MessageUpdateHandler {
 
 private extension MessageUpdateHandler {
 
-    func animateDisintegrationThen(vc: ChatViewController, deletedIDs: Set<String>, then: @escaping () -> Void) {
+    func animateDisintegrationThen(vc: ChatViewController, deletedIDs: Set<String>, then: @escaping (_ hadVisibleAnimation: Bool) -> Void) {
         let cv = vc.collectionView!
         var animatedAny = false
 
@@ -538,9 +547,9 @@ private extension MessageUpdateHandler {
         }
 
         if animatedAny {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: then)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { then(true) }
         } else {
-            then()
+            then(false)
         }
     }
 }
