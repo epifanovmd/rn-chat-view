@@ -254,8 +254,11 @@ private extension MessageUpdateHandler {
         vc.rebuildMessageIndex()
         let newRows = vc.buildRows(from: newMessages)
 
-        // Check for disintegration animation
-        if vc.disintegrationEnabled && !diff.deletedIDs.isEmpty {
+        // Full replace — skip disintegration, crossfade handles the transition
+        let isFullReplace = diff.deletedIDs.count + diff.insertedIDs.count > max(s.oldRows.count, newRows.count)
+
+        // Disintegration only for partial deletes (individual messages), not full replace
+        if vc.disintegrationEnabled && !diff.deletedIDs.isEmpty && !isFullReplace {
             animateDisintegrationThen(vc: vc, deletedIDs: diff.deletedIDs) { [weak self] in
                 self?.applyDiff(vc: vc, newRows: newRows, diff: diff, snapshot: s, wantScrollToBottom: wantScrollToBottom)
             }
@@ -286,26 +289,39 @@ private extension MessageUpdateHandler {
             return
         }
 
-        print("[Unified] structural=\(structuralChanges) wantScroll=\(wantScrollToBottom) wasAtBottom=\(s.wasAtBottom)")
+        // Full replace: most rows changed — crossfade instead of staged DK animation
+        let isFullReplace = structuralChanges > max(oldRows.count, newRows.count)
+
+        print("[Unified] structural=\(structuralChanges) fullReplace=\(isFullReplace) wantScroll=\(wantScrollToBottom) wasAtBottom=\(s.wasAtBottom)")
 
         // Capture anchor BEFORE applying changes — needed for stable scroll
         let anchor = wantScrollToBottom ? nil : vc.currentScrollAnchor()
 
-        cv.reload(using: changeset) { [weak vc] data in
-            guard let vc else { return }
-            vc.setRows(data)
-            vc.applyLayoutData(vc.computeLayoutData())
-        }
-
-        // Verify consistency
-        if vc.rows != newRows {
-            print("[Unified] ⚠️ rows inconsistent after DifferenceKit — full reload")
+        if isFullReplace {
             vc.setRows(newRows)
             vc.applyLayoutData(vc.computeLayoutData())
-            cv.reloadData()
-        }
+            UIView.transition(with: cv, duration: 0.25, options: .transitionCrossDissolve) {
+                cv.reloadData()
+                cv.layoutIfNeeded()
+            }
+            print("[Unified] → crossfade reload")
+        } else {
+            cv.reload(using: changeset) { [weak vc] data in
+                guard let vc else { return }
+                vc.setRows(data)
+                vc.applyLayoutData(vc.computeLayoutData())
+            }
 
-        cv.layoutIfNeeded()
+            // Verify consistency
+            if vc.rows != newRows {
+                print("[Unified] ⚠️ rows inconsistent after DifferenceKit — full reload")
+                vc.setRows(newRows)
+                vc.applyLayoutData(vc.computeLayoutData())
+                cv.reloadData()
+            }
+
+            cv.layoutIfNeeded()
+        }
 
         if wantScrollToBottom {
             scrollToBottom(cv: cv)
