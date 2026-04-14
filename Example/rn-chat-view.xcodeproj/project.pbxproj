@@ -8,21 +8,57 @@
 
 /* Begin PBXBuildFile section */
 		3304458C20ED807CD5199F2B /* Pods_rn_chat_view.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */; };
+		4429E3D3B619B57DC6A10672 /* Pods_rn_chat_view_tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 130649E774FD0D1EBF5BFB25 /* Pods_rn_chat_view_tests.framework */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		1ACDE68D2F8EACFC00AB14C5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1A94772C2F7F041B001D82F5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1A9477332F7F041B001D82F5;
+			remoteInfo = "rn-chat-view";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		130649E774FD0D1EBF5BFB25 /* Pods_rn_chat_view_tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_rn_chat_view_tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A9477342F7F041B001D82F5 /* rn-chat-view.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "rn-chat-view.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1ACDE6892F8EACFC00AB14C5 /* rn-chat-view-tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "rn-chat-view-tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_rn_chat_view.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		9BD3EE2273C858282D69C49B /* Pods-rn-chat-view-tests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-rn-chat-view-tests.debug.xcconfig"; path = "Target Support Files/Pods-rn-chat-view-tests/Pods-rn-chat-view-tests.debug.xcconfig"; sourceTree = "<group>"; };
 		D3584ECF55590B7C027A9842 /* Pods-rn-chat-view.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-rn-chat-view.debug.xcconfig"; path = "Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view.debug.xcconfig"; sourceTree = "<group>"; };
 		DECBEC6C39920C6BEA089AC4 /* Pods-rn-chat-view.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-rn-chat-view.release.xcconfig"; path = "Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view.release.xcconfig"; sourceTree = "<group>"; };
+		EC5462498878B4117C9DC377 /* Pods-rn-chat-view-tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-rn-chat-view-tests.release.xcconfig"; path = "Target Support Files/Pods-rn-chat-view-tests/Pods-rn-chat-view-tests.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		1ACDE6932F8EAD8100AB14C5 /* Exceptions for "rn-chat-view-tests" folder in "rn-chat-view-tests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				rn_chat_view_tests.swift,
+			);
+			target = 1ACDE6882F8EACFC00AB14C5 /* rn-chat-view-tests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1A9477362F7F041B001D82F5 /* rn-chat-view */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "rn-chat-view";
+			sourceTree = "<group>";
+		};
+		1ACDE67A2F8EA98000AB14C5 /* rn-chat-view-tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				1ACDE6932F8EAD8100AB14C5 /* Exceptions for "rn-chat-view-tests" folder in "rn-chat-view-tests" target */,
+			);
+			path = "rn-chat-view-tests";
+			sourceTree = "<group>";
+		};
+		1ACDE68A2F8EACFC00AB14C5 /* rn-chat-view-tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "rn-chat-view-tests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -36,6 +72,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1ACDE6862F8EACFC00AB14C5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4429E3D3B619B57DC6A10672 /* Pods_rn_chat_view_tests.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -43,6 +87,8 @@
 			isa = PBXGroup;
 			children = (
 				1A9477362F7F041B001D82F5 /* rn-chat-view */,
+				1ACDE67A2F8EA98000AB14C5 /* rn-chat-view-tests */,
+				1ACDE68A2F8EACFC00AB14C5 /* rn-chat-view-tests */,
 				1A9477352F7F041B001D82F5 /* Products */,
 				1BFB2DF7D90AFAEC689DBE53 /* Pods */,
 				F152A6BE314B6DF33D4CE5A5 /* Frameworks */,
@@ -53,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				1A9477342F7F041B001D82F5 /* rn-chat-view.app */,
+				1ACDE6892F8EACFC00AB14C5 /* rn-chat-view-tests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -62,6 +109,8 @@
 			children = (
 				D3584ECF55590B7C027A9842 /* Pods-rn-chat-view.debug.xcconfig */,
 				DECBEC6C39920C6BEA089AC4 /* Pods-rn-chat-view.release.xcconfig */,
+				9BD3EE2273C858282D69C49B /* Pods-rn-chat-view-tests.debug.xcconfig */,
+				EC5462498878B4117C9DC377 /* Pods-rn-chat-view-tests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -70,6 +119,7 @@
 			isa = PBXGroup;
 			children = (
 				72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */,
+				130649E774FD0D1EBF5BFB25 /* Pods_rn_chat_view_tests.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -99,6 +149,28 @@
 			productReference = 1A9477342F7F041B001D82F5 /* rn-chat-view.app */;
 			productType = "com.apple.product-type.application";
 		};
+		1ACDE6882F8EACFC00AB14C5 /* rn-chat-view-tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1ACDE68F2F8EACFC00AB14C5 /* Build configuration list for PBXNativeTarget "rn-chat-view-tests" */;
+			buildPhases = (
+				6811EEE617E8ADE5196EDB6C /* [CP] Check Pods Manifest.lock */,
+				1ACDE6852F8EACFC00AB14C5 /* Sources */,
+				1ACDE6862F8EACFC00AB14C5 /* Frameworks */,
+				1ACDE6872F8EACFC00AB14C5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1ACDE68E2F8EACFC00AB14C5 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				1ACDE68A2F8EACFC00AB14C5 /* rn-chat-view-tests */,
+			);
+			name = "rn-chat-view-tests";
+			productName = "rn-chat-view-tests";
+			productReference = 1ACDE6892F8EACFC00AB14C5 /* rn-chat-view-tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -111,6 +183,10 @@
 				TargetAttributes = {
 					1A9477332F7F041B001D82F5 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					1ACDE6882F8EACFC00AB14C5 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 1A9477332F7F041B001D82F5;
 					};
 				};
 			};
@@ -129,12 +205,20 @@
 			projectRoot = "";
 			targets = (
 				1A9477332F7F041B001D82F5 /* rn-chat-view */,
+				1ACDE6882F8EACFC00AB14C5 /* rn-chat-view-tests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		1A9477322F7F041B001D82F5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1ACDE6872F8EACFC00AB14C5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -166,6 +250,28 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		6811EEE617E8ADE5196EDB6C /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-rn-chat-view-tests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 		D46E2CCD46863AC4043A7F86 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -174,9 +280,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-rn-chat-view/Pods-rn-chat-view-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -193,7 +303,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		1ACDE6852F8EACFC00AB14C5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1ACDE68E2F8EACFC00AB14C5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1A9477332F7F041B001D82F5 /* rn-chat-view */;
+			targetProxy = 1ACDE68D2F8EACFC00AB14C5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1A94773D2F7F041D001D82F5 /* Debug */ = {
@@ -385,6 +510,52 @@
 			};
 			name = Release;
 		};
+		1ACDE6902F8EACFC00AB14C5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9BD3EE2273C858282D69C49B /* Pods-rn-chat-view-tests.debug.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7A89C8T284;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rn-chat-view.rn-chat-view-tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/rn-chat-view.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/rn-chat-view";
+			};
+			name = Debug;
+		};
+		1ACDE6912F8EACFC00AB14C5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EC5462498878B4117C9DC377 /* Pods-rn-chat-view-tests.release.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7A89C8T284;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.rn-chat-view.rn-chat-view-tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/rn-chat-view.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/rn-chat-view";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -402,6 +573,15 @@
 			buildConfigurations = (
 				1A9477402F7F041D001D82F5 /* Debug */,
 				1A9477412F7F041D001D82F5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1ACDE68F2F8EACFC00AB14C5 /* Build configuration list for PBXNativeTarget "rn-chat-view-tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1ACDE6902F8EACFC00AB14C5 /* Debug */,
+				1ACDE6912F8EACFC00AB14C5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

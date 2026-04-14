@@ -7,6 +7,7 @@ extension ChatMessage {
         guard let id = dict["id"] as? String,
               let ts = dict["timestamp"] as? Double else { return nil }
 
+        let localId = dict["localId"] as? String
         let text = dict["text"] as? String
         let senderName = dict["senderName"] as? String
         let senderAvatarUrl = dict["senderAvatarUrl"] as? String
@@ -27,6 +28,7 @@ extension ChatMessage {
 
         return ChatMessage(
             id: id,
+            localId: localId,
             content: content,
             timestamp: date,
             senderName: senderName,

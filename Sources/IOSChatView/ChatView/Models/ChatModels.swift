@@ -167,6 +167,10 @@ public struct MessageAction: Equatable, Hashable {
 
 public struct ChatMessage: Equatable, Hashable {
     public let id: String
+    /// Local ID for pending→real mapping. When a pending message (e.g. id="pending_1")
+    /// is confirmed by the server (e.g. id="real_1"), both share the same `localId`.
+    /// This allows the diff engine to treat the ID change as a content update, not delete+insert.
+    public let localId: String?
     public let content: MessageBody
     public let timestamp: Date
     public let senderName: String?
@@ -181,8 +185,9 @@ public struct ChatMessage: Equatable, Hashable {
     public let isEdited: Bool
     public let actions: [MessageAction]
 
-    public init(id: String, content: MessageBody, timestamp: Date, senderName: String?, senderAvatarUrl: String? = nil, ownership: MessageOwnership, groupDate: String, status: MessageStatus, reply: ReplyInfo?, forwardedFrom: String?, reactions: [Reaction], thread: ThreadInfo? = nil, isEdited: Bool, actions: [MessageAction]) {
+    public init(id: String, localId: String? = nil, content: MessageBody, timestamp: Date, senderName: String?, senderAvatarUrl: String? = nil, ownership: MessageOwnership, groupDate: String, status: MessageStatus, reply: ReplyInfo?, forwardedFrom: String?, reactions: [Reaction], thread: ThreadInfo? = nil, isEdited: Bool, actions: [MessageAction]) {
         self.id = id
+        self.localId = localId
         self.content = content
         self.timestamp = timestamp
         self.senderName = senderName

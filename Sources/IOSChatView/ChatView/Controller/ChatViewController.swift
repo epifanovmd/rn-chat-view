@@ -474,9 +474,9 @@ public final class ChatViewController: UIViewController {
         // Defer structural updates while the user is actively scrolling.
         // Content, append, and prepend are safe — they handle scroll position internally.
         if collectionView.isDragging || collectionView.isDecelerating {
-            let strategy = messageUpdateHandler.peekClassify(
+            let isStructural = messageUpdateHandler.peekClassify(
                 old: messages, new: newMessages)
-            if strategy == .structural {
+            if isStructural {
                 pendingMessages = newMessages
                 return
             }
@@ -709,26 +709,26 @@ public final class ChatViewController: UIViewController {
             return
         }
 
+        // Compute distanceFromEnd BEFORE changing inset (uses oldBottom)
+        let distanceFromEnd = cv.contentSize.height - cv.contentOffset.y - cv.bounds.height + oldBottom
+
         cv.contentInset.bottom = newBottom
         cv.verticalScrollIndicatorInsets.bottom = newIndicatorBottom
 
-        // Don't adjust offset during initial scroll protection or programmatic scroll —
-        // the offset was just set precisely and should not be recalculated.
+        // Don't adjust offset during initial scroll protection —
+        // the offset will be set by executePendingInitialScroll.
         guard !isInitialScrollProtected,
-              pendingInitialScroll == nil,
-              !isProgrammaticScroll else {
+              pendingInitialScroll == nil else {
             return
         }
 
-        let distanceFromEnd = cv.contentSize.height - cv.contentOffset.y - cv.bounds.height + oldBottom
         let maxOffsetY = cv.contentSize.height - cv.bounds.height + newBottom
         let minOffsetY = -cv.contentInset.top
         // When content is too small to fill the visible area, keep it pinned at top
         guard maxOffsetY > minOffsetY else { return }
 
         let newOffsetY = cv.contentSize.height - cv.bounds.height + newBottom - distanceFromEnd
-        let finalY = max(minOffsetY, min(newOffsetY, maxOffsetY))
-        cv.contentOffset = CGPoint(x: 0, y: finalY)
+        cv.contentOffset = CGPoint(x: 0, y: max(minOffsetY, min(newOffsetY, maxOffsetY)))
     }
 
     @objc func dismissKeyboard() { view.endEditing(true) }

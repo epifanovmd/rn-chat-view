@@ -4,6 +4,10 @@ target 'rn-chat-view' do
   use_frameworks!
 
   pod 'IOSChatView', :path => '..'
+
+  target 'rn-chat-view-tests' do
+    inherit! :search_paths
+  end
 end
 
 post_install do |installer|

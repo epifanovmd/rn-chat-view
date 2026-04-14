@@ -36,7 +36,10 @@ struct DemoChatView: UIViewControllerRepresentable {
         let custom = CustomChatDemoViewController()
         custom.tabBarItem = UITabBarItem(title: "Custom", image: UIImage(systemName: "paintbrush"), tag: 1)
 
-        tabBar.viewControllers = [standard, custom]
+        let debug = UINavigationController(rootViewController: DebugChatViewController())
+        debug.tabBarItem = UITabBarItem(title: "Debug", image: UIImage(systemName: "ladybug"), tag: 2)
+
+        tabBar.viewControllers = [standard, custom, debug]
         return tabBar
     }
 

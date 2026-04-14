@@ -30,9 +30,10 @@ public enum ChatRow: Hashable {
 extension ChatRow: Differentiable {
 
     /// Stable identity for diffing — same ID means same logical item.
+    /// Uses `localId` when available so pending→real messages share the same identity.
     public var differenceIdentifier: String {
         switch self {
-        case .message(let msg):     return "m_\(msg.id)"
+        case .message(let msg):     return "m_\(msg.localId ?? msg.id)"
         case .dateSeparator(let d): return "d_\(d)"
         case .loading(let p):       return "l_\(p)"
         }
