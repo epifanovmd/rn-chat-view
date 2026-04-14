@@ -4,14 +4,6 @@ import Testing
 @Suite("Case 4: Append newer messages (pagination)")
 struct Case04_AppendPaginationTests {
 
-    @Test("append batch = appendOnly strategy")
-    func diffStrategy() {
-        let old = TestMsgFactory.batch(count: 3, startId: 1, baseOffset: 0)
-        let new = old + TestMsgFactory.batch(count: 30, startId: 4, baseOffset: 180)
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .appendOnly)
-    }
-
     @Test("scroll stays in place (NOT scrolled to bottom)")
     @MainActor func scrollPreserved() {
         let h = ChatTestHelper()

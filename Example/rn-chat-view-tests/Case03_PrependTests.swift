@@ -4,14 +4,6 @@ import Testing
 @Suite("Case 3: Prepend older messages")
 struct Case03_PrependTests {
 
-    @Test("prepend = prependOnly strategy")
-    func diffStrategy() {
-        let old = TestMsgFactory.batch(count: 3, startId: 4, baseOffset: 180)
-        let new = TestMsgFactory.batch(count: 3, startId: 1, baseOffset: 0) + old
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .prependOnly)
-    }
-
     @Test("scroll offset compensated — user stays in place")
     @MainActor func offsetCompensation() {
         let h = ChatTestHelper()

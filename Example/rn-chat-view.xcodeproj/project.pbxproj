@@ -32,28 +32,10 @@
 		EC5462498878B4117C9DC377 /* Pods-rn-chat-view-tests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-rn-chat-view-tests.release.xcconfig"; path = "Target Support Files/Pods-rn-chat-view-tests/Pods-rn-chat-view-tests.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		1ACDE6932F8EAD8100AB14C5 /* Exceptions for "rn-chat-view-tests" folder in "rn-chat-view-tests" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				rn_chat_view_tests.swift,
-			);
-			target = 1ACDE6882F8EACFC00AB14C5 /* rn-chat-view-tests */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1A9477362F7F041B001D82F5 /* rn-chat-view */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "rn-chat-view";
-			sourceTree = "<group>";
-		};
-		1ACDE67A2F8EA98000AB14C5 /* rn-chat-view-tests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				1ACDE6932F8EAD8100AB14C5 /* Exceptions for "rn-chat-view-tests" folder in "rn-chat-view-tests" target */,
-			);
-			path = "rn-chat-view-tests";
 			sourceTree = "<group>";
 		};
 		1ACDE68A2F8EACFC00AB14C5 /* rn-chat-view-tests */ = {
@@ -87,7 +69,6 @@
 			isa = PBXGroup;
 			children = (
 				1A9477362F7F041B001D82F5 /* rn-chat-view */,
-				1ACDE67A2F8EA98000AB14C5 /* rn-chat-view-tests */,
 				1ACDE68A2F8EACFC00AB14C5 /* rn-chat-view-tests */,
 				1A9477352F7F041B001D82F5 /* Products */,
 				1BFB2DF7D90AFAEC689DBE53 /* Pods */,

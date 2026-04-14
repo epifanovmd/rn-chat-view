@@ -4,30 +4,6 @@ import Testing
 @Suite("Case 7: Content updates")
 struct Case07_ContentUpdateTests {
 
-    @Test("text edit = contentOnly")
-    func textEditStrategy() {
-        let old = [TestMsgFactory.msg("1", text: "short")]
-        let new = [TestMsgFactory.msg("1", text: "much longer text")]
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .contentOnly)
-    }
-
-    @Test("status change = contentOnly")
-    func statusStrategy() {
-        let old = [TestMsgFactory.msg("1", status: .sent, ownership: .mine)]
-        let new = [TestMsgFactory.msg("1", status: .read, ownership: .mine)]
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .contentOnly)
-    }
-
-    @Test("reaction = contentOnly")
-    func reactionStrategy() {
-        let old = [TestMsgFactory.msg("1")]
-        let new = [TestMsgFactory.msg("1", reactions: [Reaction(emoji: "👍", count: 1, isSelected: true)])]
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .contentOnly)
-    }
-
     @Test("height changes when text gets longer")
     @MainActor func heightChangesOnEdit() {
         let h = ChatTestHelper()
@@ -62,14 +38,5 @@ struct Case07_ContentUpdateTests {
         let offsetAfter = h.contentOffset.y
         // Bottom-stable: offset may shift if changed msg is below viewport, but shouldn't jump wildly
         #expect(abs(offsetAfter - offsetBefore) < 100, "Scroll jumped too much: \(offsetBefore) → \(offsetAfter)")
-    }
-
-    @Test("status cascade: all updated in one pass")
-    func statusCascade() {
-        let old = [TestMsgFactory.msg("1", status: .sent), TestMsgFactory.msg("2", status: .delivered), TestMsgFactory.msg("3", status: .sent)]
-        let new = [TestMsgFactory.msg("1", status: .read), TestMsgFactory.msg("2", status: .read), TestMsgFactory.msg("3", status: .read)]
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(diff.updatedIDs.count == 3)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .contentOnly)
     }
 }

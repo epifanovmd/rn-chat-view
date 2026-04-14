@@ -4,13 +4,6 @@ import Testing
 @Suite("Case 2: Clear all messages")
 struct Case02_ClearTests {
 
-    @Test("messages → empty = clear strategy")
-    func diffStrategy() {
-        let old = TestMsgFactory.batch(count: 3)
-        let diff = MessageDiff.compute(old: old, new: [])
-        #expect(MessageDiff.classify(old: old, new: [], diff: diff) == .clear)
-    }
-
     @Test("clear removes all messages and rows")
     @MainActor func clearRemovesAll() {
         let h = ChatTestHelper()

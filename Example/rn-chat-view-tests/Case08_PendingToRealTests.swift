@@ -4,41 +4,7 @@ import Testing
 @Suite("Case 8: Pending → real (send confirm)")
 struct Case08_PendingToRealTests {
 
-    // MARK: - Without localId (legacy behavior) → structural
-
-    @Test("without localId: pending replaced = structural (delete + insert)")
-    func diffStrategy_noLocalId() {
-        let old = [TestMsgFactory.msg("1"), TestMsgFactory.msg("pending_1", status: .sending, ownership: .mine)]
-        let new = [TestMsgFactory.msg("1"), TestMsgFactory.msg("real_1", status: .sent, ownership: .mine)]
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .structural)
-        #expect(diff.deletedIDs == ["pending_1"])
-        #expect(diff.insertedIDs == ["real_1"])
-    }
-
-    // MARK: - With localId → contentOnly (in-place update)
-
-    @Test("with localId: pending→real = contentOnly (no delete/insert)")
-    func diffStrategy_withLocalId() {
-        let localId = "local_abc"
-        let old = [
-            TestMsgFactory.msg("1"),
-            TestMsgFactory.msg("pending_1", localId: localId, text: "Sending...", offset: 60, status: .sending, ownership: .mine)
-        ]
-        let new = [
-            TestMsgFactory.msg("1"),
-            TestMsgFactory.msg("real_1", localId: localId, text: "Delivered!", offset: 60, status: .sent, ownership: .mine)
-        ]
-        let diff = MessageDiff.compute(old: old, new: new)
-        let strategy = MessageDiff.classify(old: old, new: new, diff: diff)
-
-        // No structural changes — pending→real mapped via localId
-        #expect(strategy == .contentOnly)
-        #expect(diff.deletedIDs.isEmpty)
-        #expect(diff.insertedIDs.isEmpty)
-        // real_1 is in updatedIDs
-        #expect(diff.updatedIDs.contains("real_1"))
-    }
+    // MARK: - Pending mapping unit tests (critical edge cases)
 
     @Test("pendingMapping: detects localId-based mapping")
     func pendingMapping() {

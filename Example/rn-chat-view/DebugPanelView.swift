@@ -31,6 +31,9 @@ enum DebugAction: String, CaseIterable, Identifiable {
     case deleteAndUpdate = "Del+Upd"
     case insertDeleteUpdate = "I+D+U"
     case pendingToReal = "Send"
+    case shuffleVisible = "Shuffle"
+    case deleteTwoGaps = "Del2x"
+    case insertThree = "Ins3"
     case sameTimestamp = "SameTS"
     case replaceAll = "Replace"
     case systemMsg = "System"
@@ -57,7 +60,7 @@ enum DebugAction: String, CaseIterable, Identifiable {
             return .green
         case .deleteFirst, .deleteLast, .deleteMiddle, .deleteBatch, .clearAll:
             return .red
-        case .insertAndUpdate, .deleteAndInsert, .deleteAndUpdate, .insertDeleteUpdate, .pendingToReal:
+        case .insertAndUpdate, .deleteAndInsert, .deleteAndUpdate, .insertDeleteUpdate, .pendingToReal, .shuffleVisible, .deleteTwoGaps, .insertThree:
             return .orange
         case .sameTimestamp, .replaceAll, .systemMsg, .pinnedMsg:
             return .purple

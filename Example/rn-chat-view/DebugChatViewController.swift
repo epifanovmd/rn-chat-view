@@ -213,6 +213,49 @@ final class DebugChatViewController: UIViewController, ChatViewControllerDelegat
             }
             return
 
+        // ── Stress ───────────────────────────────────────────────────
+        case .shuffleVisible:
+            // Randomly reorder ~8 messages around the bottom (visible area)
+            guard msgs.count >= 4 else { break }
+            let windowSize = min(8, msgs.count)
+            let start = max(0, msgs.count - windowSize)
+            var indices = Array(start..<msgs.count)
+            let origMessages = indices.map { msgs[$0] }
+            let shuffledMessages = origMessages.shuffled()
+            for (i, idx) in indices.enumerated() {
+                let orig = shuffledMessages[i]
+                let ts = msgs[idx].timestamp
+                let groupDate = msgs[idx].groupDate
+                msgs[idx] = ChatMessage(
+                    id: orig.id, content: orig.content, timestamp: ts,
+                    senderName: orig.senderName, ownership: orig.ownership,
+                    groupDate: groupDate, status: orig.status, reply: orig.reply,
+                    forwardedFrom: orig.forwardedFrom, reactions: orig.reactions,
+                    isEdited: orig.isEdited, actions: orig.actions
+                )
+            }
+
+        case .deleteTwoGaps:
+            // Delete two messages in different places (every other one)
+            guard msgs.count >= 5 else { break }
+            let a = msgs.count / 3
+            let b = msgs.count * 2 / 3
+            // Remove higher index first to preserve lower index
+            msgs.remove(at: b)
+            msgs.remove(at: a)
+
+        case .insertThree:
+            // Insert new messages at 3 different positions: start, middle, end
+            guard !msgs.isEmpty else { break }
+            let tsStart = msgs[0].timestamp.addingTimeInterval(-30)
+            let mid = msgs.count / 2
+            let tsMid = msgs[mid].timestamp.addingTimeInterval(1)
+            let tsEnd = msgs.last!.timestamp.addingTimeInterval(60)
+            // Insert from end to start to preserve indices
+            msgs.append(DebugMessageFactory.makeMessage(text: "Ins.end 🔽", timestamp: tsEnd))
+            msgs.insert(DebugMessageFactory.makeMessage(text: "Ins.mid ◆", timestamp: tsMid), at: mid + 1)
+            msgs.insert(DebugMessageFactory.makeMessage(text: "Ins.top 🔼", timestamp: tsStart), at: 0)
+
         // ── Edge ────────────────────────────────────────────────────
         case .sameTimestamp:
             let ts = Date()

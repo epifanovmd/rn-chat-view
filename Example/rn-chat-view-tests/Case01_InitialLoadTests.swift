@@ -4,25 +4,6 @@ import Testing
 @Suite("Case 1: Initial load")
 struct Case01_InitialLoadTests {
 
-    // ── Unit ────────────────────────────────────────────────────────
-
-    @Test("empty → messages = initial strategy")
-    func diffStrategy() {
-        let new = TestMsgFactory.batch(count: 3)
-        let diff = MessageDiff.compute(old: [], new: new)
-        #expect(MessageDiff.classify(old: [], new: new, diff: diff) == .initial)
-    }
-
-    @Test("all IDs inserted")
-    func allInserted() {
-        let new = TestMsgFactory.batch(count: 3)
-        let diff = MessageDiff.compute(old: [], new: new)
-        #expect(diff.insertedIDs.count == 3)
-        #expect(diff.deletedIDs.isEmpty)
-    }
-
-    // ── Integration ─────────────────────────────────────────────────
-
     @Test("messages appear and scroll is at bottom")
     @MainActor func initialScrollToBottom() {
         let h = ChatTestHelper()

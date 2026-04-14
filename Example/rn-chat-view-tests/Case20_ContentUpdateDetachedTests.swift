@@ -4,15 +4,6 @@ import Testing
 @Suite("Case 20: Content update while scrolled up")
 struct Case20_ContentUpdateDetachedTests {
 
-    @Test("edit above viewport = contentOnly")
-    func contentOnlyStrategy() {
-        let old = [TestMsgFactory.msg("1", text: "short"), TestMsgFactory.msg("2", offset: 60), TestMsgFactory.msg("3", offset: 120)]
-        let new = [TestMsgFactory.msg("1", text: "much longer text that increases height"), TestMsgFactory.msg("2", offset: 60), TestMsgFactory.msg("3", offset: 120)]
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .contentOnly)
-        #expect(diff.updatedIDs == ["1"])
-    }
-
     @Test("scroll stays near position when edit above")
     @MainActor func scrollStable() {
         let h = ChatTestHelper()

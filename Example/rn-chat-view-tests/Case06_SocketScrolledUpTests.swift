@@ -4,14 +4,6 @@ import Testing
 @Suite("Case 6: Socket message while scrolled up")
 struct Case06_SocketScrolledUpTests {
 
-    @Test("same strategy = appendOnly")
-    func diffStrategy() {
-        let old = TestMsgFactory.batch(count: 5)
-        let new = old + [TestMsgFactory.msg("new1", offset: 300)]
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .appendOnly)
-    }
-
     @Test("scroll stays at top when new message appended")
     @MainActor func scrollStaysAtTop() {
         let h = ChatTestHelper()

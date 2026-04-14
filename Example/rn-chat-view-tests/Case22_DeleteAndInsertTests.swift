@@ -4,18 +4,6 @@ import Testing
 @Suite("Case 22: Delete + insert simultaneously (replace)")
 struct Case22_DeleteAndInsertTests {
 
-    @Test("1 deleted + 1 inserted = structural")
-    func diffStrategy() {
-        let old = TestMsgFactory.batch(count: 5)
-        var new = old
-        new.remove(at: 2)
-        new.insert(TestMsgFactory.msg("new1", text: "Replacement", offset: 120), at: 2)
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .structural)
-        #expect(diff.deletedIDs.count == 1)
-        #expect(diff.insertedIDs.count == 1)
-    }
-
     @Test("message count stays the same")
     @MainActor func countPreserved() {
         let h = ChatTestHelper()

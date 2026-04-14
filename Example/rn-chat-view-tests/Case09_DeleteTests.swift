@@ -4,28 +4,6 @@ import Testing
 @Suite("Case 9: Delete message")
 struct Case09_DeleteTests {
 
-    @Test("delete middle = structural")
-    func deleteMiddleStrategy() {
-        let old = TestMsgFactory.batch(count: 5)
-        var new = old; new.remove(at: 2)
-        let diff = MessageDiff.compute(old: old, new: new)
-        #expect(MessageDiff.classify(old: old, new: new, diff: diff) == .structural)
-    }
-
-    @Test("delete first = structural")
-    func deleteFirst() {
-        let old = TestMsgFactory.batch(count: 3)
-        let diff = MessageDiff.compute(old: old, new: Array(old.dropFirst()))
-        #expect(diff.deletedIDs.count == 1)
-    }
-
-    @Test("delete last = structural")
-    func deleteLast() {
-        let old = TestMsgFactory.batch(count: 3)
-        let diff = MessageDiff.compute(old: old, new: Array(old.dropLast()))
-        #expect(diff.deletedIDs.count == 1)
-    }
-
     @Test("message count decreases")
     @MainActor func countDecreases() {
         let h = ChatTestHelper()
