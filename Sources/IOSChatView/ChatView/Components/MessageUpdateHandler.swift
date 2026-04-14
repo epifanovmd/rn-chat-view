@@ -243,9 +243,9 @@ private extension MessageUpdateHandler {
 
         // Auto-scroll to bottom only if:
         // 1. Explicit request (pendingScrollToBottom) — e.g. send message, returnToLatest
-        // 2. Was at bottom + new messages arrived (socket) + NOT during pagination
+        // 2. Was at bottom + NOT during pagination (stay at bottom regardless of insert/delete mix)
         let wantScrollToBottom = shouldScroll
-            || (s.wasAtBottom && !diff.insertedIDs.isEmpty && diff.deletedIDs.isEmpty && !vc.isLoadingNewerActive)
+            || (s.wasAtBottom && !vc.isLoadingNewerActive)
 
         print("[Unified] wantScroll=\(wantScrollToBottom) shouldScroll=\(shouldScroll) wasAtBottom=\(s.wasAtBottom) loadingNewer=\(vc.isLoadingNewerActive)")
 
@@ -286,59 +286,33 @@ private extension MessageUpdateHandler {
             return
         }
 
-        let isHeavy = structuralChanges > max(oldRows.count, newRows.count) / 2
+        print("[Unified] structural=\(structuralChanges) wantScroll=\(wantScrollToBottom) wasAtBottom=\(s.wasAtBottom)")
 
-        print("[Unified] structural=\(structuralChanges) isHeavy=\(isHeavy) wantScroll=\(wantScrollToBottom) wasAtBottom=\(s.wasAtBottom)")
+        // Capture anchor BEFORE applying changes — needed for stable scroll
+        let anchor = wantScrollToBottom ? nil : vc.currentScrollAnchor()
 
-        if isHeavy {
-            // Heavy: full reload + anchor restore
-            let anchor = wantScrollToBottom ? nil : vc.currentScrollAnchor()
+        cv.reload(using: changeset) { [weak vc] data in
+            guard let vc else { return }
+            vc.setRows(data)
+            vc.applyLayoutData(vc.computeLayoutData())
+        }
 
+        // Verify consistency
+        if vc.rows != newRows {
+            print("[Unified] ⚠️ rows inconsistent after DifferenceKit — full reload")
             vc.setRows(newRows)
             vc.applyLayoutData(vc.computeLayoutData())
             cv.reloadData()
-            cv.layoutIfNeeded()
+        }
 
-            if wantScrollToBottom {
-                scrollToBottom(cv: cv)
-                print("[Unified] heavy → scrollToBottom")
-            } else if let anchor {
-                vc.restoreScrollAnchor(anchor)
-                print("[Unified] heavy → restored anchor \(anchor.messageId.prefix(8))")
-            }
-        } else {
-            // Light: animated DifferenceKit batch
-            let savedOffset = s.savedOffset
+        cv.layoutIfNeeded()
 
-            cv.reload(using: changeset) { [weak vc] data in
-                guard let vc else { return }
-                vc.setRows(data)
-                vc.applyLayoutData(vc.computeLayoutData())
-            }
-
-            // Verify consistency
-            if vc.rows != newRows {
-                print("[Unified] ⚠️ rows inconsistent after DifferenceKit — full reload")
-                vc.setRows(newRows)
-                vc.applyLayoutData(vc.computeLayoutData())
-                cv.reloadData()
-            }
-
-            cv.layoutIfNeeded()
-
-            if wantScrollToBottom {
-                scrollToBottom(cv: cv)
-                print("[Unified] light → scrollToBottom")
-            } else {
-                // Restore offset — DifferenceKit may have shifted it
-                let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
-                let minY = -cv.adjustedContentInset.top
-                let clamped = min(max(savedOffset.y, minY), max(maxY, minY))
-                if abs(clamped - cv.contentOffset.y) > 0.5 {
-                    cv.contentOffset = CGPoint(x: savedOffset.x, y: clamped)
-                }
-                print("[Unified] light → offset=\(f(cv.contentOffset.y))")
-            }
+        if wantScrollToBottom {
+            scrollToBottom(cv: cv)
+            print("[Unified] → scrollToBottom")
+        } else if let anchor {
+            vc.restoreScrollAnchor(anchor)
+            print("[Unified] → restored anchor \(anchor.messageId.prefix(8))")
         }
 
         // Reconfigure updated cells in-place (preserves animations like poll bars).
@@ -361,7 +335,7 @@ private extension MessageUpdateHandler {
             vc.trackNewUnread(newMessages: vc.messages, oldCount: s.oldMessages.count)
         }
 
-        vc.finalizeUpdate(count: newRows.count, animated: !isHeavy)
+        vc.finalizeUpdate(count: newRows.count, animated: true)
         vc.flushPendingMessages()
     }
 

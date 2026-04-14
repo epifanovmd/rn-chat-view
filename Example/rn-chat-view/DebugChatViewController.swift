@@ -191,7 +191,7 @@ final class DebugChatViewController: UIViewController, ChatViewControllerDelegat
             let mid = msgs.count / 2
             if mid > 0 && mid < msgs.count - 1 { msgs.remove(at: mid) }
             if let idx = msgs.indices.first(where: { msgs[$0].ownership == .mine }) {
-                msgs[idx] = mutate(msgs[idx], status: .read)
+                msgs[idx] = mutate(msgs[idx], text: "Updated\nUpdated", isEdited: true)
             }
 
         case .pendingToReal:
