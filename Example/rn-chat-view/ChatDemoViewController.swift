@@ -749,9 +749,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         case "edit":
             chatVC.beginEdit(messageId: messageId, text: msg.content.text ?? "")
         case "delete":
-            var msgs = chatVC.messages
-            msgs.removeAll { $0.id == messageId }
-            updateMessages(msgs)
+            chatVC.deleteMessageAnimated(id: messageId)
         default:
             showAlert("Action: \(actionId)", "message: \(messageId)")
         }

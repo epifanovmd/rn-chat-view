@@ -514,6 +514,54 @@ public final class ChatViewController: UIViewController {
         cell.playHighlight()
     }
 
+    // MARK: - Animated Deletion
+
+    /// Delete a message with a disintegration particle effect.
+    ///
+    /// The bubble "shatters" into small particles that scatter and fade,
+    /// then the message is removed from the data and remaining cells shift up.
+    ///
+    /// - Parameters:
+    ///   - id: The message ID to delete.
+    ///   - config: Particle animation configuration (optional).
+    ///   - completion: Called after animation finishes and data is updated.
+    public func deleteMessageAnimated(
+        id: String,
+        config: DisintegrationAnimator.Config = .default,
+        completion: (() -> Void)? = nil
+    ) {
+        guard let rowIndex = rowIndexCache[id],
+              let cell = collectionView.cellForItem(at: IndexPath(item: rowIndex, section: 0)) as? MessageCell else {
+            // Cell not visible — just remove without animation
+            removeMessageFromData(id: id)
+            completion?()
+            return
+        }
+
+        // Animate the bubble disintegration
+        DisintegrationAnimator.disintegrate(
+            view: cell.bubbleView,
+            in: view,
+            config: config
+        ) { [weak self] in
+            completion?()
+            // Unhide in case the cell gets reused before dequeue
+            cell.bubbleView.isHidden = false
+        }
+
+        // Remove from data after a short delay so the cell collapses
+        // while particles are still flying
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            self?.removeMessageFromData(id: id)
+        }
+    }
+
+    private func removeMessageFromData(id: String) {
+        var updated = messages
+        updated.removeAll { $0.id == id }
+        updateMessages(updated)
+    }
+
     // MARK: - Input Mode
 
     public func beginReply(info: ReplyInfo) {
