@@ -93,6 +93,12 @@ final class ChatTestHelper {
     func scrollToMiddle() {
         scrollTo(y: maxOffsetY / 2)
     }
+
+    /// Экранная Y-позиция ячейки (frame.minY - contentOffset.y).
+    func screenY(forMessageId id: String) -> CGFloat? {
+        guard let frame = cellFrame(forMessageId: id) else { return nil }
+        return frame.minY - contentOffset.y
+    }
 }
 
 // MARK: - Message Factory

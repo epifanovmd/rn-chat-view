@@ -478,8 +478,8 @@ private extension MessageUpdateHandler {
         }
         vc.applyLayoutData(layoutData)
 
-        // Был внизу — останемся внизу, delta не нужна
-        let stayAtBottom = s.wasAtBottom && !wantScroll
+        // Был внизу — останемся внизу, delta не нужна (и при wantScroll тоже — мы уже внизу)
+        let stayAtBottom = s.wasAtBottom
 
         // Стабилизация offset относительно нижнего видимого сообщения
         let delta = (wantScroll || stayAtBottom) ? 0 : OffsetCalculator.bottomStableDelta(
@@ -510,11 +510,12 @@ private extension MessageUpdateHandler {
 
         if stayAtBottom {
             scrollToBottom(cv: cv, animated: false)
-        } else if !wantScroll {
+        } else if wantScroll {
+            scrollToBottom(cv: cv, animated: false)
+        } else {
             cv.contentOffset = CGPoint(x: s.savedOffset.x, y: s.savedOffset.y + delta)
             OffsetCalculator.clamp(cv: cv, savedX: s.savedOffset.x, skip: false)
         }
-        if wantScroll { scrollToBottom(cv: cv) }
 
         CATransaction.commit()
 
