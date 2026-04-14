@@ -34,7 +34,6 @@ extension ChatViewController: UICollectionViewDelegate {
         if scrollDirection != .down
             && offset < features.topLoadThreshold
             && hasMore && !isLoadingTop {
-            print("[Pagination] reachTop: offset=\(Int(offset)) threshold=\(Int(features.topLoadThreshold)) dir=\(scrollDirection) hasMore=\(hasMore) isLoadingTop=\(isLoadingTop)")
             delegate?.chatDidReachTop(distance: offset)
         }
 
@@ -44,7 +43,6 @@ extension ChatViewController: UICollectionViewDelegate {
             && distanceToBottom < features.bottomLoadThreshold
             && hasNewer && !isLoadingBottom && !isLoadingNewerActive {
             isLoadingNewerActive = true
-            print("[Pagination] reachBottom: distToBottom=\(Int(distanceToBottom)) threshold=\(Int(features.bottomLoadThreshold)) dir=\(scrollDirection) hasNewer=\(hasNewer)")
             delegate?.chatDidReachBottom(distance: distanceToBottom)
         }
 
@@ -103,7 +101,6 @@ extension ChatViewController {
         anchorThrottleTime = now
 
         if let anchor = currentScrollAnchor() {
-            print("[Anchor] report(throttled): msg=\(anchor.messageId.prefix(8)) offsetFromTop=\(String(format: "%.1f", anchor.offsetFromTop)) wasAtBottom=\(anchor.wasAtBottom)")
             delegate?.chatScrollAnchorChanged(anchor: anchor)
         }
     }
@@ -113,7 +110,6 @@ extension ChatViewController {
     /// to capture the final resting position.
     func reportScrollAnchorOnSettled() {
         guard !isInitialScrollProtected, !isProgrammaticScroll else {
-            print("[Anchor] reportOnSettled: BLOCKED (protected=\(isInitialScrollProtected) programmatic=\(isProgrammaticScroll))")
             return
         }
 
@@ -121,7 +117,6 @@ extension ChatViewController {
         anchorThrottleTime = 0
 
         if let anchor = currentScrollAnchor() {
-            print("[Anchor] reportOnSettled: msg=\(anchor.messageId.prefix(8)) offsetFromTop=\(String(format: "%.1f", anchor.offsetFromTop)) wasAtBottom=\(anchor.wasAtBottom) isNearBottom=\(isNearBottom())")
             delegate?.chatScrollAnchorChanged(anchor: anchor)
         }
     }

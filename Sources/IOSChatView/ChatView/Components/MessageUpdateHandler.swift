@@ -38,8 +38,6 @@ final class MessageUpdateHandler {
         let snapshot = Snapshot(vc: vc)
         let strategy = classify(old: snapshot.oldMessages, new: newMessages)
 
-        print("[UpdateHandler] classify: \(strategy) old=\(snapshot.oldMessages.count) new=\(newMessages.count) oldFirst=\(snapshot.oldMessages.first?.id.prefix(8) ?? "nil") newFirst=\(newMessages.first?.id.prefix(8) ?? "nil") oldLast=\(snapshot.oldMessages.last?.id.prefix(8) ?? "nil") newLast=\(newMessages.last?.id.prefix(8) ?? "nil")")
-
         switch strategy {
         case .initial:
             vc.setMessages(newMessages)
@@ -146,8 +144,6 @@ private extension MessageUpdateHandler {
 private extension MessageUpdateHandler {
 
     func applyInitial(vc: ChatViewController, newRows: [ChatRow]) {
-        print("[Initial] applyInitial: rows=\(newRows.count) pendingScrollToBottom=\(vc.pendingScrollToBottom) pendingAnchor=\(vc.pendingScrollAnchor?.messageId.prefix(8) ?? "nil") anchorWasAtBottom=\(vc.pendingScrollAnchor?.wasAtBottom ?? false)")
-
         vc.isInitialScrollProtected = true
         vc.sizeCache.invalidateAll()
         vc.setRows(newRows)
@@ -157,19 +153,15 @@ private extension MessageUpdateHandler {
         vc.collectionView.layoutIfNeeded()
 
         let cv = vc.collectionView!
-        print("[Initial] after layoutIfNeeded: offset=\(String(format: "%.1f", cv.contentOffset.y)) contentH=\(String(format: "%.0f", cv.contentSize.height)) frameH=\(String(format: "%.0f", cv.bounds.height)) insetTop=\(String(format: "%.1f", cv.contentInset.top)) insetBottom=\(String(format: "%.1f", cv.contentInset.bottom))")
 
         // pendingScrollToBottom takes priority (e.g., returnToLatest + scrollToBottom)
         if vc.pendingScrollToBottom {
-            print("[Initial] → pendingScrollToBottom=true → .toBottom")
             vc.pendingScrollAnchor = nil
             vc.pendingInitialScroll = .toBottom
         } else if let anchor = vc.pendingScrollAnchor {
-            print("[Initial] → anchor msg=\(anchor.messageId.prefix(8)) wasAtBottom=\(anchor.wasAtBottom) offsetFromTop=\(String(format: "%.1f", anchor.offsetFromTop)) → .toAnchor")
             vc.pendingScrollAnchor = nil
             vc.pendingInitialScroll = .toAnchor(anchor)
         } else {
-            print("[Initial] → no anchor, no pendingScroll → .toBottom (default)")
             vc.pendingInitialScroll = .toBottom
         }
 
@@ -182,9 +174,7 @@ private extension MessageUpdateHandler {
 private extension MessageUpdateHandler {
 
     func applyPrepend(vc: ChatViewController, newRows: [ChatRow], snapshot s: Snapshot) {
-        print("[UpdateHandler] applyPrepend: oldRows=\(s.oldRows.count) newRows=\(newRows.count)")
         guard newRows.count > s.oldRows.count else {
-            print("[UpdateHandler] applyPrepend: SKIPPED (newRows <= oldRows)")
             return
         }
 
@@ -221,7 +211,6 @@ private extension MessageUpdateHandler {
 
     func applyAppend(vc: ChatViewController, newRows: [ChatRow], snapshot s: Snapshot) {
         let wantScroll = vc.pendingScrollToBottom || (s.wasAtBottom && !vc.isLoadingNewerActive)
-        print("[Append] applyAppend: wantScroll=\(wantScroll) pendingScrollToBottom=\(vc.pendingScrollToBottom) wasAtBottom=\(s.wasAtBottom) isLoadingNewer=\(vc.isLoadingNewerActive) offset=\(String(format: "%.1f", vc.collectionView.contentOffset.y))")
         let wasLoadingNewer = vc.isLoadingNewerActive
         vc.isLoadingNewerActive = false
         if wantScroll { vc.pendingScrollToBottom = false }
@@ -236,7 +225,10 @@ private extension MessageUpdateHandler {
         vc.collectionView.layoutIfNeeded()
 
         if wantScroll {
-            vc.scrollToBottom(animated: true)
+            let maxY = vc.collectionView.contentSize.height - vc.collectionView.bounds.height + vc.collectionView.contentInset.bottom
+            if maxY > -vc.collectionView.contentInset.top {
+                vc.collectionView.setContentOffset(CGPoint(x: 0, y: maxY), animated: true)
+            }
         } else {
             vc.collectionView.contentOffset = s.savedOffset
         }
@@ -253,6 +245,8 @@ private extension MessageUpdateHandler {
     func applyContent(vc: ChatViewController, newMessages: [ChatMessage], snapshot s: Snapshot) {
         let shouldScroll = vc.pendingScrollToBottom
         if shouldScroll { vc.pendingScrollToBottom = false }
+
+        let cv = vc.collectionView!
 
         // Single O(n) pass: find changed messages, invalidate their size cache
         var changedIDs = Set<String>()
@@ -297,8 +291,6 @@ private extension MessageUpdateHandler {
             oldRows: s.oldRows, oldLayout: s.oldLayoutData,
             newRows: rows, newLayout: layoutData, vc: vc)
 
-        let cv = vc.collectionView!
-
         // Reconfigure visible cells in-place
         for cell in cv.visibleCells {
             guard let msgCell = cell as? MessageCell,
@@ -310,15 +302,21 @@ private extension MessageUpdateHandler {
         }
 
         if !shouldScroll {
-            cv.contentOffset = CGPoint(x: s.savedOffset.x, y: s.savedOffset.y + delta)
+            let newOffset = s.savedOffset.y + delta
+            cv.contentOffset = CGPoint(x: s.savedOffset.x, y: newOffset)
         }
         cv.collectionViewLayout.invalidateLayout()
         cv.layoutIfNeeded()
 
+        let preClamp = cv.contentOffset.y
         OffsetCalculator.clamp(cv: cv, savedX: s.savedOffset.x, skip: shouldScroll)
 
         if shouldScroll {
-            vc.scrollToBottom(animated: true)
+            // Scroll directly — do NOT call scrollToBottom() which re-sets pendingScrollToBottom
+            let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+            if maxY > -cv.contentInset.top {
+                cv.setContentOffset(CGPoint(x: 0, y: maxY), animated: true)
+            }
         }
 
         vc.finalizeUpdate(count: vc.rows.count, animated: true)
@@ -332,7 +330,6 @@ private extension MessageUpdateHandler {
 
     func applyStructuralEntry(vc: ChatViewController, newMessages: [ChatMessage], snapshot s: Snapshot) {
         let shouldScroll = vc.pendingScrollToBottom
-        print("[Structural] applyStructuralEntry: shouldScroll=\(shouldScroll) oldCount=\(s.oldMessages.count) newCount=\(newMessages.count)")
         if shouldScroll { vc.pendingScrollToBottom = false }
 
         // Detect deleted message IDs for disintegration animation
@@ -381,7 +378,10 @@ private extension MessageUpdateHandler {
             vc.collectionView.layoutIfNeeded()
 
             if shouldScroll {
-                vc.scrollToBottom(animated: true)
+                let maxY = vc.collectionView.contentSize.height - vc.collectionView.bounds.height + vc.collectionView.contentInset.bottom
+                if maxY > -vc.collectionView.contentInset.top {
+                    vc.collectionView.setContentOffset(CGPoint(x: 0, y: maxY), animated: true)
+                }
             } else if !s.wasAtBottom, let anchor {
                 vc.restoreScrollAnchor(anchor)
             }
@@ -404,7 +404,10 @@ private extension MessageUpdateHandler {
             vc.collectionView.layoutIfNeeded()
 
             if shouldScroll {
-                vc.scrollToBottom(animated: true)
+                let maxY = vc.collectionView.contentSize.height - vc.collectionView.bounds.height + vc.collectionView.contentInset.bottom
+                if maxY > -vc.collectionView.contentInset.top {
+                    vc.collectionView.setContentOffset(CGPoint(x: 0, y: maxY), animated: true)
+                }
             }
         }
 

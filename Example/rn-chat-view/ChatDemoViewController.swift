@@ -923,8 +923,6 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
     }
 
     func chatDidSendMessage(text: String, replyToId: String?) {
-        print("[Demo] Send: \"\(text)\", reply to: \(replyToId ?? "none")")
-
         // Append the new message to the list
         var msgs = chatVC.messages
         let today = DateHelper.shared.groupKey(from: Date())
