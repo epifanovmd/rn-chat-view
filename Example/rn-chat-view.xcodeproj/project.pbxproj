@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3304458C20ED807CD5199F2B /* Pods_rn_chat_view.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */; };
+		1ACDE7922F8EED7A00AB14C5 /* Pods_rn_chat_view.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */; };
+		1ACDE7932F8EED7A00AB14C5 /* Pods_rn_chat_view.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 72A56B67B812885A70797AB0 /* Pods_rn_chat_view.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		4429E3D3B619B57DC6A10672 /* Pods_rn_chat_view_tests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 130649E774FD0D1EBF5BFB25 /* Pods_rn_chat_view_tests.framework */; };
 /* End PBXBuildFile section */
 
@@ -20,6 +21,20 @@
 			remoteInfo = "rn-chat-view";
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1ACDE7942F8EED7A00AB14C5 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				1ACDE7932F8EED7A00AB14C5 /* Pods_rn_chat_view.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		130649E774FD0D1EBF5BFB25 /* Pods_rn_chat_view_tests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_rn_chat_view_tests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -50,7 +65,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3304458C20ED807CD5199F2B /* Pods_rn_chat_view.framework in Frameworks */,
+				1ACDE7922F8EED7A00AB14C5 /* Pods_rn_chat_view.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,6 +132,7 @@
 				1A9477312F7F041B001D82F5 /* Frameworks */,
 				1A9477322F7F041B001D82F5 /* Resources */,
 				D46E2CCD46863AC4043A7F86 /* [CP] Embed Pods Frameworks */,
+				1ACDE7942F8EED7A00AB14C5 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);

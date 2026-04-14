@@ -1,6 +1,17 @@
 import UIKit
 import DifferenceKit
 
+// MARK: - Логирование
+
+private func log(_ items: Any...) {
+    #if DEBUG
+    let msg = items.map { "\($0)" }.joined(separator: " ")
+    print(msg)
+    #endif
+}
+
+private func f(_ v: CGFloat) -> String { String(format: "%.1f", v) }
+
 // MARK: - Роутер обновлений
 
 /// Единая точка входа для обновления списка сообщений.
@@ -28,9 +39,14 @@ final class MessageUpdateHandler {
         guard let vc = controller else { return }
 
         let snap = Snapshot(vc: vc)
+        let oldCount = snap.oldMessages.count
+        let newCount = newMessages.count
+
+        log("━━━ [Update] \(oldCount) → \(newCount) сообщений, wasAtBottom=\(snap.wasAtBottom) ━━━")
 
         // Пустой → данные
         if snap.oldMessages.isEmpty {
+            log("  Стратегия: INITIAL")
             vc.setMessages(newMessages)
             vc.rebuildMessageIndex()
             applyInitial(vc: vc, newRows: vc.buildRows(from: newMessages))
@@ -39,18 +55,21 @@ final class MessageUpdateHandler {
 
         // Данные → пустой
         if newMessages.isEmpty {
+            log("  Стратегия: CLEAR")
             applyClear(vc: vc)
             return
         }
 
         // Prepend / Append — дешёвая O(n) проверка по порядку ID
         if MessageDiff.isPrependOnly(old: snap.oldMessages, new: newMessages) {
+            log("  Стратегия: PREPEND (+\(newCount - oldCount) сообщений сверху)")
             vc.setMessages(newMessages)
             vc.rebuildMessageIndex()
             applyPrepend(vc: vc, newRows: vc.buildRows(from: newMessages), snap: snap)
             return
         }
         if MessageDiff.isAppendOnly(old: snap.oldMessages, new: newMessages) {
+            log("  Стратегия: APPEND (+\(newCount - oldCount) сообщений снизу)")
             vc.setMessages(newMessages)
             vc.rebuildMessageIndex()
             applyAppend(vc: vc, newRows: vc.buildRows(from: newMessages), snap: snap)
@@ -67,21 +86,25 @@ final class MessageUpdateHandler {
 
         // DK changeset на строках (включая date separators, детектирует moves)
         let changeset = StagedChangeset(source: snap.oldRows, target: newRows)
-        let structuralCount = changeset.reduce(0) { $0 + $1.elementInserted.count + $1.elementDeleted.count + $1.elementMoved.count }
+
+        var insertCount = 0, deleteCount = 0, moveCount = 0, updateCount = 0
+        for stage in changeset {
+            insertCount += stage.elementInserted.count
+            deleteCount += stage.elementDeleted.count
+            moveCount += stage.elementMoved.count
+            updateCount += stage.elementUpdated.count
+        }
+        let structuralCount = insertCount + deleteCount + moveCount
 
         let shouldScroll = vc.pendingScrollToBottom
         if shouldScroll { vc.pendingScrollToBottom = false }
         let wantScroll = shouldScroll || (snap.wasAtBottom && !vc.isLoadingNewerActive)
 
-        let updateCount = changeset.reduce(0) { $0 + $1.elementUpdated.count }
-        print("[UpdateHandler] structural=\(structuralCount) updates=\(updateCount) pending=\(pendingMapping.oldToNew.count) wantScroll=\(wantScroll)")
-
         if structuralCount == 0 {
-            // ContentOnly: bottom-stable delta сам удержит позицию, scrollToBottom не нужен
+            log("  Стратегия: CONTENT_ONLY (обновлено: \(updateCount), pending: \(pendingMapping.oldToNew.count))")
             applyContentOnly(vc: vc, newRows: newRows, pendingMapping: pendingMapping, snap: snap, wantScroll: shouldScroll)
         } else {
-            // Анимированный скролл только по явному запросу (send, returnToLatest),
-            // для auto-scroll (wasAtBottom) — без анимации
+            log("  Стратегия: STRUCTURAL (ins=\(insertCount) del=\(deleteCount) move=\(moveCount) upd=\(updateCount), stages=\(changeset.count), pending=\(pendingMapping.oldToNew.count))")
             applyStructural(vc: vc, newRows: newRows, changeset: changeset, structuralCount: structuralCount, snap: snap, wantScroll: wantScroll, animateScroll: shouldScroll)
         }
     }
@@ -122,8 +145,6 @@ private extension MessageUpdateHandler {
 private extension MessageUpdateHandler {
 
     func applyInitial(vc: ChatViewController, newRows: [ChatRow]) {
-        print("[Initial] rows=\(newRows.count) pendingScrollToBottom=\(vc.pendingScrollToBottom) pendingAnchor=\(vc.pendingScrollAnchor?.messageId.prefix(8) ?? "nil")")
-
         vc.isInitialScrollProtected = true
         vc.sizeCache.invalidateAll()
         vc.setRows(newRows)
@@ -132,18 +153,19 @@ private extension MessageUpdateHandler {
         vc.collectionView.layoutIfNeeded()
 
         let cv = vc.collectionView!
-        print("[Initial] offset=\(f(cv.contentOffset.y)) contentH=\(f(cv.contentSize.height)) frameH=\(f(cv.bounds.height))")
+        log("  Метод: reloadData")
+        log("  Layout: rows=\(newRows.count) contentH=\(f(cv.contentSize.height)) frameH=\(f(cv.bounds.height))")
 
         if vc.pendingScrollToBottom {
-            print("[Initial] → toBottom (pending)")
+            log("  Скролл: → toBottom (явный запрос)")
             vc.pendingScrollAnchor = nil
             vc.pendingInitialScroll = .toBottom
         } else if let anchor = vc.pendingScrollAnchor {
-            print("[Initial] → toAnchor(\(anchor.messageId.prefix(8)))")
+            log("  Скролл: → toAnchor(\(anchor.messageId.prefix(12)))")
             vc.pendingScrollAnchor = nil
             vc.pendingInitialScroll = .toAnchor(anchor)
         } else {
-            print("[Initial] → toBottom (default)")
+            log("  Скролл: → toBottom (по умолчанию)")
             vc.pendingInitialScroll = .toBottom
         }
 
@@ -162,6 +184,7 @@ private extension MessageUpdateHandler {
         vc.applyLayoutData([])
         vc.sizeCache.invalidateAll()
         vc.collectionView.reloadData()
+        log("  Метод: reloadData (очистка)")
         vc.finalizeUpdate(count: 0, animated: false)
     }
 }
@@ -172,7 +195,7 @@ private extension MessageUpdateHandler {
 
     func applyPrepend(vc: ChatViewController, newRows: [ChatRow], snap s: Snapshot) {
         guard newRows.count > s.oldRows.count else {
-            print("[Prepend] ⚠️ SKIP: newRows(\(newRows.count)) <= oldRows(\(s.oldRows.count))")
+            log("  ⚠️ Пропуск: newRows(\(newRows.count)) <= oldRows(\(s.oldRows.count))")
             return
         }
 
@@ -186,7 +209,8 @@ private extension MessageUpdateHandler {
         for info in newLayout { newTotalH += info.totalHeight }
         let compensating = newTotalH - oldTotalH
 
-        print("[Prepend] oldRows=\(s.oldRows.count) newRows=\(newRows.count) compensating=\(f(compensating))")
+        log("  Метод: reloadData + компенсация offset")
+        log("  Offset: \(f(s.savedOffset.y)) + \(f(compensating)) = \(f(s.savedOffset.y + compensating))")
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -199,7 +223,6 @@ private extension MessageUpdateHandler {
 
         CATransaction.commit()
 
-        print("[Prepend] offset=\(f(vc.collectionView.contentOffset.y))")
         vc.finalizeUpdate(count: newRows.count, animated: false)
         vc.flushPendingMessages()
     }
@@ -215,7 +238,8 @@ private extension MessageUpdateHandler {
         let wantScroll = vc.pendingScrollToBottom || (s.wasAtBottom && insertedCount <= 2 && !vc.isLoadingNewerActive)
         if wantScroll { vc.pendingScrollToBottom = false }
 
-        print("[Append] oldRows=\(s.oldRows.count) newRows=\(newRows.count) wantScroll=\(wantScroll) wasAtBottom=\(s.wasAtBottom)")
+        log("  Метод: reloadData")
+        log("  Скролл: wantScroll=\(wantScroll) wasAtBottom=\(s.wasAtBottom) loadingNewer=\(vc.isLoadingNewerActive)")
 
         if !s.wasAtBottom && !wantScroll {
             vc.trackNewUnread(newMessages: vc.messages, oldCount: s.oldMessages.count)
@@ -231,10 +255,10 @@ private extension MessageUpdateHandler {
             if maxY > -vc.collectionView.contentInset.top {
                 vc.collectionView.setContentOffset(CGPoint(x: 0, y: maxY), animated: true)
             }
-            print("[Append] → scrollToBottom maxY=\(f(maxY))")
+            log("  Скролл: → scrollToBottom (animated)")
         } else {
             vc.collectionView.contentOffset = s.savedOffset
-            print("[Append] → offset=\(f(s.savedOffset.y))")
+            log("  Скролл: → сохранён offset=\(f(s.savedOffset.y))")
         }
 
         vc.finalizeUpdate(count: newRows.count, animated: false)
@@ -260,8 +284,6 @@ private extension MessageUpdateHandler {
             return oldIDs.subtracting(newIDs)
         }()
 
-        print("[Structural] changes=\(structuralCount) fullReplace=\(isFullReplace) deleted=\(deletedIDs.count) wantScroll=\(wantScroll)")
-
         let doApply = { [weak self] in
             guard let self else { return }
 
@@ -271,7 +293,7 @@ private extension MessageUpdateHandler {
             // Якорь для восстановления позиции скролла
             let anchor = wantScroll ? nil : vc.currentScrollAnchor()
             if let a = anchor {
-                print("[Structural] anchor: msg=\(a.messageId.prefix(12)) offsetFromTop=\(f(a.offsetFromTop)) wasAtBottom=\(a.wasAtBottom)")
+                log("  Anchor: msg=\(a.messageId.prefix(12)) offsetFromTop=\(f(a.offsetFromTop)) wasAtBottom=\(a.wasAtBottom)")
             }
 
             if isFullReplace {
@@ -281,54 +303,77 @@ private extension MessageUpdateHandler {
                     cv.reloadData()
                     cv.layoutIfNeeded()
                 }
-                print("[Structural] → crossfade")
+                log("  Метод: crossfade (полная замена)")
             } else {
-                // Подавляем анимацию для multi-stage insert/delete (промежуточные layout shifts).
-                // Moves (shuffle) — всегда анимируем, они не вызывают staged shifts.
-                let hasMultiStageInsertDelete = changeset.count > 1 && changeset.contains {
-                    !$0.elementInserted.isEmpty || !$0.elementDeleted.isEmpty
+                // Собираем все insert/delete из stages
+                var allDeleted: [IndexPath] = []
+                var allInserted: [IndexPath] = []
+                for stage in changeset {
+                    allDeleted += stage.elementDeleted.map { IndexPath(item: $0.element, section: $0.section) }
+                    allInserted += stage.elementInserted.map { IndexPath(item: $0.element, section: $0.section) }
                 }
-                let applyDK = {
+
+                let hasMixedInsertDelete = !allDeleted.isEmpty || !allInserted.isEmpty
+
+                if hasMixedInsertDelete && changeset.count > 1 {
+                    // Есть insert/delete в нескольких stages — схлопываем в один performBatchUpdates
+                    cv.performBatchUpdates({
+                        vc.setRows(newRows)
+                        vc.applyLayoutData(vc.computeLayoutData())
+                        if !allDeleted.isEmpty { cv.deleteItems(at: allDeleted) }
+                        if !allInserted.isEmpty { cv.insertItems(at: allInserted) }
+                    })
+                    cv.layoutIfNeeded()
+                    log("  Метод: merged batch (del=\(allDeleted.count) ins=\(allInserted.count), анимация: одновременная)")
+                } else if !hasMixedInsertDelete {
+                    // Только moves/updates — DK анимирует напрямую
                     cv.reload(using: changeset) { [weak vc] data in
                         guard let vc else { return }
                         vc.setRows(data)
                         vc.applyLayoutData(vc.computeLayoutData())
                     }
                     cv.layoutIfNeeded()
-                }
-
-                if hasMultiStageInsertDelete {
-                    UIView.performWithoutAnimation(applyDK)
+                    log("  Метод: DK batch (moves, анимация: DifferenceKit)")
                 } else {
-                    applyDK()
-                }
-
-                if vc.rows != newRows {
-                    print("[Structural] ⚠️ rows inconsistent → full reload")
-                    vc.setRows(newRows)
-                    vc.applyLayoutData(vc.computeLayoutData())
-                    cv.reloadData()
+                    // 1 stage с insert/delete — DK анимирует напрямую
+                    cv.reload(using: changeset) { [weak vc] data in
+                        guard let vc else { return }
+                        vc.setRows(data)
+                        vc.applyLayoutData(vc.computeLayoutData())
+                    }
                     cv.layoutIfNeeded()
+                    log("  Метод: DK batch (1 stage, анимация: DifferenceKit)")
                 }
-
-                let offsetAfterDK = cv.contentOffset.y
-                let contentHAfter = cv.contentSize.height
-                print("[Structural] → DK batch (stages=\(changeset.count)): offset \(f(offsetBefore))→\(f(offsetAfterDK)) contentH \(f(contentHBefore))→\(f(contentHAfter))")
             }
+
+            if vc.rows != newRows {
+                log("  ⚠️ Rows inconsistent → full reload")
+                vc.setRows(newRows)
+                vc.applyLayoutData(vc.computeLayoutData())
+                cv.reloadData()
+                cv.layoutIfNeeded()
+            }
+
+            let offsetAfter = cv.contentOffset.y
+            let contentHAfter = cv.contentSize.height
+            log("  Offset: \(f(offsetBefore)) → \(f(offsetAfter)), contentH: \(f(contentHBefore)) → \(f(contentHAfter))")
 
             if wantScroll {
                 self.scrollToBottom(cv: cv, animated: animateScroll)
-                print("[Structural] → scrollToBottom(animated=\(animateScroll))")
+                log("  Скролл: → scrollToBottom (animated=\(animateScroll))")
             } else if let anchor {
-                let offsetBeforeRestore = cv.contentOffset.y
+                let before = cv.contentOffset.y
                 vc.restoreScrollAnchor(anchor)
-                let offsetAfterRestore = cv.contentOffset.y
-                print("[Structural] → restore anchor \(anchor.messageId.prefix(12)): offset \(f(offsetBeforeRestore))→\(f(offsetAfterRestore)) delta=\(f(offsetAfterRestore - offsetBefore))")
+                let after = cv.contentOffset.y
+                log("  Скролл: → restore anchor \(anchor.messageId.prefix(12)), offset: \(f(before)) → \(f(after)), delta=\(f(after - offsetBefore))")
             }
 
             // Рекофигурация только ячеек с изменённым контентом (DK elementUpdated)
             let updatedIndices = Set(changeset.flatMap { $0.elementUpdated.map(\.element) })
-            self.reconfigureUpdatedCells(vc: vc, newRows: newRows, indices: updatedIndices)
+            if !updatedIndices.isEmpty {
+                self.reconfigureUpdatedCells(vc: vc, newRows: newRows, indices: updatedIndices)
+                log("  Reconfigure: \(updatedIndices.count) ячеек")
+            }
 
             if !s.wasAtBottom && !wantScroll {
                 vc.trackNewUnread(newMessages: vc.messages, oldCount: s.oldMessages.count)
@@ -338,8 +383,10 @@ private extension MessageUpdateHandler {
             vc.flushPendingMessages()
         }
 
-        // Disintegration только для частичных удалений, не для полной замены
-        if vc.disintegrationEnabled && !deletedIDs.isEmpty && !isFullReplace {
+        // Disintegration только для чистых удалений (без одновременных вставок)
+        let hasInserts = changeset.contains { !$0.elementInserted.isEmpty }
+        if vc.disintegrationEnabled && !deletedIDs.isEmpty && !isFullReplace && !hasInserts {
+            log("  Анимация: disintegration (\(deletedIDs.count) удалений)")
             animateDisintegrationThen(vc: vc, deletedIDs: deletedIDs, then: doApply)
         } else {
             doApply()
@@ -362,7 +409,6 @@ private extension MessageUpdateHandler {
         if count > 0 {
             cv.collectionViewLayout.invalidateLayout()
             cv.layoutIfNeeded()
-            print("[Structural] reconfigured \(count) cells")
         }
     }
 }
@@ -400,13 +446,15 @@ private extension MessageUpdateHandler {
         vc.setRows(rows)
         if !pendingMapping.isEmpty { vc.rebuildCachesFromRows() }
 
+        log("  Метод: инкрементальный патч (\(changed.count) изменений)")
+
         // Пересчёт layout только для изменённых строк — O(changed), не O(n)
         var layoutData = s.oldLayoutData
         var width = cv.bounds.width
         if width <= 0 { width = UIScreen.main.bounds.width }
 
         guard layoutData.count == rows.count else {
-            print("[ContentOnly] ⚠️ layout/row count mismatch → full reload")
+            log("  ⚠️ Layout/row count mismatch → full reload")
             vc.applyLayoutData(vc.computeLayoutData())
             cv.reloadData()
             cv.layoutIfNeeded()
@@ -431,7 +479,7 @@ private extension MessageUpdateHandler {
                 bottomInset: vc.layout.cellVSpacing / 2 + extraBottom
             )
             if abs(oldH - newH) > 0.5 {
-                print("[ContentOnly] height: \(msg.id.prefix(8)) \(f(oldH)) → \(f(newH))")
+                log("  Height: \(msg.id.prefix(12)) \(f(oldH)) → \(f(newH)) (Δ\(f(newH - oldH)))")
             }
         }
         vc.applyLayoutData(layoutData)
@@ -444,7 +492,11 @@ private extension MessageUpdateHandler {
             oldRows: s.oldRows, oldLayout: s.oldLayoutData,
             newRows: rows, newLayout: layoutData, vc: vc)
 
-        print("[ContentOnly] updated=\(changed.count) delta=\(f(delta)) wantScroll=\(wantScroll) stayAtBottom=\(stayAtBottom)")
+        if stayAtBottom {
+            log("  Скролл: stayAtBottom (без анимации)")
+        } else if delta != 0 {
+            log("  Скролл: bottom-stable delta=\(f(delta)), offset: \(f(s.savedOffset.y)) → \(f(s.savedOffset.y + delta))")
+        }
 
         // Рекофигурация видимых ячеек на месте (без пересоздания)
         for i in changed {
@@ -459,11 +511,9 @@ private extension MessageUpdateHandler {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
 
-        // Сначала layout с новыми размерами
         cv.collectionViewLayout.invalidateLayout()
         cv.layoutIfNeeded()
 
-        // Потом финальный offset (после того как contentSize обновился)
         if stayAtBottom {
             scrollToBottom(cv: cv, animated: false)
         } else if !wantScroll {
@@ -593,5 +643,3 @@ enum OffsetCalculator {
         return sums
     }
 }
-
-private func f(_ v: CGFloat) -> String { String(format: "%.1f", v) }
