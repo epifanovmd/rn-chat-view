@@ -4,6 +4,15 @@ import UIKit
 
 extension ChatViewController: UICollectionViewDelegate {
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        // Track scroll direction
+        let currentY = scrollView.contentOffset.y
+        if currentY > lastScrollOffsetY + 1 {
+            scrollDirection = .down
+        } else if currentY < lastScrollOffsetY - 1 {
+            scrollDirection = .up
+        }
+        lastScrollOffsetY = currentY
+
         let now = CACurrentMediaTime()
         if now - lastScrollEventTime >= layout.scrollThrottleInterval {
             lastScrollEventTime = now
@@ -21,18 +30,28 @@ extension ChatViewController: UICollectionViewDelegate {
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        if offset < features.topLoadThreshold && hasMore && !isLoadingTop {
+        // Top pagination — skip only if actively scrolling DOWN
+        if scrollDirection != .down
+            && offset < features.topLoadThreshold
+            && hasMore && !isLoadingTop {
+            print("[Pagination] reachTop: offset=\(Int(offset)) threshold=\(Int(features.topLoadThreshold)) dir=\(scrollDirection) hasMore=\(hasMore) isLoadingTop=\(isLoadingTop)")
             delegate?.chatDidReachTop(distance: offset)
         }
 
-        if contentH - offset - frameH < features.bottomLoadThreshold && hasNewer && !isLoadingBottom && !isLoadingNewerActive {
+        // Bottom pagination — skip only if actively scrolling UP
+        let distanceToBottom = contentH - offset - frameH
+        if scrollDirection != .up
+            && distanceToBottom < features.bottomLoadThreshold
+            && hasNewer && !isLoadingBottom && !isLoadingNewerActive {
             isLoadingNewerActive = true
-            delegate?.chatDidReachBottom(distance: contentH - offset - frameH)
+            print("[Pagination] reachBottom: distToBottom=\(Int(distanceToBottom)) threshold=\(Int(features.bottomLoadThreshold)) dir=\(scrollDirection) hasNewer=\(hasNewer)")
+            delegate?.chatDidReachBottom(distance: distanceToBottom)
         }
 
         updateFABVisibility(animated: true)
         updateVisibleMessages()
         updateFloatingDate()
+        reportScrollAnchorIfNeeded()
         if isLoadingTop { hideFirstDateSeparator(true) }
     }
 
@@ -42,10 +61,69 @@ extension ChatViewController: UICollectionViewDelegate {
 
     public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         isUserDragging = false
+        if !decelerate {
+            reportScrollAnchorOnSettled()
+            flushPendingMessages()
+        }
+    }
+
+    public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        reportScrollAnchorOnSettled()
+        flushPendingMessages()
     }
 
     public func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         isProgrammaticScroll = false
+        // Don't report anchor after programmatic scroll — RN controls that state
+    }
+}
+
+// MARK: - Scroll Anchor Reporting
+
+extension ChatViewController {
+
+    /// Throttled anchor report (~300ms).
+    /// Only fires during user-initiated scroll — blocked during:
+    /// - Initial scroll protection (applyInitial → executePendingInitialScroll)
+    /// - Programmatic scroll (scrollToBottom, scrollToMessage)
+    /// - Layout settling after data updates
+    func reportScrollAnchorIfNeeded() {
+        // Block during initial load / restore
+        guard !isInitialScrollProtected else { return }
+
+        // Block during programmatic scroll (scrollToBottom, scrollToMessage)
+        guard !isProgrammaticScroll else { return }
+
+        // Only report when user is actively dragging or decelerating
+        guard let cv = collectionView,
+              cv.isDragging || cv.isDecelerating || isUserDragging else { return }
+
+        let now = CACurrentMediaTime()
+        guard now - anchorThrottleTime >= 0.3 else { return }
+        anchorThrottleTime = now
+
+        if let anchor = currentScrollAnchor() {
+            print("[Anchor] report(throttled): msg=\(anchor.messageId.prefix(8)) offsetFromTop=\(String(format: "%.1f", anchor.offsetFromTop)) wasAtBottom=\(anchor.wasAtBottom)")
+            delegate?.chatScrollAnchorChanged(anchor: anchor)
+        }
+    }
+
+    /// Force-report current anchor once after user scroll ends.
+    /// Called from scrollViewDidEndDragging / scrollViewDidEndDecelerating
+    /// to capture the final resting position.
+    func reportScrollAnchorOnSettled() {
+        guard !isInitialScrollProtected, !isProgrammaticScroll else {
+            print("[Anchor] reportOnSettled: BLOCKED (protected=\(isInitialScrollProtected) programmatic=\(isProgrammaticScroll))")
+            return
+        }
+
+        // Reset throttle so it fires immediately
+        anchorThrottleTime = 0
+
+        if let anchor = currentScrollAnchor() {
+            print("[Anchor] reportOnSettled: msg=\(anchor.messageId.prefix(8)) offsetFromTop=\(String(format: "%.1f", anchor.offsetFromTop)) wasAtBottom=\(anchor.wasAtBottom) isNearBottom=\(isNearBottom())")
+            delegate?.chatScrollAnchorChanged(anchor: anchor)
+        }
     }
 }
 

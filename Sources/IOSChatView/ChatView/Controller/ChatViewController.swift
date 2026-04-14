@@ -1,5 +1,27 @@
 import UIKit
 
+// MARK: - Scroll Anchor
+
+/// Stable scroll position anchor tied to a message, not a pixel offset.
+/// Anchors to the **top-most visible message** — stable during prepend/append.
+/// `offsetFromTop` = distance from the top of the visible area to the top of the anchor cell.
+public struct ScrollAnchor: Codable, Equatable {
+    /// ID of the anchor message (top-most visible message).
+    public let messageId: String
+    /// Distance from the top of the visible area to the top edge of the anchor cell (px).
+    /// Positive = cell top is below visible top (partially visible).
+    /// Negative = cell top is above visible top (cell extends above the screen).
+    public let offsetFromTop: CGFloat
+    /// Whether the user was at the bottom of the chat.
+    public let wasAtBottom: Bool
+
+    public init(messageId: String, offsetFromTop: CGFloat, wasAtBottom: Bool) {
+        self.messageId = messageId
+        self.offsetFromTop = offsetFromTop
+        self.wasAtBottom = wasAtBottom
+    }
+}
+
 public final class ChatViewController: UIViewController {
 
     // MARK: - Public Configuration
@@ -94,14 +116,15 @@ public final class ChatViewController: UIViewController {
     // MARK: - Initial Scroll
 
     public var isInitialScrollProtected = false
-    public var pendingScrollMessageId: String?
-    /// Position for initial scroll: "top", "center" (default), "bottom".
-    public var pendingScrollMessagePosition: String?
+
+    /// Saved scroll anchor for pixel-accurate initial restore.
+    /// Set from RN before messages arrive. Used by applyInitial.
+    public var pendingScrollAnchor: ScrollAnchor?
 
     /// Pending initial scroll target set by applyInitial.
-    /// Executed by viewDidLayoutSubviews once bounds > 0 and contentInset settles.
+    /// Executed by viewDidLayoutSubviews once bounds > 0 and view is in window.
     enum PendingInitialScroll {
-        case toMessage(id: String, position: String)
+        case toAnchor(ScrollAnchor)
         case toBottom
     }
     var pendingInitialScroll: PendingInitialScroll?
@@ -139,8 +162,12 @@ public final class ChatViewController: UIViewController {
 
     // MARK: - Scroll State
 
+    enum ScrollDirection { case up, down, none }
+    var scrollDirection: ScrollDirection = .none
+    var lastScrollOffsetY: CGFloat = 0
     var isProgrammaticScroll = false
     var lastScrollEventTime: CFTimeInterval = 0
+    var anchorThrottleTime: CFTimeInterval = 0
     var visibleMessageIDs: Set<String> = []
     var lastVisibleThrottleTime: CFTimeInterval = 0
     var pendingVisibleThrottleTask: DispatchWorkItem?
@@ -185,22 +212,31 @@ public final class ChatViewController: UIViewController {
 
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        let cv = collectionView!
+        print("[Layout] viewDidLayoutSubviews: offset=\(String(format: "%.1f", cv.contentOffset.y)) contentH=\(String(format: "%.0f", cv.contentSize.height)) frameH=\(String(format: "%.0f", cv.bounds.height)) insetTop=\(String(format: "%.1f", cv.contentInset.top)) insetBottom=\(String(format: "%.1f", cv.contentInset.bottom)) protected=\(isInitialScrollProtected) pending=\(pendingInitialScroll != nil) programmatic=\(isProgrammaticScroll) pendingScrollToBottom=\(pendingScrollToBottom)")
         updateCollectionInsets()
         executePendingInitialScroll()
     }
 
     /// Execute pending initial scroll when the view is fully laid out:
-    /// bounds > 0 and contentInset has settled (not a temporary RN value).
+    /// bounds > 0 and view is in a window (not a temporary RN state).
     func executePendingInitialScroll() {
         guard let scroll = pendingInitialScroll else { return }
 
         let cv = collectionView!
         let frameH = cv.bounds.height
+
         let insetBottom = cv.contentInset.bottom
 
-        // Wait until view has real dimensions and inset has settled
+        // Wait until view has real dimensions, is in a window, and insets have settled.
+        // During RN mount, keyboard layout guide gives insetBottom=852 temporarily.
+        // We must wait until it settles to the real value (typically < half the screen).
         guard frameH > 0, cv.bounds.width > 0,
-              insetBottom < frameH * 0.5 else { return }
+              view.window != nil,
+              insetBottom < frameH * 0.5 else {
+            print("[Anchor] executePendingInitialScroll: WAITING (frameH=\(String(format: "%.0f", frameH)) width=\(String(format: "%.0f", cv.bounds.width)) window=\(view.window != nil) insetBottom=\(String(format: "%.0f", insetBottom)))")
+            return
+        }
 
         guard let layout = chatLayout else { return }
 
@@ -208,33 +244,29 @@ public final class ChatViewController: UIViewController {
         let contentH = cv.contentSize.height
 
         switch scroll {
-        case .toMessage(let id, let position):
-            if let rowIndex = rowIndexCache[id], rowIndex < layout.yOffsets.count {
-                let targetY = layout.yOffsets[rowIndex] - layout.rowLayoutData[rowIndex].topInset
-                let maxOffset = max(contentH - frameH + insetBottom, -topInset)
-                let clampedY = min(max(targetY, -topInset), maxOffset)
-                cv.contentOffset = CGPoint(x: 0, y: clampedY)
-
-                if position == "center" {
-                    pendingHighlightId = id
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                        self?.performHighlight()
-                    }
-                }
+        case .toAnchor(let anchor):
+            if anchor.wasAtBottom {
+                print("[Anchor] executePendingInitialScroll: .toAnchor(wasAtBottom) → scroll to bottom")
+                let maxY = max(contentH - frameH + insetBottom, -topInset)
+                cv.contentOffset = CGPoint(x: 0, y: maxY)
+            } else if rowIndexCache[anchor.messageId] != nil {
+                print("[Anchor] executePendingInitialScroll: .toAnchor(msg=\(anchor.messageId.prefix(8)) offsetFromTop=\(String(format: "%.1f", anchor.offsetFromTop))) → restoreScrollAnchor")
+                restoreScrollAnchor(anchor)
             } else {
+                print("[Anchor] executePendingInitialScroll: .toAnchor(msg=\(anchor.messageId.prefix(8))) NOT FOUND → fallback to bottom")
                 let maxY = max(contentH - frameH + insetBottom, -topInset)
                 cv.contentOffset = CGPoint(x: 0, y: maxY)
             }
 
         case .toBottom:
+            print("[Anchor] executePendingInitialScroll: .toBottom")
             let maxY = max(contentH - frameH + insetBottom, -topInset)
             cv.contentOffset = CGPoint(x: 0, y: maxY)
         }
 
         pendingInitialScroll = nil
-        pendingScrollMessageId = nil
-        pendingScrollMessagePosition = nil
         isInitialScrollProtected = false
+        print("[Anchor] executePendingInitialScroll: DONE → offset=\(String(format: "%.1f", cv.contentOffset.y)) contentH=\(String(format: "%.0f", cv.contentSize.height)) frameH=\(String(format: "%.0f", frameH)) insetTop=\(String(format: "%.1f", topInset)) insetBottom=\(String(format: "%.1f", insetBottom)) isNearBottom=\(isNearBottom())")
         finalizeUpdate(count: rows.count, animated: false)
     }
 
@@ -424,11 +456,15 @@ public final class ChatViewController: UIViewController {
     }
 
     private func reloadWithCrossfade() {
+        let anchor = currentScrollAnchor()
         sizeCache.invalidateAll()
         rows = buildRows(from: messages)
         applyLayoutData(computeLayoutData())
         UIView.transition(with: collectionView, duration: 0.25, options: .transitionCrossDissolve) {
             self.collectionView.reloadData()
+        } completion: { [weak self] _ in
+            guard let self, let anchor else { return }
+            self.restoreScrollAnchor(anchor)
         }
     }
 
@@ -441,6 +477,18 @@ public final class ChatViewController: UIViewController {
     public func updateMessages(_ newMessages: [ChatMessage]) {
         pendingLoadingRebuild?.cancel()
         pendingLoadingRebuild = nil
+
+        // Defer structural updates while the user is actively scrolling.
+        // Content, append, and prepend are safe — they handle scroll position internally.
+        if collectionView.isDragging || collectionView.isDecelerating {
+            let strategy = messageUpdateHandler.peekClassify(
+                old: messages, new: newMessages)
+            if strategy == .structural {
+                pendingMessages = newMessages
+                return
+            }
+        }
+
         messageUpdateHandler.update(with: newMessages)
     }
 
@@ -465,15 +513,98 @@ public final class ChatViewController: UIViewController {
     }
 
 
+    // MARK: - Scroll Anchor
+
+    /// Returns the current scroll position as a stable anchor tied to a message.
+    /// Anchors to the top-most visible message with offset from visible top.
+    /// Accounts for `adjustedContentInset.top` (safe area + extra inset).
+    public func currentScrollAnchor() -> ScrollAnchor? {
+        guard !messages.isEmpty, let cv = collectionView else { return nil }
+
+        if isNearBottom() {
+            guard let lastMsg = messages.last else { return nil }
+            return ScrollAnchor(messageId: lastMsg.id, offsetFromTop: 0, wasAtBottom: true)
+        }
+
+        // Visible top = contentOffset.y + adjustedContentInset.top
+        let visibleTop = cv.contentOffset.y + cv.adjustedContentInset.top
+
+        // Find the top-most visible message cell (sorted ascending by index)
+        let paths = cv.indexPathsForVisibleItems.sorted { $0.item < $1.item }
+
+        for ip in paths {
+            guard ip.item < rows.count,
+                  case .message(let msg) = rows[ip.item] else { continue }
+
+            let rowIdx = ip.item
+            guard rowIdx < chatLayout.rowLayoutData.count,
+                  rowIdx < chatLayout.yOffsets.count else { continue }
+
+            let cellTop = chatLayout.yOffsets[rowIdx]
+                + chatLayout.rowLayoutData[rowIdx].topInset
+            let offset = cellTop - visibleTop
+
+            return ScrollAnchor(messageId: msg.id, offsetFromTop: offset, wasAtBottom: false)
+        }
+        return nil
+    }
+
+    /// Restores scroll position from a previously saved anchor.
+    /// Inverse of `currentScrollAnchor()`: positions so that the anchor message's
+    /// top edge is at `offsetFromTop` below the visible top.
+    public func restoreScrollAnchor(_ anchor: ScrollAnchor) {
+        guard let cv = collectionView else { return }
+
+        if anchor.wasAtBottom {
+            print("[Anchor] restoreScrollAnchor: wasAtBottom → scrollToBottom")
+            scrollToBottom(animated: false)
+            return
+        }
+
+        guard let rowIndex = rowIndexCache[anchor.messageId],
+              rowIndex < chatLayout.rowLayoutData.count,
+              rowIndex < chatLayout.yOffsets.count else {
+            print("[Anchor] restoreScrollAnchor: message \(anchor.messageId.prefix(8)) NOT FOUND in rowIndexCache")
+            return
+        }
+
+        let cellTop = chatLayout.yOffsets[rowIndex]
+            + chatLayout.rowLayoutData[rowIndex].topInset
+
+        // visibleTop = contentOffset.y + adjustedContentInset.top
+        // cellTop = visibleTop + offsetFromTop
+        // → contentOffset.y = cellTop - offsetFromTop - adjustedContentInset.top
+        let targetOffset = cellTop - anchor.offsetFromTop - cv.adjustedContentInset.top
+
+        let minY = -cv.adjustedContentInset.top
+        let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+        let clampedY = min(max(targetOffset, minY), max(maxY, minY))
+
+        print("[Anchor] restoreScrollAnchor: msg=\(anchor.messageId.prefix(8)) offsetFromTop=\(String(format: "%.1f", anchor.offsetFromTop)) targetY=\(String(format: "%.1f", targetOffset)) clampedY=\(String(format: "%.1f", clampedY)) contentH=\(String(format: "%.0f", cv.contentSize.height))")
+        cv.contentOffset = CGPoint(x: 0, y: clampedY)
+    }
+
     // MARK: - Scroll
 
     public func scrollToBottom(animated: Bool) {
-        guard !messages.isEmpty else { return }
+        // Always set pending flag — ensures scroll happens even if messages
+        // haven't arrived yet (e.g., returnToLatest: command fires before data update).
+        pendingScrollToBottom = true
+        print("[Scroll] scrollToBottom(animated=\(animated)) pendingScrollToBottom=true msgs=\(messages.count)")
+
+        guard !messages.isEmpty else {
+            print("[Scroll] scrollToBottom: SKIP (empty)")
+            return
+        }
         collectionView.layoutIfNeeded()
         isProgrammaticScroll = true
         let maxY = collectionView.contentSize.height - collectionView.bounds.height + collectionView.contentInset.bottom
+        print("[Scroll] scrollToBottom: currentOffset=\(String(format: "%.1f", collectionView.contentOffset.y)) maxY=\(String(format: "%.1f", maxY)) contentH=\(String(format: "%.0f", collectionView.contentSize.height)) frameH=\(String(format: "%.0f", collectionView.bounds.height)) insetBottom=\(String(format: "%.1f", collectionView.contentInset.bottom))")
         if maxY > -collectionView.contentInset.top {
             collectionView.setContentOffset(CGPoint(x: 0, y: maxY), animated: animated)
+            print("[Scroll] scrollToBottom: SET offset to \(String(format: "%.1f", maxY))")
+        } else {
+            print("[Scroll] scrollToBottom: maxY \(String(format: "%.1f", maxY)) <= minY, NOT scrolling")
         }
         if !animated { isProgrammaticScroll = false }
     }
@@ -594,17 +725,29 @@ public final class ChatViewController: UIViewController {
             return
         }
 
-        let distanceFromEnd = cv.contentSize.height - cv.contentOffset.y - cv.bounds.height + oldBottom
+        print("[Insets] updateCollectionInsets: oldBottom=\(String(format: "%.1f", oldBottom)) newBottom=\(String(format: "%.1f", newBottom)) offset=\(String(format: "%.1f", cv.contentOffset.y)) protected=\(isInitialScrollProtected) pending=\(pendingInitialScroll != nil) programmatic=\(isProgrammaticScroll)")
         cv.contentInset.bottom = newBottom
         cv.verticalScrollIndicatorInsets.bottom = newIndicatorBottom
 
+        // Don't adjust offset during initial scroll protection or programmatic scroll —
+        // the offset was just set precisely and should not be recalculated.
+        guard !isInitialScrollProtected,
+              pendingInitialScroll == nil,
+              !isProgrammaticScroll else {
+            print("[Insets] updateCollectionInsets: SKIP offset adjustment (protected/pending/programmatic)")
+            return
+        }
+
+        let distanceFromEnd = cv.contentSize.height - cv.contentOffset.y - cv.bounds.height + oldBottom
         let maxOffsetY = cv.contentSize.height - cv.bounds.height + newBottom
         let minOffsetY = -cv.contentInset.top
         // When content is too small to fill the visible area, keep it pinned at top
         guard maxOffsetY > minOffsetY else { return }
 
         let newOffsetY = cv.contentSize.height - cv.bounds.height + newBottom - distanceFromEnd
-        cv.contentOffset = CGPoint(x: 0, y: max(minOffsetY, min(newOffsetY, maxOffsetY)))
+        let finalY = max(minOffsetY, min(newOffsetY, maxOffsetY))
+        print("[Insets] updateCollectionInsets: ADJUSTING offset \(String(format: "%.1f", cv.contentOffset.y)) → \(String(format: "%.1f", finalY)) (distFromEnd=\(String(format: "%.1f", distanceFromEnd)))")
+        cv.contentOffset = CGPoint(x: 0, y: finalY)
     }
 
     @objc func dismissKeyboard() { view.endEditing(true) }

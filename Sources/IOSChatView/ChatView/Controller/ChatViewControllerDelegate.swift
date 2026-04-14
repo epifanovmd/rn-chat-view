@@ -7,6 +7,8 @@ public protocol ChatScrollDelegate: AnyObject {
     func chatDidReachTop(distance: CGFloat)
     func chatDidReachBottom(distance: CGFloat)
     func chatDidTapFAB()
+    /// Throttled scroll anchor update (~300ms). Use for scroll position persistence.
+    func chatScrollAnchorChanged(anchor: ScrollAnchor)
 }
 
 public extension ChatScrollDelegate {
@@ -14,6 +16,7 @@ public extension ChatScrollDelegate {
     func chatDidReachTop(distance: CGFloat) {}
     func chatDidReachBottom(distance: CGFloat) {}
     func chatDidTapFAB() {}
+    func chatScrollAnchorChanged(anchor: ScrollAnchor) {}
 }
 
 // MARK: - Visibility

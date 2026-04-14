@@ -3,16 +3,17 @@ import DifferenceKit
 
 /// Routes message updates to the optimal strategy and keeps scroll stable.
 ///
-/// | Strategy    | Trigger                  | Method                                |
-/// |-------------|--------------------------|---------------------------------------|
-/// | Initial     | First batch (was empty)  | `reloadData` + scroll to bottom       |
-/// | Prepend     | Older messages loaded    | `reloadData` + offset compensation    |
-/// | Append      | New messages at bottom   | `reloadData` + auto-scroll            |
-/// | Content     | Edit / reactions / polls  | Incremental patch + offset fix        |
-/// | Replace     | Delete+insert same pos   | Targeted `reloadItems` + offset fix   |
-/// | Structural  | Row count changed        | DifferenceKit animated batch          |
+/// Single-level classification — O(n) ID comparison, no heuristics:
 ///
-/// **Bottom-edge-stable**: content and replace updates pin the anchor
+/// | Strategy    | Condition                     | Method                                |
+/// |-------------|-------------------------------|---------------------------------------|
+/// | Initial     | Old empty, new not empty      | `reloadData` + pending scroll         |
+/// | Content     | Same IDs, same order          | Incremental patch + offset fix        |
+/// | Prepend     | Old IDs are suffix of new     | `reloadData` + offset compensation    |
+/// | Append      | Old IDs are prefix of new     | `reloadData` + auto-scroll            |
+/// | Structural  | Everything else               | DifferenceKit or reload + anchor      |
+///
+/// **Bottom-edge-stable**: content updates pin the anchor
 /// message's bottom edge to its screen position — height changes expand upward.
 final class MessageUpdateHandler {
 
@@ -22,43 +23,58 @@ final class MessageUpdateHandler {
         self.controller = controller
     }
 
+    enum Strategy { case initial, content, prepend, append, structural }
+
     // MARK: - Public
+
+    /// Peek at what strategy would be used without applying. Used to decide deferral.
+    func peekClassify(old: [ChatMessage], new: [ChatMessage]) -> Strategy {
+        classify(old: old, new: new)
+    }
 
     func update(with newMessages: [ChatMessage]) {
         guard let vc = controller else { return }
 
         let snapshot = Snapshot(vc: vc)
-        let kind = classify(snapshot: snapshot, newMessages: newMessages)
+        let strategy = classify(old: snapshot.oldMessages, new: newMessages)
 
-        // Content updates use incremental patching — O(changed) instead of O(n).
-        if kind == .content {
+        print("[UpdateHandler] classify: \(strategy) old=\(snapshot.oldMessages.count) new=\(newMessages.count) oldFirst=\(snapshot.oldMessages.first?.id.prefix(8) ?? "nil") newFirst=\(newMessages.first?.id.prefix(8) ?? "nil") oldLast=\(snapshot.oldMessages.last?.id.prefix(8) ?? "nil") newLast=\(newMessages.last?.id.prefix(8) ?? "nil")")
+
+        switch strategy {
+        case .initial:
+            vc.setMessages(newMessages)
+            vc.rebuildMessageIndex()
+            let newRows = vc.buildRows(from: newMessages)
+            applyInitial(vc: vc, newRows: newRows)
+
+        case .content:
             applyContent(vc: vc, newMessages: newMessages, snapshot: snapshot)
-            return
-        }
 
-        vc.setMessages(newMessages)
-        vc.rebuildMessageIndex()
-        let newRows = vc.buildRows(from: newMessages)
+        case .prepend:
+            vc.setMessages(newMessages)
+            vc.rebuildMessageIndex()
+            let newRows = vc.buildRows(from: newMessages)
+            applyPrepend(vc: vc, newRows: newRows, snapshot: snapshot)
 
-        switch kind {
-        case .initial:  applyInitial(vc: vc, newRows: newRows)
-        case .prepend:  applyPrepend(vc: vc, newRows: newRows)
-        case .append:   applyAppend(vc: vc, newRows: newRows, snapshot: snapshot)
-        case .content:  break
+        case .append:
+            vc.setMessages(newMessages)
+            vc.rebuildMessageIndex()
+            let newRows = vc.buildRows(from: newMessages)
+            applyAppend(vc: vc, newRows: newRows, snapshot: snapshot)
+
+        case .structural:
+            applyStructuralEntry(vc: vc, newMessages: newMessages, snapshot: snapshot)
         }
     }
 }
 
-// MARK: - Update Classification
+// MARK: - Snapshot
 
 private extension MessageUpdateHandler {
 
     struct Snapshot {
         let wasAtBottom: Bool
         let wasEmpty: Bool
-        let oldFirstId: String?
-        let oldLastId: String?
-        let oldCount: Int
         let oldMessages: [ChatMessage]
         let oldRows: [ChatRow]
         let oldLayoutData: [RowLayoutInfo]
@@ -67,31 +83,61 @@ private extension MessageUpdateHandler {
         init(vc: ChatViewController) {
             wasAtBottom   = vc.isNearBottom()
             wasEmpty      = vc.messages.isEmpty
-            oldFirstId    = vc.messages.first?.id
-            oldLastId     = vc.messages.last?.id
-            oldCount      = vc.messages.count
             oldMessages   = vc.messages
             oldRows       = vc.rows
             oldLayoutData = vc.chatLayout.rowLayoutData
             savedOffset   = vc.collectionView.contentOffset
         }
     }
+}
 
-    enum UpdateKind { case initial, prepend, append, content }
+// MARK: - Classification
 
-    func classify(snapshot s: Snapshot, newMessages: [ChatMessage]) -> UpdateKind {
-        let grew = newMessages.count > s.oldCount
+private extension MessageUpdateHandler {
 
-        if s.wasEmpty && !newMessages.isEmpty { return .initial }
+    /// Single-level O(n) classification by comparing message IDs.
+    func classify(old: [ChatMessage], new: [ChatMessage]) -> Strategy {
+        // Empty → non-empty = initial
+        if old.isEmpty { return new.isEmpty ? .initial : .initial }
 
-        if !s.wasEmpty && grew
-            && s.oldFirstId != nil && s.oldFirstId != newMessages.first?.id
-            && s.oldLastId == newMessages.last?.id { return .prepend }
+        // Non-empty → empty = structural (clear all)
+        if new.isEmpty { return .structural }
 
-        if !s.wasEmpty && grew
-            && s.oldLastId != nil && s.oldLastId != newMessages.last?.id { return .append }
+        // Same count — check if all IDs match in order
+        if old.count == new.count {
+            var allSame = true
+            for i in 0..<old.count where old[i].id != new[i].id {
+                allSame = false
+                break
+            }
+            if allSame { return .content }
+            // Same count but different IDs → structural
+            return .structural
+        }
 
-        return .content
+        // New has more items — check prepend or append
+        if new.count > old.count {
+            let offset = new.count - old.count
+
+            // Check prepend: old IDs are suffix of new IDs
+            var isPrepend = true
+            for i in 0..<old.count where old[i].id != new[i + offset].id {
+                isPrepend = false
+                break
+            }
+            if isPrepend { return .prepend }
+
+            // Check append: old IDs are prefix of new IDs
+            var isAppend = true
+            for i in 0..<old.count where old[i].id != new[i].id {
+                isAppend = false
+                break
+            }
+            if isAppend { return .append }
+        }
+
+        // Everything else: fewer items, or mixed insert/delete
+        return .structural
     }
 }
 
@@ -100,6 +146,9 @@ private extension MessageUpdateHandler {
 private extension MessageUpdateHandler {
 
     func applyInitial(vc: ChatViewController, newRows: [ChatRow]) {
+        print("[Initial] applyInitial: rows=\(newRows.count) pendingScrollToBottom=\(vc.pendingScrollToBottom) pendingAnchor=\(vc.pendingScrollAnchor?.messageId.prefix(8) ?? "nil") anchorWasAtBottom=\(vc.pendingScrollAnchor?.wasAtBottom ?? false)")
+
+        vc.isInitialScrollProtected = true
         vc.sizeCache.invalidateAll()
         vc.setRows(newRows)
         vc.applyLayoutData(vc.computeLayoutData())
@@ -107,14 +156,20 @@ private extension MessageUpdateHandler {
         vc.collectionView.reloadData()
         vc.collectionView.layoutIfNeeded()
 
-        // Don't scroll here — bounds and contentInset may be temporary RN values
-        // (width=0, inset=852). Save scroll target and let executePendingInitialScroll
-        // handle it. If the view is ready now, it executes immediately.
-        // If not, viewDidLayoutSubviews will catch it once layout settles.
-        if let id = vc.pendingScrollMessageId {
-            let pos = vc.pendingScrollMessagePosition ?? "center"
-            vc.pendingInitialScroll = .toMessage(id: id, position: pos)
+        let cv = vc.collectionView!
+        print("[Initial] after layoutIfNeeded: offset=\(String(format: "%.1f", cv.contentOffset.y)) contentH=\(String(format: "%.0f", cv.contentSize.height)) frameH=\(String(format: "%.0f", cv.bounds.height)) insetTop=\(String(format: "%.1f", cv.contentInset.top)) insetBottom=\(String(format: "%.1f", cv.contentInset.bottom))")
+
+        // pendingScrollToBottom takes priority (e.g., returnToLatest + scrollToBottom)
+        if vc.pendingScrollToBottom {
+            print("[Initial] → pendingScrollToBottom=true → .toBottom")
+            vc.pendingScrollAnchor = nil
+            vc.pendingInitialScroll = .toBottom
+        } else if let anchor = vc.pendingScrollAnchor {
+            print("[Initial] → anchor msg=\(anchor.messageId.prefix(8)) wasAtBottom=\(anchor.wasAtBottom) offsetFromTop=\(String(format: "%.1f", anchor.offsetFromTop)) → .toAnchor")
+            vc.pendingScrollAnchor = nil
+            vc.pendingInitialScroll = .toAnchor(anchor)
         } else {
+            print("[Initial] → no anchor, no pendingScroll → .toBottom (default)")
             vc.pendingInitialScroll = .toBottom
         }
 
@@ -126,27 +181,34 @@ private extension MessageUpdateHandler {
 
 private extension MessageUpdateHandler {
 
-    func applyPrepend(vc: ChatViewController, newRows: [ChatRow]) {
-        let oldRowCount = vc.rows.count
-        guard newRows.count > oldRowCount else { return }
+    func applyPrepend(vc: ChatViewController, newRows: [ChatRow], snapshot s: Snapshot) {
+        print("[UpdateHandler] applyPrepend: oldRows=\(s.oldRows.count) newRows=\(newRows.count)")
+        guard newRows.count > s.oldRows.count else {
+            print("[UpdateHandler] applyPrepend: SKIPPED (newRows <= oldRows)")
+            return
+        }
 
-        vc.setRows(newRows)
-        let newLayout = vc.computeLayoutData()
-
-        // Compute compensating offset = total height of new rows minus old rows
         let oldLayout = vc.chatLayout.rowLayoutData
         var oldTotalH: CGFloat = 0
         for info in oldLayout { oldTotalH += info.totalHeight }
+
+        vc.setRows(newRows)
+        let newLayout = vc.computeLayoutData()
         var newTotalH: CGFloat = 0
         for info in newLayout { newTotalH += info.totalHeight }
         let compensating = newTotalH - oldTotalH
 
-        vc.applyLayoutData(newLayout)
+        // Apply everything in a single render pass — no intermediate frame
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
 
+        vc.applyLayoutData(newLayout)
         let saved = vc.collectionView.contentOffset
         vc.collectionView.reloadData()
         vc.collectionView.contentOffset = CGPoint(x: saved.x, y: saved.y + compensating)
         vc.collectionView.layoutIfNeeded()
+
+        CATransaction.commit()
 
         vc.finalizeUpdate(count: newRows.count, animated: false)
         vc.flushPendingMessages()
@@ -159,12 +221,13 @@ private extension MessageUpdateHandler {
 
     func applyAppend(vc: ChatViewController, newRows: [ChatRow], snapshot s: Snapshot) {
         let wantScroll = vc.pendingScrollToBottom || (s.wasAtBottom && !vc.isLoadingNewerActive)
+        print("[Append] applyAppend: wantScroll=\(wantScroll) pendingScrollToBottom=\(vc.pendingScrollToBottom) wasAtBottom=\(s.wasAtBottom) isLoadingNewer=\(vc.isLoadingNewerActive) offset=\(String(format: "%.1f", vc.collectionView.contentOffset.y))")
         let wasLoadingNewer = vc.isLoadingNewerActive
         vc.isLoadingNewerActive = false
         if wantScroll { vc.pendingScrollToBottom = false }
 
         if !wasLoadingNewer && !s.wasAtBottom {
-            vc.trackNewUnread(newMessages: vc.messages, oldCount: s.oldCount)
+            vc.trackNewUnread(newMessages: vc.messages, oldCount: s.oldMessages.count)
         }
 
         vc.setRows(newRows)
@@ -183,126 +246,32 @@ private extension MessageUpdateHandler {
     }
 }
 
-// MARK: - Content / Replace / Structural
+// MARK: - Content (same IDs, same order — incremental patch)
 
 private extension MessageUpdateHandler {
-
-    /// Result of analyzing old vs new messages in a single O(n) pass.
-    struct ContentAnalysis {
-        let kind: ContentKind
-        let changedIDs: Set<String>
-        let replacedMsgIndices: [Int]
-    }
-
-    enum ContentKind { case noChange, pureContent, positionalReplace, structural }
-
-    /// Single-pass analysis over messages (not rows) — classifies update type,
-    /// collects changed IDs, and invalidates size cache in one O(n) sweep.
-    func analyzeContent(oldMessages: [ChatMessage], newMessages: [ChatMessage],
-                        vc: ChatViewController) -> ContentAnalysis {
-        guard oldMessages.count == newMessages.count else {
-            return ContentAnalysis(kind: .structural, changedIDs: [], replacedMsgIndices: [])
-        }
-
-        var changedIDs = Set<String>()
-        var replacedIndices: [Int] = []
-
-        for i in 0..<oldMessages.count {
-            let old = oldMessages[i], new = newMessages[i]
-            if old.id == new.id {
-                if old != new {
-                    changedIDs.insert(new.id)
-                    vc.invalidateSizeCache(forKey: new.id)
-                }
-            } else {
-                replacedIndices.append(i)
-                vc.invalidateSizeCache(forKey: old.id)
-                vc.invalidateSizeCache(forKey: new.id)
-            }
-        }
-
-        if !replacedIndices.isEmpty {
-            return ContentAnalysis(kind: .positionalReplace, changedIDs: changedIDs,
-                                  replacedMsgIndices: replacedIndices)
-        }
-        if !changedIDs.isEmpty {
-            return ContentAnalysis(kind: .pureContent, changedIDs: changedIDs,
-                                  replacedMsgIndices: [])
-        }
-        return ContentAnalysis(kind: .noChange, changedIDs: [], replacedMsgIndices: [])
-    }
 
     func applyContent(vc: ChatViewController, newMessages: [ChatMessage], snapshot s: Snapshot) {
         let shouldScroll = vc.pendingScrollToBottom
         if shouldScroll { vc.pendingScrollToBottom = false }
 
-        // Capture pending scroll BEFORE analysis — fetch after cache restore
-        // may arrive as content update, not initial.
-        let pendingScrollId = vc.pendingScrollMessageId
-        let pendingScrollPos = vc.pendingScrollMessagePosition
+        // Single O(n) pass: find changed messages, invalidate their size cache
+        var changedIDs = Set<String>()
+        for i in 0..<s.oldMessages.count {
+            if s.oldMessages[i] != newMessages[i] {
+                changedIDs.insert(newMessages[i].id)
+                vc.invalidateSizeCache(forKey: newMessages[i].id)
+            }
+        }
 
-        let analysis = analyzeContent(oldMessages: s.oldMessages, newMessages: newMessages, vc: vc)
-
-        switch analysis.kind {
-        case .noChange:
+        guard !changedIDs.isEmpty else {
+            // No actual content change
             vc.setMessages(newMessages)
-
-        case .pureContent:
-            applyPureContent(vc: vc, newMessages: newMessages, snapshot: s,
-                             shouldScroll: shouldScroll, analysis: analysis)
-
-        case .positionalReplace:
-            applyReplace(vc: vc, newMessages: newMessages, snapshot: s,
-                         shouldScroll: shouldScroll, analysis: analysis)
-
-        case .structural:
-            // Detect deleted message IDs
-            let newIDs = Set(newMessages.map(\.id))
-            let deletedIDs = s.oldMessages.filter { !newIDs.contains($0.id) }.map(\.id)
-
-            if vc.disintegrationEnabled, !deletedIDs.isEmpty {
-                // Run disintegration on visible deleted cells, then apply structural
-                animateDisintegrationAndApply(
-                    vc: vc, deletedIDs: deletedIDs, newMessages: newMessages,
-                    oldRows: s.oldRows, snapshot: s, shouldScroll: shouldScroll
-                )
-            } else {
-                vc.setMessages(newMessages)
-                vc.rebuildMessageIndex()
-                let newRows = vc.buildRows(from: newMessages)
-                applyStructural(vc: vc, oldRows: s.oldRows, newRows: newRows,
-                                snapshot: s, shouldScroll: shouldScroll)
-            }
+            return
         }
 
-        if shouldScroll {
-            vc.scrollToBottom(animated: true)
-        }
-
-        // Handle pending scroll (e.g., fetch after cache restore arrives as content update)
-        if let scrollId = pendingScrollId {
-            let position = pendingScrollPos ?? "center"
-            let highlight = position == "center"
-            let found = vc.rowIndexCache[scrollId] != nil
-            if found {
-                vc.scrollToMessage(id: scrollId, position: position, animated: false, highlight: highlight)
-            }
-            vc.pendingScrollMessageId = nil
-            vc.pendingScrollMessagePosition = nil
-        }
-
-        vc.finalizeUpdate(count: vc.rows.count, animated: true)
-        vc.flushPendingMessages()
-    }
-
-    // MARK: Pure Content �� incremental patch
-
-    private func applyPureContent(vc: ChatViewController, newMessages: [ChatMessage],
-                                  snapshot s: Snapshot, shouldScroll: Bool,
-                                  analysis: ContentAnalysis) {
-        // Build ID→message map for changed messages only
-        var newMsgByID: [String: ChatMessage] = Dictionary(minimumCapacity: analysis.changedIDs.count)
-        for msg in newMessages where analysis.changedIDs.contains(msg.id) {
+        // Build ID→message map for changed messages
+        var newMsgByID: [String: ChatMessage] = Dictionary(minimumCapacity: changedIDs.count)
+        for msg in newMessages where changedIDs.contains(msg.id) {
             newMsgByID[msg.id] = msg
         }
 
@@ -320,7 +289,7 @@ private extension MessageUpdateHandler {
 
         // Patch layout — recompute only changed rows
         var layoutData = s.oldLayoutData
-        patchLayoutData(&layoutData, changedIDs: analysis.changedIDs, rows: rows, vc: vc)
+        patchLayoutData(&layoutData, changedIDs: changedIDs, rows: rows, vc: vc)
         vc.applyLayoutData(layoutData)
 
         // Bottom-edge-stable offset
@@ -336,7 +305,7 @@ private extension MessageUpdateHandler {
                   let ip = cv.indexPath(for: cell),
                   ip.item < rows.count,
                   case .message(let msg) = rows[ip.item],
-                  analysis.changedIDs.contains(msg.id) else { continue }
+                  changedIDs.contains(msg.id) else { continue }
             vc.dataSource.reconfigureMessageCellInPlace(msgCell, message: msg, vc: vc)
         }
 
@@ -347,80 +316,107 @@ private extension MessageUpdateHandler {
         cv.layoutIfNeeded()
 
         OffsetCalculator.clamp(cv: cv, savedX: s.savedOffset.x, skip: shouldScroll)
+
+        if shouldScroll {
+            vc.scrollToBottom(animated: true)
+        }
+
+        vc.finalizeUpdate(count: vc.rows.count, animated: true)
+        vc.flushPendingMessages()
+    }
+}
+
+// MARK: - Structural (DifferenceKit or full reload)
+
+private extension MessageUpdateHandler {
+
+    func applyStructuralEntry(vc: ChatViewController, newMessages: [ChatMessage], snapshot s: Snapshot) {
+        let shouldScroll = vc.pendingScrollToBottom
+        print("[Structural] applyStructuralEntry: shouldScroll=\(shouldScroll) oldCount=\(s.oldMessages.count) newCount=\(newMessages.count)")
+        if shouldScroll { vc.pendingScrollToBottom = false }
+
+        // Detect deleted message IDs for disintegration animation
+        let newIDs = Set(newMessages.map(\.id))
+        let deletedIDs = s.oldMessages.filter { !newIDs.contains($0.id) }.map(\.id)
+
+        vc.setMessages(newMessages)
+        vc.rebuildMessageIndex()
+        let newRows = vc.buildRows(from: newMessages)
+
+        if vc.disintegrationEnabled && !deletedIDs.isEmpty {
+            animateDisintegrationAndApply(
+                vc: vc, deletedIDs: deletedIDs, newRows: newRows,
+                oldRows: s.oldRows, snapshot: s, shouldScroll: shouldScroll
+            )
+        } else {
+            applyStructural(vc: vc, oldRows: s.oldRows, newRows: newRows,
+                            snapshot: s, shouldScroll: shouldScroll)
+        }
     }
 
-    // MARK: Positional Replace — incremental patch
+    func applyStructural(vc: ChatViewController, oldRows: [ChatRow],
+                         newRows: [ChatRow], snapshot s: Snapshot, shouldScroll: Bool) {
+        let changeset = StagedChangeset(source: oldRows, target: newRows)
 
-    private func applyReplace(vc: ChatViewController, newMessages: [ChatMessage],
-                              snapshot s: Snapshot, shouldScroll: Bool,
-                              analysis: ContentAnalysis) {
-        // Patch messageIndex: remove old IDs, add new IDs
-        for idx in analysis.replacedMsgIndices {
-            let oldId = s.oldMessages[idx].id
-            let newMsg = newMessages[idx]
-            vc.messageIndex.removeValue(forKey: oldId)
-            vc.messageIndex[newMsg.id] = newMsg
+        // No actual changes — bail out
+        guard !changeset.isEmpty else {
+            vc.setRows(newRows)
+            return
         }
-        for id in analysis.changedIDs {
-            if let msg = newMessages.first(where: { $0.id == id }) {
-                vc.messageIndex[id] = msg
+
+        // Measure how "heavy" the change is
+        let totalChanges = changeset.reduce(0) {
+            $0 + $1.elementInserted.count + $1.elementDeleted.count + $1.elementMoved.count
+        }
+        let rowCount = max(oldRows.count, newRows.count)
+        let isHeavy = rowCount > 0 && totalChanges > rowCount / 2
+
+        if isHeavy {
+            // Heavy change (returnToLatest, navigateToMessage, mass delete) — skip animation
+            let anchor = vc.currentScrollAnchor()
+
+            vc.setRows(newRows)
+            vc.applyLayoutData(vc.computeLayoutData())
+            vc.collectionView.reloadData()
+            vc.collectionView.layoutIfNeeded()
+
+            if shouldScroll {
+                vc.scrollToBottom(animated: true)
+            } else if !s.wasAtBottom, let anchor {
+                vc.restoreScrollAnchor(anchor)
+            }
+        } else {
+            // Light structural (1-2 deletes/inserts) — animated DifferenceKit batch.
+            // DifferenceKit handles scroll position automatically during animation —
+            // no manual anchor restore needed.
+            vc.collectionView.reload(using: changeset) { [weak vc] data in
+                guard let vc else { return }
+                vc.setRows(data)
+                vc.applyLayoutData(vc.computeLayoutData())
+            }
+
+            // Verify rows are consistent after DifferenceKit
+            if vc.rows != newRows {
+                vc.setRows(newRows)
+                vc.applyLayoutData(vc.computeLayoutData())
+                vc.collectionView.reloadData()
+            }
+            vc.collectionView.layoutIfNeeded()
+
+            if shouldScroll {
+                vc.scrollToBottom(animated: true)
             }
         }
-        vc.setMessages(newMessages)
 
-        // Patch rows at replaced positions
-        var rows = vc.rows
-        for idx in analysis.replacedMsgIndices {
-            let newMsg = newMessages[idx]
-            if let rowIdx = vc.rowIndexCache[s.oldMessages[idx].id] {
-                rows[rowIdx] = .message(newMsg)
-                vc.rowIndexCache.removeValue(forKey: s.oldMessages[idx].id)
-                vc.rowIndexCache[newMsg.id] = rowIdx
-            }
-        }
-        vc.setRows(rows)
-
-        // Patch layout for all affected IDs
-        var layoutData = s.oldLayoutData
-        let allChangedIDs = analysis.changedIDs.union(
-            Set(analysis.replacedMsgIndices.map { newMessages[$0].id }))
-        patchLayoutData(&layoutData, changedIDs: allChangedIDs, rows: rows, vc: vc)
-        vc.applyLayoutData(layoutData)
-
-        // Bottom-edge-stable offset (by position — IDs changed)
-        let delta = shouldScroll ? 0 : OffsetCalculator.bottomStableDeltaByPosition(
-            oldLayout: s.oldLayoutData, newLayout: layoutData, vc: vc)
-
-        // Map replaced message indices to row-level index paths
-        var replacedIndexPaths: [IndexPath] = []
-        for idx in analysis.replacedMsgIndices {
-            if let rowIdx = vc.rowIndexCache[newMessages[idx].id] {
-                replacedIndexPaths.append(IndexPath(item: rowIdx, section: 0))
-            }
-        }
-
-        let cv = vc.collectionView!
-
-        if !shouldScroll {
-            cv.contentOffset = CGPoint(x: s.savedOffset.x, y: s.savedOffset.y + delta)
-        }
-
-        if !replacedIndexPaths.isEmpty {
-            UIView.performWithoutAnimation {
-                cv.reloadItems(at: replacedIndexPaths)
-            }
-        }
-        cv.collectionViewLayout.invalidateLayout()
-        cv.layoutIfNeeded()
-
-        OffsetCalculator.clamp(cv: cv, savedX: s.savedOffset.x, skip: shouldScroll)
+        reconfigureVisibleAvatars(vc: vc)
+        vc.finalizeUpdate(count: newRows.count, animated: !isHeavy)
+        vc.flushPendingMessages()
     }
 
     // MARK: Disintegration + Structural
 
-    /// Animate disintegration on visible deleted cells, then apply structural update.
     private func animateDisintegrationAndApply(
-        vc: ChatViewController, deletedIDs: [String], newMessages: [ChatMessage],
+        vc: ChatViewController, deletedIDs: [String], newRows: [ChatRow],
         oldRows: [ChatRow], snapshot s: Snapshot, shouldScroll: Bool
     ) {
         let cv = vc.collectionView!
@@ -444,9 +440,6 @@ private extension MessageUpdateHandler {
 
         let applyBlock = { [weak self] in
             guard let self, let vc = self.controller else { return }
-            vc.setMessages(newMessages)
-            vc.rebuildMessageIndex()
-            let newRows = vc.buildRows(from: newMessages)
             self.applyStructural(vc: vc, oldRows: oldRows, newRows: newRows,
                                  snapshot: s, shouldScroll: shouldScroll)
         }
@@ -457,45 +450,17 @@ private extension MessageUpdateHandler {
             applyBlock()
         }
     }
+}
 
-    // MARK: Structural — full rebuild (fallback)
+// MARK: - Incremental Layout Patch
 
-    private func applyStructural(vc: ChatViewController, oldRows: [ChatRow],
-                                 newRows: [ChatRow], snapshot s: Snapshot, shouldScroll: Bool) {
-        let changeset = StagedChangeset(source: oldRows, target: newRows)
-        guard !changeset.isEmpty else {
-            vc.setRows(newRows)
-            return
-        }
-
-        vc.collectionView.reload(using: changeset) { [weak vc] data in
-            guard let vc else { return }
-            vc.setRows(data)
-            vc.applyLayoutData(vc.computeLayoutData())
-        }
-
-        if vc.rows != newRows {
-            vc.setRows(newRows)
-            vc.applyLayoutData(vc.computeLayoutData())
-            vc.collectionView.reloadData()
-        }
-
-        vc.collectionView.layoutIfNeeded()
-
-        if !shouldScroll && !s.wasAtBottom {
-            vc.collectionView.contentOffset = s.savedOffset
-        }
-
-        reconfigureVisibleAvatars(vc: vc)
-    }
-
-    // MARK: Incremental Layout Patch
+private extension MessageUpdateHandler {
 
     /// Recompute layout only for rows whose message ID is in `changedIDs`.
-    private func patchLayoutData(_ layoutData: inout [RowLayoutInfo],
-                                 changedIDs: Set<String>,
-                                 rows: [ChatRow],
-                                 vc: ChatViewController) {
+    func patchLayoutData(_ layoutData: inout [RowLayoutInfo],
+                         changedIDs: Set<String>,
+                         rows: [ChatRow],
+                         vc: ChatViewController) {
         guard !changedIDs.isEmpty else { return }
         var width = vc.collectionView.bounds.width
         if width <= 0 { width = UIScreen.main.bounds.width }
@@ -524,6 +489,7 @@ private extension MessageUpdateHandler {
 enum OffsetCalculator {
 
     /// Delta to keep anchor's bottom edge on screen. Finds anchor by message ID.
+    /// Scans visible cells bottom-to-top, skipping deleted rows.
     static func bottomStableDelta(
         oldRows: [ChatRow], oldLayout: [RowLayoutInfo],
         newRows: [ChatRow], newLayout: [RowLayoutInfo],
@@ -546,25 +512,6 @@ enum OffsetCalculator {
                   newIdx < newLayout.count else { continue }
 
             return cellBottom(at: newIdx, sums: newSums, layout: newLayout)
-                 - cellBottom(at: idx, sums: oldSums, layout: oldLayout)
-        }
-        return 0
-    }
-
-    /// Delta to keep anchor's bottom edge on screen. Finds anchor by row position.
-    static func bottomStableDeltaByPosition(
-        oldLayout: [RowLayoutInfo], newLayout: [RowLayoutInfo],
-        vc: ChatViewController
-    ) -> CGFloat {
-        let oldSums = prefixSums(oldLayout)
-        let newSums = prefixSums(newLayout)
-
-        let paths = vc.collectionView.indexPathsForVisibleItems.sorted { $0.item > $1.item }
-        for ip in paths {
-            let idx = ip.item
-            guard idx < oldLayout.count, idx < newLayout.count else { continue }
-
-            return cellBottom(at: idx, sums: newSums, layout: newLayout)
                  - cellBottom(at: idx, sums: oldSums, layout: oldLayout)
         }
         return 0
