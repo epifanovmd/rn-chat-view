@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 5: Socket message at bottom")
+@Suite("Кейс 5: Сокет-сообщение при скролле внизу")
 struct Case05_SocketAtBottomTests {
 
-    @Test("message count increases by 1")
+    @Test("количество сообщений увеличивается на 1")
     @MainActor func countIncreases() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 10))

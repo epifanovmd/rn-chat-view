@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 20: Content update while scrolled up")
+@Suite("Кейс 20: Обновление содержимого при прокрутке вверх")
 struct Case20_ContentUpdateDetachedTests {
 
-    @Test("scroll stays near position when edit above")
+    @Test("скролл остаётся на месте при редактировании выше")
     @MainActor func scrollStable() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 30))

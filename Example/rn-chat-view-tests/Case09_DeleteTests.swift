@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 9: Delete message")
+@Suite("Кейс 9: Удаление сообщения")
 struct Case09_DeleteTests {
 
-    @Test("message count decreases")
+    @Test("количество сообщений уменьшается")
     @MainActor func countDecreases() {
         let h = ChatTestHelper()
         let msgs = TestMsgFactory.batch(count: 10)
@@ -17,7 +17,7 @@ struct Case09_DeleteTests {
         #expect(h.messageCount == 9)
     }
 
-    @Test("scroll preserved after delete in middle")
+    @Test("скролл сохраняется после удаления в середине")
     @MainActor func scrollPreserved() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 30))

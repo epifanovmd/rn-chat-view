@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 4: Append newer messages (pagination)")
+@Suite("Кейс 4: Добавление новых сообщений (пагинация)")
 struct Case04_AppendPaginationTests {
 
-    @Test("scroll stays in place (NOT scrolled to bottom)")
+    @Test("скролл остаётся на месте (НЕ прыгает вниз)")
     @MainActor func scrollPreserved() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 20, startId: 1, baseOffset: 0))

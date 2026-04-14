@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 21: Batch socket events")
+@Suite("Кейс 21: Пакетные сокет-события")
 struct Case21_BatchSocketTests {
 
-    @Test("batch applied correctly")
+    @Test("пакет изменений применяется корректно")
     @MainActor func batchApplied() {
         let h = ChatTestHelper()
         h.setMessages([TestMsgFactory.msg("1", status: .sent), TestMsgFactory.msg("2")])

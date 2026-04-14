@@ -8,6 +8,8 @@ enum DebugAction: String, CaseIterable, Identifiable {
     // Row 0: Content updates
     case editTextLonger = "Edit+"
     case editTextShorter = "Edit-"
+    case editMidLonger = "Mid+"
+    case editMidShorter = "Mid-"
     case changeStatus = "Status"
     case statusCascade = "St.All"
     case addReaction = "React"
@@ -43,7 +45,7 @@ enum DebugAction: String, CaseIterable, Identifiable {
 
     var row: Int {
         switch self {
-        case .editTextLonger, .editTextShorter, .changeStatus, .statusCascade, .addReaction, .pollVote, .doubleUpdate:
+        case .editTextLonger, .editTextShorter, .editMidLonger, .editMidShorter, .changeStatus, .statusCascade, .addReaction, .pollVote, .doubleUpdate:
             return 0
         case .appendOne, .prependOne, .prependBatch, .appendBatch, .deleteFirst, .deleteLast, .deleteMiddle, .deleteBatch, .clearAll:
             return 1
@@ -54,7 +56,7 @@ enum DebugAction: String, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .editTextLonger, .editTextShorter, .changeStatus, .statusCascade, .addReaction, .pollVote, .doubleUpdate:
+        case .editTextLonger, .editTextShorter, .editMidLonger, .editMidShorter, .changeStatus, .statusCascade, .addReaction, .pollVote, .doubleUpdate:
             return .blue
         case .appendOne, .prependOne, .prependBatch, .appendBatch:
             return .green

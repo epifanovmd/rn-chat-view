@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 6: Socket message while scrolled up")
+@Suite("Кейс 6: Сокет-сообщение при прокрутке вверх")
 struct Case06_SocketScrolledUpTests {
 
-    @Test("scroll stays at top when new message appended")
+    @Test("скролл остаётся вверху при добавлении нового сообщения")
     @MainActor func scrollStaysAtTop() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 20))

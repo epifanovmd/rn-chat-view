@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 22: Delete + insert simultaneously (replace)")
+@Suite("Кейс 22: Удаление + вставка одновременно (замена)")
 struct Case22_DeleteAndInsertTests {
 
-    @Test("message count stays the same")
+    @Test("количество сообщений не меняется")
     @MainActor func countPreserved() {
         let h = ChatTestHelper()
         let msgs = TestMsgFactory.batch(count: 10)
@@ -18,7 +18,7 @@ struct Case22_DeleteAndInsertTests {
         #expect(h.messageCount == 10)
     }
 
-    @Test("scroll preserved when replacing same-height message in middle")
+    @Test("скролл сохраняется при замене сообщения той же высоты в середине")
     @MainActor func scrollPreservedSameHeight() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 30))
@@ -36,7 +36,7 @@ struct Case22_DeleteAndInsertTests {
         #expect(abs(offsetAfter - offsetBefore) < 5, "Scroll jumped: \(offsetBefore) → \(offsetAfter)")
     }
 
-    @Test("scroll preserved when replacing with shorter message")
+    @Test("скролл сохраняется при замене на более короткое сообщение")
     @MainActor func scrollPreservedShorterMessage() {
         let h = ChatTestHelper()
         // Use messages with varying text to ensure different heights
@@ -59,7 +59,7 @@ struct Case22_DeleteAndInsertTests {
         #expect(abs(offsetAfter - offsetBefore) < 100, "Scroll jumped: \(offsetBefore) → \(offsetAfter)")
     }
 
-    @Test("scroll preserved when replacing with taller message")
+    @Test("скролл сохраняется при замене на более высокое сообщение")
     @MainActor func scrollPreservedTallerMessage() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 30))
@@ -77,7 +77,7 @@ struct Case22_DeleteAndInsertTests {
         #expect(abs(offsetAfter - offsetBefore) < 100, "Scroll jumped: \(offsetBefore) → \(offsetAfter)")
     }
 
-    @Test("delete last + insert at same position stays near bottom")
+    @Test("удаление последнего + вставка на то же место: остаётся внизу")
     @MainActor func deleteLastInsertSamePosition() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 30))
@@ -92,7 +92,7 @@ struct Case22_DeleteAndInsertTests {
         #expect(h.isNearBottom, "Should remain near bottom after replacing last message")
     }
 
-    @Test("delete + insert above viewport preserves scroll")
+    @Test("удаление + вставка выше вьюпорта сохраняет скролл")
     @MainActor func deleteInsertAboveViewport() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 50))

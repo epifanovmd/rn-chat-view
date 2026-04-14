@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 10: Delete + update simultaneously")
+@Suite("Кейс 10: Удаление + обновление одновременно")
 struct Case10_DeleteAndUpdateTests {
 
-    @Test("both changes applied")
+    @Test("оба изменения применяются")
     @MainActor func bothApplied() {
         let h = ChatTestHelper()
         h.setMessages([TestMsgFactory.msg("1", text: "old"), TestMsgFactory.msg("2"), TestMsgFactory.msg("3")])

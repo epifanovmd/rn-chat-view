@@ -84,6 +84,16 @@ final class DebugChatViewController: UIViewController, ChatViewControllerDelegat
             guard let idx = msgs.indices.last(where: { msgs[$0].ownership == .theirs && (msgs[$0].content.text?.count ?? 0) > 20 }) else { return }
             msgs[idx] = mutate(msgs[idx], text: "OK.", isEdited: true)
 
+        case .editMidLonger:
+            let target = max(0, msgs.count - 8)
+            guard target < msgs.count, msgs[target].content.text != nil else { return }
+            msgs[target] = mutate(msgs[target], text: (msgs[target].content.text ?? "") + "\n\nДополнение: значительно длиннее текст с новым абзацем.", isEdited: true)
+
+        case .editMidShorter:
+            let target = max(0, msgs.count - 8)
+            guard target < msgs.count, (msgs[target].content.text?.count ?? 0) > 20 else { return }
+            msgs[target] = mutate(msgs[target], text: "OK.", isEdited: true)
+
         case .changeStatus:
             for i in msgs.indices where msgs[i].ownership == .mine && msgs[i].status != .read {
                 msgs[i] = mutate(msgs[i], status: .read)

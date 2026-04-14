@@ -1,12 +1,12 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 8: Pending → real (send confirm)")
+@Suite("Кейс 8: Ожидающее → реальное (подтверждение отправки)")
 struct Case08_PendingToRealTests {
 
     // MARK: - Pending mapping unit tests (critical edge cases)
 
-    @Test("pendingMapping: detects localId-based mapping")
+    @Test("pendingMapping: обнаруживает маппинг по localId")
     func pendingMapping() {
         let localId = "local_abc"
         let old = [
@@ -22,7 +22,7 @@ struct Case08_PendingToRealTests {
         #expect(mapping.newToOld == ["real_1": "pending_1"])
     }
 
-    @Test("no mapping when localId is nil")
+    @Test("нет маппинга когда localId равен nil")
     func pendingMapping_noLocalId() {
         let old = [TestMsgFactory.msg("pending_1", status: .sending, ownership: .mine)]
         let new = [TestMsgFactory.msg("real_1", status: .sent, ownership: .mine)]
@@ -30,7 +30,7 @@ struct Case08_PendingToRealTests {
         #expect(mapping.isEmpty)
     }
 
-    @Test("no mapping when localId differs")
+    @Test("нет маппинга когда localId различаются")
     func pendingMapping_differentLocalId() {
         let old = [TestMsgFactory.msg("pending_1", localId: "a", status: .sending, ownership: .mine)]
         let new = [TestMsgFactory.msg("real_1", localId: "b", status: .sent, ownership: .mine)]
@@ -40,7 +40,7 @@ struct Case08_PendingToRealTests {
 
     // MARK: - Integration (real ChatViewController)
 
-    @Test("message count stays same after pending→real with localId")
+    @Test("количество сообщений не меняется после pending→real с localId")
     @MainActor func countStable_withLocalId() {
         let h = ChatTestHelper()
         let localId = "local_send_1"
@@ -54,7 +54,7 @@ struct Case08_PendingToRealTests {
         #expect(h.messageCount == 2)
     }
 
-    @Test("message content updated after pending→real")
+    @Test("содержимое сообщения обновляется после pending→real")
     @MainActor func contentUpdated() {
         let h = ChatTestHelper()
         let localId = "local_send_1"
@@ -77,7 +77,7 @@ struct Case08_PendingToRealTests {
 
     // MARK: - Legacy (without localId)
 
-    @Test("message count stays same after replace (no localId)")
+    @Test("количество сообщений не меняется после замены (без localId)")
     @MainActor func countStable_noLocalId() {
         let h = ChatTestHelper()
         let pending = TestMsgFactory.msg("pending_1", text: "Sending...", offset: 60, status: .sending, ownership: .mine)

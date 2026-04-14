@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 2: Clear all messages")
+@Suite("Кейс 2: Очистка всех сообщений")
 struct Case02_ClearTests {
 
-    @Test("clear removes all messages and rows")
+    @Test("очистка удаляет все сообщения и строки")
     @MainActor func clearRemovesAll() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 10))

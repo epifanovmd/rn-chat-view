@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 11: Mass delete")
+@Suite("Кейс 11: Массовое удаление")
 struct Case11_MassDeleteTests {
 
-    @Test("content size decreases")
+    @Test("размер контента уменьшается")
     @MainActor func contentSizeDecreases() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 20))

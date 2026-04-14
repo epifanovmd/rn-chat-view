@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 3: Prepend older messages")
+@Suite("Кейс 3: Подгрузка старых сообщений")
 struct Case03_PrependTests {
 
-    @Test("scroll offset compensated — user stays in place")
+    @Test("смещение скролла компенсируется — пользователь остаётся на месте")
     @MainActor func offsetCompensation() {
         let h = ChatTestHelper()
         let initial = TestMsgFactory.batch(count: 20, startId: 21, baseOffset: 1200)
@@ -25,7 +25,7 @@ struct Case03_PrependTests {
         #expect(offsetAfter > offsetBefore, "Offset should increase to compensate prepended content")
     }
 
-    @Test("message count increases")
+    @Test("количество сообщений увеличивается")
     @MainActor func countIncreases() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 5, startId: 6, baseOffset: 300))

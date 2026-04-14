@@ -1,10 +1,10 @@
 import Testing
 @testable import IOSChatView
 
-@Suite("Case 1: Initial load")
+@Suite("Кейс 1: Первоначальная загрузка")
 struct Case01_InitialLoadTests {
 
-    @Test("messages appear and scroll is at bottom")
+    @Test("сообщения появляются и скролл внизу")
     @MainActor func initialScrollToBottom() {
         let h = ChatTestHelper()
         let msgs = TestMsgFactory.batch(count: 20)
@@ -15,7 +15,7 @@ struct Case01_InitialLoadTests {
         #expect(h.contentSize.height > 0)
     }
 
-    @Test("layout heights computed for all rows")
+    @Test("высоты лейаута вычислены для всех строк")
     @MainActor func layoutHeights() {
         let h = ChatTestHelper()
         h.setMessages(TestMsgFactory.batch(count: 10))

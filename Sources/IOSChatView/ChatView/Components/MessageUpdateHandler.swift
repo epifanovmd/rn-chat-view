@@ -436,16 +436,15 @@ private extension MessageUpdateHandler {
         }
         vc.applyLayoutData(layoutData)
 
+        // Был внизу — останемся внизу, delta не нужна
+        let stayAtBottom = s.wasAtBottom && !wantScroll
+
         // Стабилизация offset относительно нижнего видимого сообщения
-        let delta = wantScroll ? 0 : OffsetCalculator.bottomStableDelta(
+        let delta = (wantScroll || stayAtBottom) ? 0 : OffsetCalculator.bottomStableDelta(
             oldRows: s.oldRows, oldLayout: s.oldLayoutData,
             newRows: rows, newLayout: layoutData, vc: vc)
 
-        print("[ContentOnly] updated=\(changed.count) delta=\(f(delta)) wantScroll=\(wantScroll)")
-
-        if !wantScroll {
-            cv.contentOffset = CGPoint(x: s.savedOffset.x, y: s.savedOffset.y + delta)
-        }
+        print("[ContentOnly] updated=\(changed.count) delta=\(f(delta)) wantScroll=\(wantScroll) stayAtBottom=\(stayAtBottom)")
 
         // Рекофигурация видимых ячеек на месте (без пересоздания)
         for i in changed {
@@ -455,11 +454,25 @@ private extension MessageUpdateHandler {
                 vc.dataSource.reconfigureMessageCellInPlace(cell, message: msg, vc: vc)
             }
         }
+
+        // Атомарное обновление offset + layout
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+
+        // Сначала layout с новыми размерами
         cv.collectionViewLayout.invalidateLayout()
         cv.layoutIfNeeded()
 
-        OffsetCalculator.clamp(cv: cv, savedX: s.savedOffset.x, skip: wantScroll)
+        // Потом финальный offset (после того как contentSize обновился)
+        if stayAtBottom {
+            scrollToBottom(cv: cv, animated: false)
+        } else if !wantScroll {
+            cv.contentOffset = CGPoint(x: s.savedOffset.x, y: s.savedOffset.y + delta)
+            OffsetCalculator.clamp(cv: cv, savedX: s.savedOffset.x, skip: false)
+        }
         if wantScroll { scrollToBottom(cv: cv) }
+
+        CATransaction.commit()
 
         vc.finalizeUpdate(count: rows.count, animated: true)
         vc.flushPendingMessages()

@@ -2,9 +2,9 @@
 // This file kept for Xcode target compatibility.
 import Testing
 
-@Suite("Smoke")
+@Suite("Дымовой тест")
 struct SmokeTests {
-    @Test("tests are running")
+    @Test("тесты запускаются")
     func smokeTest() {
         #expect(true)
     }
