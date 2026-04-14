@@ -55,6 +55,7 @@ extension ChatViewController: UICollectionViewDelegate {
 
     public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         isUserDragging = true
+        pendingScrollToBottom = false
     }
 
     public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {

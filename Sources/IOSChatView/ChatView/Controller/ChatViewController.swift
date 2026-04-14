@@ -577,8 +577,6 @@ public final class ChatViewController: UIViewController {
     // MARK: - Scroll
 
     public func scrollToBottom(animated: Bool) {
-        // Always set pending flag — ensures scroll happens even if messages
-        // haven't arrived yet (e.g., returnToLatest: command fires before data update).
         pendingScrollToBottom = true
 
         guard !messages.isEmpty else {

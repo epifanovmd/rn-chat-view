@@ -53,12 +53,16 @@ final class ContextMenuEmojiPanel: UIView {
     private func setupLayout() {
         addSubview(stack)
         let p: CGFloat = 10
-        NSLayoutConstraint.activate([
+        let constraints = [
             stack.topAnchor.constraint(equalTo: topAnchor, constant: p),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -p),
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: p),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -p),
-        ])
+        ]
+        // Приоритет ниже required — panel позиционируется frame-based (через Animator),
+        // при frame: .zero autoresizing mask (width=0) конфликтует с внутренними constraints
+        constraints.forEach { $0.priority = .defaultHigh }
+        NSLayoutConstraint.activate(constraints)
     }
 
     private func makeButton(emoji: String) -> UIButton {
@@ -66,10 +70,11 @@ final class ContextMenuEmojiPanel: UIView {
         btn.setTitle(emoji, for: .normal)
         btn.titleLabel?.font = .systemFont(ofSize: theme.emojiFontSize)
         btn.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            btn.widthAnchor.constraint(equalToConstant: theme.emojiItemSize),
-            btn.heightAnchor.constraint(equalToConstant: theme.emojiItemSize),
-        ])
+        let w = btn.widthAnchor.constraint(equalToConstant: theme.emojiItemSize)
+        let h = btn.heightAnchor.constraint(equalToConstant: theme.emojiItemSize)
+        w.priority = .defaultHigh
+        h.priority = .defaultHigh
+        NSLayoutConstraint.activate([w, h])
         btn.addTarget(self, action: #selector(tapped(_:)),      for: .touchUpInside)
         btn.addTarget(self, action: #selector(touchDown(_:)),   for: .touchDown)
         btn.addTarget(self, action: #selector(touchUp(_:)),     for: [.touchUpInside, .touchUpOutside, .touchCancel])

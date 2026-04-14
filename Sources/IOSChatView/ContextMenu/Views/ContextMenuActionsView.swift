@@ -116,7 +116,7 @@ private final class ActionRowView: UIView {
             icon.translatesAutoresizingMaskIntoConstraints = false
             addSubview(icon)
 
-            NSLayoutConstraint.activate([
+            let constraints = [
                 icon.centerYAnchor.constraint(equalTo: centerYAnchor),
                 icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: pad),
                 icon.widthAnchor.constraint(equalToConstant: 20),
@@ -124,13 +124,18 @@ private final class ActionRowView: UIView {
                 label.centerYAnchor.constraint(equalTo: centerYAnchor),
                 label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
                 label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -pad),
-            ])
+            ]
+            // Parent задаёт frame в layoutSubviews, до этого width=0 → конфликт
+            constraints.forEach { $0.priority = .defaultHigh }
+            NSLayoutConstraint.activate(constraints)
         } else {
-            NSLayoutConstraint.activate([
+            let constraints = [
                 label.centerYAnchor.constraint(equalTo: centerYAnchor),
                 label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: pad),
                 label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -pad),
-            ])
+            ]
+            constraints.forEach { $0.priority = .defaultHigh }
+            NSLayoutConstraint.activate(constraints)
         }
     }
 
