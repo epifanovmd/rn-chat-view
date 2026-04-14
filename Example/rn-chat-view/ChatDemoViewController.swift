@@ -538,6 +538,7 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         chatVC.features.senderNameMode = .incomingOnly
         chatVC.features.showAvatars = true
         chatVC.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
+        chatVC.disintegrationEnabled = true
 
         addChild(chatVC)
         view.addSubview(chatVC.view)
@@ -749,7 +750,9 @@ final class ChatDemoViewController: UIViewController, ChatViewControllerDelegate
         case "edit":
             chatVC.beginEdit(messageId: messageId, text: msg.content.text ?? "")
         case "delete":
-            chatVC.deleteMessageAnimated(id: messageId)
+            var msgs = chatVC.messages
+            msgs.removeAll { $0.id == messageId }
+            updateMessages(msgs)
         default:
             showAlert("Action: \(actionId)", "message: \(messageId)")
         }

@@ -256,11 +256,23 @@ private extension MessageUpdateHandler {
                          shouldScroll: shouldScroll, analysis: analysis)
 
         case .structural:
-            vc.setMessages(newMessages)
-            vc.rebuildMessageIndex()
-            let newRows = vc.buildRows(from: newMessages)
-            applyStructural(vc: vc, oldRows: s.oldRows, newRows: newRows,
-                            snapshot: s, shouldScroll: shouldScroll)
+            // Detect deleted message IDs
+            let newIDs = Set(newMessages.map(\.id))
+            let deletedIDs = s.oldMessages.filter { !newIDs.contains($0.id) }.map(\.id)
+
+            if vc.disintegrationEnabled, !deletedIDs.isEmpty {
+                // Run disintegration on visible deleted cells, then apply structural
+                animateDisintegrationAndApply(
+                    vc: vc, deletedIDs: deletedIDs, newMessages: newMessages,
+                    oldRows: s.oldRows, snapshot: s, shouldScroll: shouldScroll
+                )
+            } else {
+                vc.setMessages(newMessages)
+                vc.rebuildMessageIndex()
+                let newRows = vc.buildRows(from: newMessages)
+                applyStructural(vc: vc, oldRows: s.oldRows, newRows: newRows,
+                                snapshot: s, shouldScroll: shouldScroll)
+            }
         }
 
         if shouldScroll {
@@ -402,6 +414,48 @@ private extension MessageUpdateHandler {
         cv.layoutIfNeeded()
 
         OffsetCalculator.clamp(cv: cv, savedX: s.savedOffset.x, skip: shouldScroll)
+    }
+
+    // MARK: Disintegration + Structural
+
+    /// Animate disintegration on visible deleted cells, then apply structural update.
+    private func animateDisintegrationAndApply(
+        vc: ChatViewController, deletedIDs: [String], newMessages: [ChatMessage],
+        oldRows: [ChatRow], snapshot s: Snapshot, shouldScroll: Bool
+    ) {
+        let cv = vc.collectionView!
+        var animatedAny = false
+
+        for id in deletedIDs {
+            guard let rowIndex = vc.rowIndexCache[id],
+                  let cell = cv.cellForItem(at: IndexPath(item: rowIndex, section: 0)) as? MessageCell else {
+                continue
+            }
+
+            animatedAny = true
+            DisintegrationAnimator.disintegrate(
+                view: cell.bubbleView,
+                in: vc.view,
+                config: vc.disintegrationConfig
+            ) {
+                cell.bubbleView.isHidden = false
+            }
+        }
+
+        let applyBlock = { [weak self] in
+            guard let self, let vc = self.controller else { return }
+            vc.setMessages(newMessages)
+            vc.rebuildMessageIndex()
+            let newRows = vc.buildRows(from: newMessages)
+            self.applyStructural(vc: vc, oldRows: oldRows, newRows: newRows,
+                                 snapshot: s, shouldScroll: shouldScroll)
+        }
+
+        if animatedAny {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: applyBlock)
+        } else {
+            applyBlock()
+        }
     }
 
     // MARK: Structural — full rebuild (fallback)
