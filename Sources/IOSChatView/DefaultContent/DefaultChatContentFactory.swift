@@ -347,12 +347,9 @@ open class DefaultChatContentFactory: ChatContentFactory {
         stack.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(stack)
 
-        let isCenter = ownership == .system
         NSLayoutConstraint.activate([
             container.heightAnchor.constraint(equalToConstant: layout.footerHeight),
-            isCenter
-                ? stack.centerXAnchor.constraint(equalTo: container.centerXAnchor)
-                : stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
         return container

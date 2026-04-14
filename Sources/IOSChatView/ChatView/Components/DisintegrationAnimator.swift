@@ -73,7 +73,7 @@ public final class DisintegrationAnimator {
             return
         }
 
-        // 1. Snapshot on main thread
+        // 1. Snapshot
         let renderer = UIGraphicsImageRenderer(bounds: bounds)
         let snapshot = renderer.image { ctx in
             view.layer.render(in: ctx.cgContext)
@@ -141,9 +141,13 @@ public final class DisintegrationAnimator {
                     let a = CGFloat(ptr[3]) / 255.0
 
                     // Skip fully transparent regions
-                    guard a > 0.1 else { continue }
+                    guard a > 0.02 else { continue }
 
-                    let color = UIColor(red: r, green: g, blue: b, alpha: a)
+                    // Premultiplied alpha → восстановить реальный цвет
+                    let realR = a > 0.01 ? min(r / a, 1.0) : r
+                    let realG = a > 0.01 ? min(g / a, 1.0) : g
+                    let realB = a > 0.01 ? min(b / a, 1.0) : b
+                    let color = UIColor(red: realR, green: realG, blue: realB, alpha: max(a, 0.35))
                     let position = CGPoint(x: ptX, y: ptY)
                     cells.append(CellInfo(color: color, position: position))
                 }

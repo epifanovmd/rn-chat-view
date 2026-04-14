@@ -278,7 +278,6 @@ struct Case23_ScrollStabilityTests {
 
         // Имитируем FAB tap
         h.vc.scrollToBottom(animated: false)
-        // pendingScrollToBottom = true
 
         // Имитируем скролл пользователя вверх (сбрасывает pendingScrollToBottom)
         h.vc.scrollViewWillBeginDragging(h.vc.collectionView)

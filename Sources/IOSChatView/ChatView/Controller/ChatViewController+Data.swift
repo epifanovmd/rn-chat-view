@@ -67,13 +67,13 @@ extension ChatViewController {
         switch row {
         case .message(let msg):
             let h = computeMessageHeight(forId: msg.id, width: width)
-            let extraBottom: CGFloat
+            let extraSpacing: CGFloat
             switch msg.ownership {
-            case .system: extraBottom = layout.systemCellBottomSpacing
-            case .pinned: extraBottom = layout.pinnedCellBottomSpacing
-            default:      extraBottom = 0
+            case .system: extraSpacing = layout.systemCellBottomSpacing
+            case .pinned: extraSpacing = layout.pinnedCellBottomSpacing
+            default:      extraSpacing = 0
             }
-            return RowLayoutInfo(height: h, topInset: layout.cellVSpacing / 2, bottomInset: layout.cellVSpacing / 2 + extraBottom)
+            return RowLayoutInfo(height: h, topInset: layout.cellVSpacing / 2 + extraSpacing, bottomInset: layout.cellVSpacing / 2 + extraSpacing)
 
         case .dateSeparator(let gd):
             let key = "date_\(gd)"

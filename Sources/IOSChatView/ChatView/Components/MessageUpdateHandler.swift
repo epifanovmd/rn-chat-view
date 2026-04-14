@@ -461,16 +461,16 @@ private extension MessageUpdateHandler {
             guard case .message(let msg) = rows[i] else { continue }
             let oldH = layoutData[i].height
             let newH = vc.computeMessageHeight(forId: msg.id, width: width)
-            let extraBottom: CGFloat
+            let extraSpacing: CGFloat
             switch msg.ownership {
-            case .system: extraBottom = vc.layout.systemCellBottomSpacing
-            case .pinned: extraBottom = vc.layout.pinnedCellBottomSpacing
-            default:      extraBottom = 0
+            case .system: extraSpacing = vc.layout.systemCellBottomSpacing
+            case .pinned: extraSpacing = vc.layout.pinnedCellBottomSpacing
+            default:      extraSpacing = 0
             }
             layoutData[i] = RowLayoutInfo(
                 height: newH,
-                topInset: vc.layout.cellVSpacing / 2,
-                bottomInset: vc.layout.cellVSpacing / 2 + extraBottom
+                topInset: vc.layout.cellVSpacing / 2 + extraSpacing,
+                bottomInset: vc.layout.cellVSpacing / 2 + extraSpacing
             )
             if abs(oldH - newH) > 0.5 {
                 log("  Height: \(msg.id.prefix(12)) \(f(oldH)) → \(f(newH)) (Δ\(f(newH - oldH)))")
