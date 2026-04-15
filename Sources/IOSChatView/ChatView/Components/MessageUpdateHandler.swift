@@ -286,17 +286,20 @@ private extension MessageUpdateHandler {
             return oldIDs.subtracting(newIDs)
         }()
 
+        // Якорь (нижний видимый элемент)
+        let anchor = wantScroll ? nil : vc.currentScrollAnchor()
+
+        if let a = anchor {
+            log("  Anchor: msg=\(a.messageId.prefix(12)) offset=\(f(a.offset)) wasAtBottom=\(a.wasAtBottom)")
+        }
+
         let doApply = { [weak self] (suppressAnimation: Bool) in
             guard let self else { return }
 
             let offsetBefore = cv.contentOffset.y
             let contentHBefore = cv.contentSize.height
 
-            // Якорь для восстановления позиции скролла
-            let anchor = wantScroll ? nil : vc.currentScrollAnchor()
-            if let a = anchor {
-                log("  Anchor: msg=\(a.messageId.prefix(12)) offsetFromTop=\(f(a.offsetFromTop)) wasAtBottom=\(a.wasAtBottom)")
-            }
+            log("  [1/4] Начало: offset=\(f(offsetBefore)) contentH=\(f(contentHBefore)) suppress=\(suppressAnimation)")
 
             if isFullReplace {
                 vc.setRows(newRows)
@@ -305,47 +308,18 @@ private extension MessageUpdateHandler {
                     cv.reloadData()
                     cv.layoutIfNeeded()
                 }
-                log("  Метод: crossfade (полная замена)")
+                log("  [2/4] Метод: crossfade (полная замена)")
             } else {
-                // Собираем все операции из stages
-                var allDeleted: [IndexPath] = []
-                var allInserted: [IndexPath] = []
-                var allUpdated: [IndexPath] = []
-                for stage in changeset {
-                    allDeleted += stage.elementDeleted.map { IndexPath(item: $0.element, section: $0.section) }
-                    allInserted += stage.elementInserted.map { IndexPath(item: $0.element, section: $0.section) }
-                    allUpdated += stage.elementUpdated.map { IndexPath(item: $0.element, section: $0.section) }
-                }
-
-                let hasInsertDelete = !allDeleted.isEmpty || !allInserted.isEmpty
-
-                if hasInsertDelete && changeset.count > 1 {
-                    // Multi-stage — схлопываем в один performBatchUpdates
-                    let applyMerged = {
-                        cv.performBatchUpdates({
-                            vc.setRows(newRows)
-                            vc.applyLayoutData(vc.computeLayoutData())
-                            if !allDeleted.isEmpty { cv.deleteItems(at: allDeleted) }
-                            if !allInserted.isEmpty { cv.insertItems(at: allInserted) }
-                            if !allUpdated.isEmpty { cv.reloadItems(at: allUpdated) }
-                        })
-                        cv.layoutIfNeeded()
+                let applyDK = {
+                    cv.reload(using: changeset) { [weak vc] data in
+                        guard let vc else { return }
+                        vc.setRows(data)
+                        vc.applyLayoutData(vc.computeLayoutData())
                     }
-                    if suppressAnimation { UIView.performWithoutAnimation(applyMerged) } else { applyMerged() }
-                    log("  Метод: merged batch (del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count), animated=\(!suppressAnimation))")
-                } else {
-                    // 1 stage или только moves/updates — DK
-                    let applyDK = {
-                        cv.reload(using: changeset) { [weak vc] data in
-                            guard let vc else { return }
-                            vc.setRows(data)
-                            vc.applyLayoutData(vc.computeLayoutData())
-                        }
-                        cv.layoutIfNeeded()
-                    }
-                    if suppressAnimation { UIView.performWithoutAnimation(applyDK) } else { applyDK() }
-                    log("  Метод: DK batch (stages=\(changeset.count), animated=\(!suppressAnimation))")
+                    cv.layoutIfNeeded()
                 }
+                if suppressAnimation { UIView.performWithoutAnimation(applyDK) } else { applyDK() }
+                log("  [2/4] Метод: DK batch (stages=\(changeset.count), animated=\(!suppressAnimation))")
             }
 
             if vc.rows != newRows {
@@ -358,14 +332,16 @@ private extension MessageUpdateHandler {
 
             let offsetAfter = cv.contentOffset.y
             let contentHAfter = cv.contentSize.height
-            log("  Offset: \(f(offsetBefore)) → \(f(offsetAfter)), contentH: \(f(contentHBefore)) → \(f(contentHAfter))")
+            log("  [3/4] После batch: offset=\(f(offsetAfter)) (Δ\(f(offsetAfter - offsetBefore))) contentH=\(f(contentHAfter)) (Δ\(f(contentHAfter - contentHBefore)))")
 
             if wantScroll {
                 self.scrollToBottom(cv: cv, animated: animateScroll)
-                log("  Скролл: → scrollToBottom (animated=\(animateScroll))")
+                log("  [4/4] Скролл: scrollToBottom (animated=\(animateScroll)), offset=\(f(cv.contentOffset.y))")
             } else if let anchor {
                 vc.restoreScrollAnchor(anchor)
-                log("  Скролл: → restore anchor \(anchor.messageId.prefix(12)), offset: \(f(offsetAfter)) → \(f(cv.contentOffset.y))")
+                log("  [4/4] Скролл: anchor restore, offset=\(f(cv.contentOffset.y)) (Δ\(f(cv.contentOffset.y - offsetBefore)))")
+            } else {
+                log("  [4/4] Скролл: не требуется")
             }
 
             if !s.wasAtBottom && !wantScroll {
@@ -381,7 +357,6 @@ private extension MessageUpdateHandler {
         if vc.disintegrationEnabled && !deletedIDs.isEmpty && !isFullReplace && !hasInserts {
             log("  Анимация: disintegration (\(deletedIDs.count) удалений)")
             animateDisintegrationThen(vc: vc, deletedIDs: deletedIDs) { hadVisibleAnimation in
-                // Если удаление было вне viewport (конфетти не играло) — подавляем DK анимацию
                 doApply(!hadVisibleAnimation)
             }
         } else {

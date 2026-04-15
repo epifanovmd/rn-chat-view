@@ -2,22 +2,22 @@ import UIKit
 
 // MARK: - Scroll Anchor
 
-/// Stable scroll position anchor tied to a message, not a pixel offset.
-/// Anchors to the **top-most visible message** — stable during prepend/append.
-/// `offsetFromTop` = distance from the top of the visible area to the top of the anchor cell.
+/// Якорь скролла: привязка к нижнему видимому сообщению.
+/// `offset` = расстояние от нижнего края viewport до нижнего края ячейки-якоря.
+/// Стабилен при вставках/удалениях сверху.
 public struct ScrollAnchor: Codable, Equatable {
-    /// ID of the anchor message (top-most visible message).
+    /// ID ячейки-якоря (нижний видимый message).
     public let messageId: String
-    /// Distance from the top of the visible area to the top edge of the anchor cell (px).
-    /// Positive = cell top is below visible top (partially visible).
-    /// Negative = cell top is above visible top (cell extends above the screen).
-    public let offsetFromTop: CGFloat
-    /// Whether the user was at the bottom of the chat.
+    /// Расстояние от visible bottom до нижнего края ячейки-якоря (px).
+    /// 0 = нижний край ячейки совпадает с низом viewport.
+    /// Положительное = ячейка выше низа viewport.
+    public let offset: CGFloat
+    /// Был ли пользователь внизу чата.
     public let wasAtBottom: Bool
 
-    public init(messageId: String, offsetFromTop: CGFloat, wasAtBottom: Bool) {
+    public init(messageId: String, offset: CGFloat, wasAtBottom: Bool) {
         self.messageId = messageId
-        self.offsetFromTop = offsetFromTop
+        self.offset = offset
         self.wasAtBottom = wasAtBottom
     }
 }
@@ -516,14 +516,14 @@ public final class ChatViewController: UIViewController {
 
         if isNearBottom() {
             guard let lastMsg = messages.last else { return nil }
-            return ScrollAnchor(messageId: lastMsg.id, offsetFromTop: 0, wasAtBottom: true)
+            return ScrollAnchor(messageId: lastMsg.id, offset: 0, wasAtBottom: true)
         }
 
-        // Visible top = contentOffset.y + adjustedContentInset.top
-        let visibleTop = cv.contentOffset.y + cv.adjustedContentInset.top
+        // Нижний край видимой области (с учётом insets)
+        let visibleBottom = cv.contentOffset.y + cv.bounds.height - cv.contentInset.bottom
 
-        // Find the top-most visible message cell (sorted ascending by index)
-        let paths = cv.indexPathsForVisibleItems.sorted { $0.item < $1.item }
+        // Нижний видимый message cell
+        let paths = cv.indexPathsForVisibleItems.sorted { $0.item > $1.item }
 
         for ip in paths {
             guard ip.item < rows.count,
@@ -533,18 +533,18 @@ public final class ChatViewController: UIViewController {
             guard rowIdx < chatLayout.rowLayoutData.count,
                   rowIdx < chatLayout.yOffsets.count else { continue }
 
-            let cellTop = chatLayout.yOffsets[rowIdx]
+            let cellBottom = chatLayout.yOffsets[rowIdx]
                 + chatLayout.rowLayoutData[rowIdx].topInset
-            let offset = cellTop - visibleTop
+                + chatLayout.rowLayoutData[rowIdx].height
+            let offset = visibleBottom - cellBottom
 
-            return ScrollAnchor(messageId: msg.id, offsetFromTop: offset, wasAtBottom: false)
+            return ScrollAnchor(messageId: msg.id, offset: offset, wasAtBottom: false)
         }
         return nil
     }
 
     /// Restores scroll position from a previously saved anchor.
-    /// Inverse of `currentScrollAnchor()`: positions so that the anchor message's
-    /// top edge is at `offsetFromTop` below the visible top.
+    /// Восстанавливает позицию скролла: нижний край ячейки-якоря на прежнем расстоянии от visible bottom.
     public func restoreScrollAnchor(_ anchor: ScrollAnchor) {
         guard let cv = collectionView else { return }
 
@@ -559,13 +559,14 @@ public final class ChatViewController: UIViewController {
             return
         }
 
-        let cellTop = chatLayout.yOffsets[rowIndex]
+        let cellBottom = chatLayout.yOffsets[rowIndex]
             + chatLayout.rowLayoutData[rowIndex].topInset
+            + chatLayout.rowLayoutData[rowIndex].height
 
-        // visibleTop = contentOffset.y + adjustedContentInset.top
-        // cellTop = visibleTop + offsetFromTop
-        // → contentOffset.y = cellTop - offsetFromTop - adjustedContentInset.top
-        let targetOffset = cellTop - anchor.offsetFromTop - cv.adjustedContentInset.top
+        // visibleBottom = contentOffset.y + bounds.height - contentInset.bottom
+        // cellBottom = visibleBottom - offset
+        // → contentOffset.y = cellBottom + offset - bounds.height + contentInset.bottom
+        let targetOffset = cellBottom + anchor.offset - cv.bounds.height + cv.contentInset.bottom
 
         let minY = -cv.adjustedContentInset.top
         let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
