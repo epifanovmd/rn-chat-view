@@ -323,7 +323,12 @@ private extension MessageUpdateHandler {
                 if wantScroll {
                     self.scrollToBottom(cv: cv, animated: false)
                 } else if !anchors.isEmpty {
-                    vc.restoreBestAnchor(anchors)
+                    vc.restoreBestAnchor(anchors, fallbackOffset: offsetBefore)
+                } else {
+                    // Ни одного якоря — сохраняем старый offset (clamp к новому contentSize)
+                    let minY = -cv.adjustedContentInset.top
+                    let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+                    cv.contentOffset = CGPoint(x: 0, y: min(max(offsetBefore, minY), max(maxY, minY)))
                 }
 
                 if let snap = snapshot {

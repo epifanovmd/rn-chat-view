@@ -574,7 +574,7 @@ public final class ChatViewController: UIViewController {
     }
 
     /// Восстанавливает позицию по лучшему из видимых якорей (существует + минимальное смещение).
-    public func restoreBestAnchor(_ anchors: [ScrollAnchor]) {
+    public func restoreBestAnchor(_ anchors: [ScrollAnchor], fallbackOffset: CGFloat? = nil) {
         guard let cv = collectionView else { return }
 
         if anchors.contains(where: { $0.wasAtBottom }) {
@@ -582,9 +582,8 @@ public final class ChatViewController: UIViewController {
             return
         }
 
-        let currentOffset = cv.contentOffset.y
-
         // Ищем якорь с минимальным смещением среди тех, что ещё существуют в layout
+        let referenceOffset = fallbackOffset ?? cv.contentOffset.y
         var bestTarget: CGFloat?
         var bestDelta = CGFloat.greatestFiniteMagnitude
 
@@ -597,7 +596,7 @@ public final class ChatViewController: UIViewController {
                 + chatLayout.rowLayoutData[rowIndex].topInset
                 + chatLayout.rowLayoutData[rowIndex].height
             let target = cellBottom + a.offset - cv.bounds.height + cv.contentInset.bottom
-            let delta = abs(target - currentOffset)
+            let delta = abs(target - referenceOffset)
 
             if delta < bestDelta {
                 bestDelta = delta
@@ -605,10 +604,11 @@ public final class ChatViewController: UIViewController {
             }
         }
 
-        guard let target = bestTarget else { return }
-
         let minY = -cv.adjustedContentInset.top
         let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+
+        // Если ни один якорь не найден — fallback к referenceOffset
+        let target = bestTarget ?? referenceOffset
         let clampedY = min(max(target, minY), max(maxY, minY))
 
         cv.contentOffset = CGPoint(x: 0, y: clampedY)
