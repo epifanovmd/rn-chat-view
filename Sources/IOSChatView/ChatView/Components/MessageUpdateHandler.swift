@@ -265,6 +265,8 @@ private extension MessageUpdateHandler {
         let isFullReplace = (allDeleted.count + allInserted.count) > max(s.oldRows.count, newRows.count)
         let hasInserts = !allInserted.isEmpty
         let hasDeletes = !allDeleted.isEmpty
+        // Snapshot fade: fullReplace, mixed (del+ins), insert only — всё с inserts кроме чистых delete/shuffle
+        let useSnapshotFade = !isFullReplace && hasInserts
 
         // Удалённые ID
         let deletedIDs: Set<String> = {
@@ -282,11 +284,11 @@ private extension MessageUpdateHandler {
 
         // ── Выбор метода и анимации ──
         //
-        // | Кейс              | Анимация batch | Скролл после         |
+        // | Кейс              | Анимация       | Скролл после         |
         // |--------------------|----------------|----------------------|
         // | FullReplace        | Snapshot fade  | anchor / scrollToBot |
-        // | Delete/Shuffle     | DK animated    | DK сам               |
-        // | Insert / Mixed     | Без анимации   | anchor restore       |
+        // | Insert / Mixed     | Snapshot fade  | anchor / scrollToBot |
+        // | Delete / Shuffle   | DK animated    | DK сам               |
         // | Disintegration     | Конфетти → DK  | DK сам / anchor      |
 
         let doApply = { [weak self] (suppressAnimation: Bool) in
@@ -295,17 +297,30 @@ private extension MessageUpdateHandler {
             let offsetBefore = cv.contentOffset.y
             let contentHBefore = cv.contentSize.height
             var dkAnimated = false
+            // Snapshot fade используется для fullReplace и mixed — offset восстанавливается до fade
+            var usedSnapshotFade = false
 
             // ── Применение данных ──
 
-            if isFullReplace {
-                // Snapshot → reloadData → offset → fade
+            if isFullReplace || useSnapshotFade {
+                // Snapshot → DK без анимации → offset → fade
                 let snapshot = cv.snapshotView(afterScreenUpdates: false)
 
-                vc.setRows(newRows)
-                vc.applyLayoutData(vc.computeLayoutData())
-                cv.reloadData()
-                cv.layoutIfNeeded()
+                UIView.performWithoutAnimation {
+                    cv.reload(using: changeset) { [weak vc] data in
+                        guard let vc else { return }
+                        vc.setRows(data)
+                        vc.applyLayoutData(vc.computeLayoutData())
+                    }
+                    cv.layoutIfNeeded()
+                }
+
+                if vc.rows != newRows {
+                    vc.setRows(newRows)
+                    vc.applyLayoutData(vc.computeLayoutData())
+                    cv.reloadData()
+                    cv.layoutIfNeeded()
+                }
 
                 if wantScroll {
                     self.scrollToBottom(cv: cv, animated: false)
@@ -320,11 +335,13 @@ private extension MessageUpdateHandler {
                     UIView.animate(withDuration: 0.25, animations: { snap.alpha = 0 }) { _ in snap.removeFromSuperview() }
                 }
 
-                log("  Метод: FULL_REPLACE (crossfade)")
+                usedSnapshotFade = true
+                let type = isFullReplace ? "FULL_REPLACE" : (hasDeletes ? "MIXED" : "INSERT")
+                log("  Метод: \(type) (snapshot fade, del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count))")
 
             } else {
-                // DK batch — анимация только для delete/shuffle (без inserts)
-                let shouldAnimate = !hasInserts && !suppressAnimation
+                // DK batch — анимация для delete/shuffle (нет inserts)
+                let shouldAnimate = !suppressAnimation
                 dkAnimated = shouldAnimate
 
                 let apply = {
@@ -346,7 +363,7 @@ private extension MessageUpdateHandler {
                     cv.layoutIfNeeded()
                 }
 
-                let animType = shouldAnimate ? (hasDeletes ? "DELETE" : "SHUFFLE") : (hasInserts && hasDeletes ? "MIXED" : "INSERT")
+                let animType = shouldAnimate ? (hasDeletes ? "DELETE" : "SHUFFLE") : "INSERT"
                 log("  Метод: DK_BATCH (\(animType), stages=\(changeset.count), animated=\(shouldAnimate))")
             }
 
@@ -355,8 +372,8 @@ private extension MessageUpdateHandler {
             let offsetAfter = cv.contentOffset.y
             let contentHAfter = cv.contentSize.height
 
-            if isFullReplace {
-                log("  Скролл: offset в crossfade, offset=\(f(cv.contentOffset.y))")
+            if usedSnapshotFade {
+                log("  Скролл: offset в snapshot fade, offset=\(f(cv.contentOffset.y))")
             } else if wantScroll {
                 self.scrollToBottom(cv: cv, animated: animateScroll)
                 log("  Скролл: scrollToBottom (animated=\(animateScroll))")
