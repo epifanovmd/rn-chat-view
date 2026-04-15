@@ -1,6 +1,5 @@
 import UIKit
 
-/// Recording indicator row: red dot + timer + animated cancel hint.
 final class InputBarRecordingRow: UIView {
 
     let dot = UIView()
@@ -18,7 +17,7 @@ final class InputBarRecordingRow: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     private func setup() {
         let L = ChatLayout()
@@ -72,7 +71,7 @@ final class InputBarRecordingRow: UIView {
         ])
     }
 
-    // MARK: - Theme
+    // MARK: - Тема
 
     func applyTheme(_ theme: InputBarTheme) {
         dot.backgroundColor = theme.recordingDot
@@ -81,7 +80,7 @@ final class InputBarRecordingRow: UIView {
         slideText.textColor = theme.placeholder
     }
 
-    // MARK: - State
+    // MARK: - Состояние
 
     func reset() {
         timerLabel.text = "0:00,00"
@@ -121,7 +120,7 @@ final class InputBarRecordingRow: UIView {
         }, completion: { _ in completion() })
     }
 
-    // MARK: - Private
+    // MARK: - Приватные
 
     private func animateSlide(toX: CGFloat) {
         UIView.animate(withDuration: 1.0, delay: 0, options: .curveEaseInOut, animations: {

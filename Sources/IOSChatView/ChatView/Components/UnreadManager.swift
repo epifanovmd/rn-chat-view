@@ -1,11 +1,6 @@
 import Foundation
 
-/// Manages unread message tracking and count.
-///
-/// Supports two modes:
-/// - **Internal** (default): library tracks unread IDs from appended messages
-///   and clears them when messages become visible.
-/// - **External**: host app manages the count via `setUnreadCount(_:)`.
+// Два режима: внутренний (библиотека отслеживает ID) и внешний (хост задаёт count)
 final class UnreadManager {
 
     private(set) var count: Int = 0
@@ -14,18 +9,16 @@ final class UnreadManager {
 
     var onCountChanged: ((Int) -> Void)?
 
-    // MARK: - External Management
+    // MARK: - Внешнее управление
 
-    /// Switch to external management — the library stops tracking internally.
     func setExternalCount(_ count: Int) {
         isExternalManagement = true
         self.count = count
         onCountChanged?(count)
     }
 
-    // MARK: - Internal Tracking
+    // MARK: - Внутреннее отслеживание
 
-    /// Track new unread messages from an append operation.
     func trackAppended(newMessages: [ChatMessage], oldCount: Int) {
         guard !isExternalManagement else { return }
         let delta = newMessages.count - oldCount
@@ -37,7 +30,6 @@ final class UnreadManager {
         onCountChanged?(count)
     }
 
-    /// Mark messages as read when they become visible.
     func markAsRead(_ ids: Set<String>) {
         guard !isExternalManagement else { return }
         let readUnread = ids.intersection(unreadIDs)
@@ -47,7 +39,6 @@ final class UnreadManager {
         onCountChanged?(count)
     }
 
-    /// Clear all unread state.
     func clearAll() {
         unreadIDs.removeAll()
         count = 0

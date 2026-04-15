@@ -1,85 +1,85 @@
 # IOSChatView
 
-Production-ready iOS chat UI component library. Built with UIKit + DifferenceKit for high-performance message rendering at 100K+ messages.
+Готовая к продакшену iOS библиотека компонентов чат-интерфейса. Построена на UIKit + DifferenceKit для высокопроизводительного рендеринга сообщений при 100K+ сообщениях.
 
-## Features
+## Возможности
 
-### Message Types
-- [x] Text messages (single/multi-line, links)
-- [x] Emoji-only messages (1-3 emojis, large font, no bubble)
-- [x] Image messages (single image with aspect ratio)
-- [x] Video messages (thumbnail + play icon + duration badge)
-- [x] Media grid (2-4 items, +N overlay)
-- [x] Mixed content (media + text caption)
-- [x] Voice messages (waveform visualization, playback, seek)
-- [x] Polls (single/multiple choice, anonymous, closeable)
-- [x] File attachments (icon by extension, name, size)
-- [x] Forwarded messages (accent bar + sender label)
-- [x] Reply previews (quoted message with sender + text)
-- [x] Custom content types (via `MessageMedia.custom`)
-- [x] System messages (centered, neutral styling)
-- [x] Pinned messages (centered bubble, left-aligned content)
-- [x] Thread discussions (pinned root + replies pattern)
+### Типы сообщений
+- [x] Текстовые сообщения (одно-/многострочные, ссылки)
+- [x] Эмодзи-сообщения (1-3 эмодзи, крупный шрифт, без пузыря)
+- [x] Изображения (одно изображение с сохранением пропорций)
+- [x] Видеосообщения (превью + иконка воспроизведения + бейдж длительности)
+- [x] Сетка медиа (2-4 элемента, оверлей +N)
+- [x] Смешанный контент (медиа + текстовая подпись)
+- [x] Голосовые сообщения (визуализация волновой формы, воспроизведение, перемотка)
+- [x] Опросы (одиночный/множественный выбор, анонимные, закрываемые)
+- [x] Файловые вложения (иконка по расширению, имя, размер)
+- [x] Пересланные сообщения (акцентная полоска + метка отправителя)
+- [x] Превью ответов (цитата сообщения с отправителем + текстом)
+- [x] Пользовательские типы контента (через `MessageMedia.custom`)
+- [x] Системные сообщения (по центру, нейтральное оформление)
+- [x] Закреплённые сообщения (пузырь по центру, контент выровнен влево)
+- [x] Обсуждения в тредах (закреплённый корень + ответы)
 
-### Message Features
-- [x] Reactions (emoji chips with count, mine highlight)
-- [x] Message status (sending, sent, delivered, read)
-- [x] Edited mark
-- [x] Timestamp
-- [x] Sender name (never / incoming only / always)
-- [x] Message highlight on scroll-to
-- [x] Thread indicator (reply count, last replier, tap to open)
-- [x] Sticky avatars (grouped by sender, supplementary views)
-- [x] Link detection (URLs and phone numbers, tap callbacks)
-- [x] Message ownership (mine/theirs/system/pinned alignment)
+### Функции сообщений
+- [x] Реакции (эмодзи-чипы со счётчиком, подсветка своих)
+- [x] Статус сообщения (отправляется, отправлено, доставлено, прочитано)
+- [x] Метка редактирования
+- [x] Временная метка
+- [x] Имя отправителя (никогда / только входящие / всегда)
+- [x] Подсветка сообщения при прокрутке к нему
+- [x] Индикатор треда (количество ответов, последний отвечающий, нажатие для открытия)
+- [x] Прилипающие аватары (группировка по отправителю, supplementary views)
+- [x] Распознавание ссылок (URL и номера телефонов, колбэки при нажатии)
+- [x] Владение сообщением (своё/чужое/системное/закреплённое — выравнивание)
 
-### Input Bar
-- [x] Auto-growing text input (1-5 lines)
-- [x] Send button (appears when text present)
-- [x] Attachment button (configurable)
-- [x] Voice recording (long press, drag to cancel/lock)
-- [x] Reply mode (with preview panel)
-- [x] Edit mode (with preview panel)
-- [x] Haptic feedback
+### Панель ввода
+- [x] Автоувеличивающееся поле ввода (1-5 строк)
+- [x] Кнопка отправки (появляется при наличии текста)
+- [x] Кнопка вложения (настраиваемая)
+- [x] Запись голоса (долгое нажатие, свайп для отмены/блокировки)
+- [x] Режим ответа (с панелью превью)
+- [x] Режим редактирования (с панелью превью)
+- [x] Тактильная обратная связь
 
-### Chat List
-- [x] DifferenceKit animated diffs (O(n) Heckel algorithm)
-- [x] Custom `UICollectionViewLayout` with pre-computed heights
-- [x] Size cache for O(1) cell height lookups
-- [x] Scroll-to-bottom FAB with unread badge
-- [x] Floating date pill on scroll
-- [x] Date separators between message groups
-- [x] Prepend scroll compensation (load older messages without jump)
-- [x] Append scroll preservation (new messages while scrolled up)
-- [x] Empty state (spinner + "no messages" text)
-- [x] Top/bottom loading indicators
-- [x] Pagination (threshold-based, top + bottom)
-- [x] Visibility tracking (message appear events)
-- [x] Animated delete/edit/reorder
+### Список чата
+- [x] Анимированные диффы DifferenceKit (алгоритм Heckel за O(n))
+- [x] Кастомный `UICollectionViewLayout` с предвычисленными высотами
+- [x] Кэш размеров для получения высоты ячейки за O(1)
+- [x] FAB прокрутки вниз с бейджем непрочитанных
+- [x] Плавающая таблетка с датой при прокрутке
+- [x] Разделители дат между группами сообщений
+- [x] Компенсация прокрутки при подгрузке (загрузка старых сообщений без скачка)
+- [x] Сохранение позиции при добавлении (новые сообщения при прокрутке вверх)
+- [x] Пустое состояние (спиннер + текст «нет сообщений»)
+- [x] Индикаторы загрузки сверху/снизу
+- [x] Пагинация (по порогу, сверху + снизу)
+- [x] Отслеживание видимости (события появления сообщений)
+- [x] Анимированное удаление/редактирование/перемещение
 
-### Context Menu
-- [x] Long press popup with snapshot
-- [x] Quick emoji reactions panel
-- [x] Action list (reply, edit, copy, delete, etc.)
-- [x] Keyboard freeze/restore on dismiss
-- [x] Spring animations
+### Контекстное меню
+- [x] Всплывающее окно по долгому нажатию со снимком
+- [x] Панель быстрых эмодзи-реакций
+- [x] Список действий (ответить, редактировать, копировать, удалить и т.д.)
+- [x] Заморозка/восстановление клавиатуры при закрытии
+- [x] Пружинные анимации
 
-### Customization
-- [x] `ChatTheme` — 50+ color properties (light/dark presets), system/pinned message colors
-- [x] `ChatLayout` — 350+ layout constants (fonts, sizes, spacing)
-- [x] `ChatFeatures` — 30+ feature flags
-- [x] `ChatContentFactory` — full view customization via protocol
-- [x] Avatar views via factory protocol
-- [x] `InputBarTheme` — independent input bar theming
-- [x] `ContextMenuTheme` — context menu theming (light/dark presets)
-- [x] Custom content types via `ChatContent` protocol (type-safe, extensible)
-- [x] `batchUpdate {}` — atomic config changes (single reload)
-- [x] Content-agnostic core — library knows nothing about message types
-- [x] See [CUSTOMIZATION.md](CUSTOMIZATION.md) for full custom types guide
+### Кастомизация
+- [x] `ChatTheme` — 66 свойств цвета (пресеты светлая/тёмная), цвета системных/закреплённых сообщений
+- [x] `ChatLayout` — 169 констант компоновки (шрифты, размеры, отступы)
+- [x] `ChatFeatures` — 25 флагов функций
+- [x] `ChatContentFactory` — полная кастомизация view через протокол
+- [x] Вью аватаров через протокол фабрики
+- [x] `InputBarTheme` — независимая тема панели ввода
+- [x] `ContextMenuTheme` — тема контекстного меню (пресеты светлая/тёмная)
+- [x] Пользовательские типы контента через протокол `ChatContent` (типобезопасные, расширяемые)
+- [x] `batchUpdate {}` — атомарное изменение конфигурации (один reload)
+- [x] Ядро не знает о типах контента — библиотека не зависит от конкретных типов сообщений
+- [x] См. [CUSTOMIZATION.md](CUSTOMIZATION.md) для полного руководства по пользовательским типам
 
 ---
 
-## Installation
+## Установка
 
 ### CocoaPods
 
@@ -87,7 +87,7 @@ Production-ready iOS chat UI component library. Built with UIKit + DifferenceKit
 pod 'IOSChatView', :path => '../rn-chat-view'
 pod 'DifferenceKit', :modular_headers => true
 
-# or from git:
+# или из git:
 # pod 'IOSChatView', :git => 'https://github.com/epifanovmd/rn-chat-view.git'
 ```
 
@@ -99,7 +99,7 @@ dependencies: [
 ]
 ```
 
-### Requirements
+### Требования
 
 - iOS 15.0+
 - Swift 5.9+
@@ -107,7 +107,7 @@ dependencies: [
 
 ---
 
-## Quick Start
+## Быстрый старт
 
 ```swift
 import IOSChatView
@@ -118,25 +118,25 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // 1. Configure
+        // 1. Конфигурация
         chatVC.delegate = self
         chatVC.theme = .dark
         chatVC.features.senderNameMode = .incomingOnly
         chatVC.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥"]
 
-        // 2. Embed as child view controller
+        // 2. Встроить как дочерний контроллер
         addChild(chatVC)
         view.addSubview(chatVC.view)
         chatVC.view.frame = view.bounds
         chatVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         chatVC.didMove(toParent: self)
 
-        // 3. Load messages
-        chatVC.hasMore = true  // enable top pagination
+        // 3. Загрузить сообщения
+        chatVC.hasMore = true  // включить пагинацию сверху
         chatVC.updateMessages(myMessages)
     }
 
-    // MARK: - Send Message
+    // MARK: - Отправка сообщения
 
     func chatDidSendMessage(text: String, replyToId: String?) {
         let msg = createMessage(text: text, replyToId: replyToId)
@@ -144,7 +144,7 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
         chatVC.clearInputMode()
     }
 
-    // MARK: - Pagination
+    // MARK: - Пагинация
 
     func chatDidReachTop(distance: CGFloat) {
         chatVC.isLoadingTop = true
@@ -156,7 +156,7 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
         }
     }
 
-    // MARK: - Message Actions
+    // MARK: - Действия с сообщениями
 
     func chatDidSelectAction(actionId: String, messageId: String) {
         switch actionId {
@@ -176,27 +176,27 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
         case "delete":
             var msgs = chatVC.messages
             msgs.removeAll { $0.id == messageId }
-            chatVC.updateMessages(msgs)  // animated delete
+            chatVC.updateMessages(msgs)  // анимированное удаление
         default: break
         }
     }
 
     func chatDidEditMessage(text: String, messageId: String) {
-        // Update message on backend, then refresh messages
+        // Обновить сообщение на сервере, затем обновить список сообщений
         chatVC.clearInputMode()
     }
 
-    // MARK: - Reactions
+    // MARK: - Реакции
 
     func chatDidSelectEmojiReaction(emoji: String, messageId: String) {
-        // Toggle reaction on backend, then update messages
+        // Переключить реакцию на сервере, затем обновить сообщения
     }
 
     func chatDidTapReaction(messageId: String, emoji: String) {
-        // Toggle existing reaction
+        // Переключить существующую реакцию
     }
 
-    // MARK: - Navigation
+    // MARK: - Навигация
 
     func chatDidTapReplyMessage(id: String) {
         chatVC.scrollToMessage(id: id, position: "center", animated: true, highlight: true)
@@ -207,41 +207,42 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
         chatVC.scrollToBottom(animated: true)
     }
 
-    // MARK: - Other Delegates
+    // MARK: - Остальные делегаты
 
     func chatDidScroll(offset: CGPoint) {}
     func chatDidReachBottom(distance: CGFloat) {}
-    func chatVisibleMessagesDidChange(ids: [String]) { /* scroll tracking */ }
-    func chatUnreadMessagesDidAppear(ids: [String]) { /* mark as read on backend */ }
-    func chatDidTapMessage(id: String, attachmentIndex: Int?) { /* open media viewer */ }
-    func chatDidTapThread(messageId: String, threadId: String) { /* open thread view */ }
+    func chatVisibleMessagesDidChange(ids: [String]) { /* отслеживание прокрутки */ }
+    func chatUnreadMessagesDidAppear(ids: [String]) { /* отметить прочитанным на сервере */ }
+    func chatDidTapMessage(id: String, attachmentIndex: Int?) { /* открыть просмотр медиа */ }
+    func chatDidTapThread(messageId: String, threadId: String) { /* открыть вид треда */ }
     func chatDidTapLink(url: URL, messageId: String) { UIApplication.shared.open(url) }
     func chatDidTapPhoneNumber(phoneNumber: String, messageId: String) {}
     func chatDidCancelInputAction(type: String) {}
-    func chatDidTapAttachment() { /* show image picker */ }
+    func chatDidTapAttachment() { /* показать выбор изображения */ }
     func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval, waveform: [Float]) {
-        // Upload voice file, create voice message
+        // Загрузить голосовой файл, создать голосовое сообщение
     }
-    func chatDidChangeInputText(_ text: String) { /* typing indicator */ }
+    func chatDidChangeInputText(_ text: String) { /* индикатор набора */ }
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {
-        // Handle content-specific interactions (poll votes, custom taps, etc.)
+        // Обработать взаимодействия с контентом (голосование в опросе, пользовательские нажатия и т.д.)
     }
 }
 ```
 
 ---
 
-## Messages
+## Сообщения
 
-### Creating Messages
+### Создание сообщений
 
 ```swift
-// Text message
+// Текстовое сообщение
 let textMsg = ChatMessage(
     id: "1",
-    content: MessageBody(text: "Hello!"),
+    localId: nil,                  // для маппинга pending→real
+    content: MessageBody(text: "Привет!"),
     timestamp: Date(),
-    senderName: "Alice",
+    senderName: "Алиса",
     ownership: .theirs,
     groupDate: "2026-04-06",
     status: .read,
@@ -252,11 +253,12 @@ let textMsg = ChatMessage(
     actions: []
 )
 
-// Image message with caption (using built-in ImagesContent)
+// Сообщение с изображением и подписью (с использованием встроенного ImagesContent)
 let imageMsg = ChatMessage(
     id: "2",
+    localId: nil,
     content: MessageBody(
-        text: "Check this out!",
+        text: "Посмотри!",
         content: AnyChatContent(ImagesContent([
             .image(ImageItem(url: "https://example.com/photo.jpg", width: 400, height: 300, thumbnailUrl: nil))
         ]))
@@ -273,7 +275,7 @@ let imageMsg = ChatMessage(
     actions: []
 )
 
-// Voice message (using built-in VoicePayload)
+// Голосовое сообщение (с использованием встроенного VoicePayload)
 let voiceMsg = ChatMessage(
     id: "3",
     content: MessageBody(
@@ -282,15 +284,15 @@ let voiceMsg = ChatMessage(
     // ...
 )
 
-// Poll (using built-in PollPayload)
+// Опрос (с использованием встроенного PollPayload)
 let pollMsg = ChatMessage(
     id: "4",
     content: MessageBody(
         content: AnyChatContent(PollPayload(
-            id: "poll1", question: "Favorite color?",
+            id: "poll1", question: "Любимый цвет?",
             options: [
-                PollOption(id: "r", text: "Red", votes: 5, percentage: 0.5),
-                PollOption(id: "b", text: "Blue", votes: 5, percentage: 0.5),
+                PollOption(id: "r", text: "Красный", votes: 5, percentage: 0.5),
+                PollOption(id: "b", text: "Синий", votes: 5, percentage: 0.5),
             ],
             totalVotes: 10, selectedOptionIds: ["r"],
             isMultipleChoice: false, isClosed: false, isAnonymous: false
@@ -299,7 +301,7 @@ let pollMsg = ChatMessage(
     // ...
 )
 
-// Custom content type — define your own struct conforming to ChatContent
+// Пользовательский тип контента — определите свою структуру, реализующую ChatContent
 struct LocationContent: ChatContent {
     static let contentTypeID = "location"
     let latitude: Double
@@ -310,15 +312,16 @@ struct LocationContent: ChatContent {
 let locationMsg = ChatMessage(
     id: "5",
     content: MessageBody(
-        text: "My location",
-        content: AnyChatContent(LocationContent(latitude: 55.75, longitude: 37.62, address: "Moscow"))
+        text: "Моя геопозиция",
+        content: AnyChatContent(LocationContent(latitude: 55.75, longitude: 37.62, address: "Москва"))
     ),
     // ...
 )
-// System message (centered, neutral styling)
+// Системное сообщение (по центру, нейтральное оформление)
 let systemMsg = ChatMessage(
     id: "6",
-    content: MessageBody(text: "Alice joined the group"),
+    localId: nil,
+    content: MessageBody(text: "Алиса присоединилась к группе"),
     timestamp: Date(),
     senderName: nil,
     ownership: .system,
@@ -331,12 +334,13 @@ let systemMsg = ChatMessage(
     actions: []
 )
 
-// Pinned message (centered bubble, left-aligned content)
+// Закреплённое сообщение (пузырь по центру, контент выровнен влево)
 let pinnedMsg = ChatMessage(
     id: "7",
-    content: MessageBody(text: "Meeting at 3 PM tomorrow"),
+    localId: nil,
+    content: MessageBody(text: "Встреча завтра в 15:00"),
     timestamp: Date(),
-    senderName: "Admin",
+    senderName: "Админ",
     ownership: .pinned,
     groupDate: "2026-04-06",
     status: .read,
@@ -347,60 +351,60 @@ let pinnedMsg = ChatMessage(
     actions: []
 )
 
-// See CUSTOMIZATION.md for the full guide on custom content types
+// См. CUSTOMIZATION.md для полного руководства по пользовательским типам контента
 ```
 
-### Message Actions
+### Действия с сообщениями
 
-Define context menu actions per message:
+Определение действий контекстного меню для каждого сообщения:
 
 ```swift
 let actions = [
-    MessageAction(id: "reply", title: "Reply", systemImage: "arrowshape.turn.up.left", isDestructive: false),
-    MessageAction(id: "edit", title: "Edit", systemImage: "pencil", isDestructive: false),
-    MessageAction(id: "copy", title: "Copy", systemImage: "doc.on.doc", isDestructive: false),
-    MessageAction(id: "forward", title: "Forward", systemImage: "arrowshape.turn.up.right", isDestructive: false),
-    MessageAction(id: "delete", title: "Delete", systemImage: "trash", isDestructive: true),
+    MessageAction(id: "reply", title: "Ответить", systemImage: "arrowshape.turn.up.left", isDestructive: false),
+    MessageAction(id: "edit", title: "Редактировать", systemImage: "pencil", isDestructive: false),
+    MessageAction(id: "copy", title: "Копировать", systemImage: "doc.on.doc", isDestructive: false),
+    MessageAction(id: "forward", title: "Переслать", systemImage: "arrowshape.turn.up.right", isDestructive: false),
+    MessageAction(id: "delete", title: "Удалить", systemImage: "trash", isDestructive: true),
 ]
 ```
 
-### Updating Messages
+### Обновление сообщений
 
 ```swift
-// Full update — library auto-detects the type:
-// - Initial load (was empty)
-// - Prepend (older messages at top, with scroll compensation)
-// - Append (new messages at bottom, auto-scroll if near bottom)
-// - Content change (edit, delete, reactions — animated diff)
+// Полное обновление — библиотека автоматически определяет тип:
+// - Первичная загрузка (было пусто)
+// - Подгрузка сверху (старые сообщения, с компенсацией прокрутки)
+// - Добавление снизу (новые сообщения, авто-прокрутка если рядом с низом)
+// - Изменение контента (редактирование, удаление, реакции — анимированный diff)
 chatVC.updateMessages(newMessages)
 ```
 
-### Scroll & Navigation
+### Прокрутка и навигация
 
 ```swift
 chatVC.scrollToBottom(animated: true)
 chatVC.scrollToMessage(id: "msg-42", position: "center", animated: true, highlight: true)
 // position: "top", "center", "bottom"
 
-// Scroll to message on initial load
-chatVC.pendingScrollMessageId = "msg-42"
+// Точное восстановление позиции прокрутки при первичной загрузке
+chatVC.pendingScrollAnchor = ScrollAnchor(messageId: "msg-42", offset: 0, wasAtBottom: false)
 chatVC.updateMessages(messages)
 
-// Unread management
+// Управление непрочитанными
 chatVC.clearUnread()
-chatVC.setUnreadCount(5)  // enables external unread management
+chatVC.setUnreadCount(5)  // включает внешнее управление непрочитанными
 ```
 
 ---
 
-## Theme
+## Тема
 
 ```swift
-// Use presets
+// Использование пресетов
 chatVC.theme = .light
 chatVC.theme = .dark
 
-// Customize individual colors
+// Кастомизация отдельных цветов
 var theme = ChatTheme.dark
 theme.outgoingBubble = .systemBlue
 theme.incomingSenderName = .systemOrange
@@ -408,64 +412,64 @@ theme.fabBackground = .systemGray6
 chatVC.theme = theme
 ```
 
-### Color Groups
+### Группы цветов
 
-| Group | Properties |
+| Группа | Свойства |
 |---|---|
-| Background | `backgroundColor`, `wallpaperColor` |
-| Outgoing bubble | `outgoingBubble`, `outgoingText`, `outgoingTime`, `outgoingStatus`, `outgoingStatusRead`, `outgoingEdited`, `outgoingLink` |
-| Incoming bubble | `incomingBubble`, `incomingText`, `incomingTime`, `incomingEdited`, `incomingSenderName`, `incomingLink` |
-| Reply preview | `outgoing/incomingReplyBackground`, `outgoing/incomingReplyAccent`, `outgoing/incomingReplySender`, `outgoing/incomingReplyText` |
-| Forwarded | `outgoing/incomingForwardedLabel`, `outgoing/incomingForwardedAccent` |
-| Files | `outgoingFileBackground`, `incomingFileBackground`, `fileIconColor` |
-| Reactions | `reactionBackground`, `reactionMineBackground`, `reactionText`, `reactionMineBorder` |
-| Date separator | `dateSeparatorBackground`, `dateSeparatorText` |
+| Фон | `backgroundColor`, `wallpaperColor` |
+| Исходящий пузырь | `outgoingBubble`, `outgoingText`, `outgoingTime`, `outgoingStatus`, `outgoingStatusRead`, `outgoingEdited`, `outgoingLink` |
+| Входящий пузырь | `incomingBubble`, `incomingText`, `incomingTime`, `incomingEdited`, `incomingSenderName`, `incomingLink` |
+| Превью ответа | `outgoing/incomingReplyBackground`, `outgoing/incomingReplyAccent`, `outgoing/incomingReplySender`, `outgoing/incomingReplyText` |
+| Пересылка | `outgoing/incomingForwardedLabel`, `outgoing/incomingForwardedAccent` |
+| Файлы | `outgoingFileBackground`, `incomingFileBackground`, `fileIconColor` |
+| Реакции | `reactionBackground`, `reactionMineBackground`, `reactionText`, `reactionMineBorder` |
+| Разделитель дат | `dateSeparatorBackground`, `dateSeparatorText` |
 | FAB | `fabBackground`, `fabBorder`, `fabBlurStyle`, `fabArrowColor`, `fabBadgeBackground`, `fabBadgeTextColor`, `fabShadowColor` |
-| Voice | `voiceWaveformActive`, `voiceWaveformInactive` |
-| Polls | `pollBarFilled`, `pollBarEmpty`, `pollSelectedBorder`, `pollSubtitleColor` |
-| Media | `mediaPlaceholderBackground`, `mediaPlayIconColor`, `mediaPlayShadowColor`, `mediaDurationBackground`, `mediaDurationTextColor`, `mediaOverlayBackground`, `mediaOverlayTextColor` |
-| Highlight | `messageHighlightColor` |
-| Empty state | `emptyStateText` |
+| Голос | `voiceWaveformActive`, `voiceWaveformInactive` |
+| Опросы | `pollBarFilled`, `pollBarEmpty`, `pollSelectedBorder`, `pollSubtitleColor` |
+| Медиа | `mediaPlaceholderBackground`, `mediaPlayIconColor`, `mediaPlayShadowColor`, `mediaDurationBackground`, `mediaDurationTextColor`, `mediaOverlayBackground`, `mediaOverlayTextColor` |
+| Подсветка | `messageHighlightColor` |
+| Пустое состояние | `emptyStateText` |
 
 ---
 
-## Layout
+## Компоновка
 
-350+ layout parameters for pixel-perfect customization:
+169 параметров компоновки для точной настройки до пикселя:
 
 ```swift
 var layout = ChatLayout()
 
-// Bubble
+// Пузырь
 layout.bubbleCornerRadius = 20
 layout.bubbleMaxWidthRatio = 0.8
 layout.bubbleHPad = 12
 layout.bubbleVPad = 8
 
-// Fonts
+// Шрифты
 layout.messageFont = .systemFont(ofSize: 16)
 layout.senderNameFont = .boldSystemFont(ofSize: 13)
 layout.timeFont = .systemFont(ofSize: 11)
 
-// Spacing
+// Отступы
 layout.cellVSpacing = 4
 layout.cellHMargin = 8
 
-// Media
+// Медиа
 layout.imageMaxHeight = 280
 layout.imageCornerRadius = 12
 layout.mediaGridSpacing = 2
 
-// Voice
+// Голос
 layout.voiceWaveformHeight = 32
 layout.voiceBarWidth = 3
 layout.voiceBarSpacing = 2
 
-// Polls
+// Опросы
 layout.pollBarHeight = 8
 layout.pollBarCornerRadius = 4
 
-// Input Bar
+// Панель ввода
 layout.inputBarMinHeight = 52
 layout.textViewCornerRadius = 20
 layout.textViewFont = .systemFont(ofSize: 16)
@@ -473,9 +477,9 @@ layout.textViewFont = .systemFont(ofSize: 16)
 chatVC.layout = layout
 ```
 
-### Batch Updates
+### Пакетное обновление
 
-Apply multiple configuration changes atomically (single reload):
+Применение нескольких изменений конфигурации атомарно (один reload):
 
 ```swift
 chatVC.batchUpdate {
@@ -488,38 +492,38 @@ chatVC.batchUpdate {
 
 ---
 
-## Feature Flags
+## Флаги функций
 
 ```swift
 var features = ChatFeatures()
 
-// Messages
+// Сообщения
 features.senderNameMode = .incomingOnly  // .never | .incomingOnly | .always
-features.showMessageStatus = true        // sent/delivered/read icons
+features.showMessageStatus = true        // иконки отправлено/доставлено/прочитано
 features.showTimestamp = true
 features.showEditedMark = true
 features.showReactions = true
 features.showReplyPreview = true
 features.showForwardedMark = true
 
-// List
-features.showFab = true                  // floating action button
-features.showFloatingDate = true         // date pill on scroll
-features.showDateSeparators = true       // date headers between groups
+// Список
+features.showFab = true                  // плавающая кнопка действия
+features.showFloatingDate = true         // таблетка даты при прокрутке
+features.showDateSeparators = true       // заголовки дат между группами
 features.showTopLoadingIndicator = true
 features.showBottomLoadingIndicator = true
-features.showEmptyState = true           // "no messages" view
+features.showEmptyState = true           // вид «нет сообщений»
 
-// Input
+// Ввод
 features.showInputBar = true
 features.showAttachButton = true
 features.showVoiceRecording = true
 
-// Context menu
+// Контекстное меню
 features.contextMenuEnabled = true
 features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👎"]
 
-// Scroll thresholds (points from edge to trigger pagination)
+// Пороги прокрутки (расстояние от края для срабатывания пагинации, в точках)
 features.topLoadThreshold = 200
 features.bottomLoadThreshold = 200
 features.scrollToBottomThreshold = 150
@@ -530,14 +534,14 @@ chatVC.features = features
 
 ---
 
-## Content Factory (Advanced Customization)
+## Фабрика контента (продвинутая кастомизация)
 
-The library is content-agnostic — all rendering is delegated to `ChatContentFactory`. Subclass `DefaultChatContentFactory` to add custom types or customize built-in views:
+Библиотека не зависит от типов контента — весь рендеринг делегируется `ChatContentFactory`. Наследуйте `DefaultChatContentFactory` для добавления пользовательских типов или кастомизации встроенных view:
 
 ```swift
 class MyFactory: DefaultChatContentFactory {
 
-    // Handle custom content types
+    // Обработка пользовательских типов контента
     override func contentView(for media: AnyChatContent, message: ChatMessage,
                               width: CGFloat, theme: ChatTheme, layout: ChatLayout,
                               onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
@@ -556,7 +560,7 @@ class MyFactory: DefaultChatContentFactory {
                                  theme: theme, layout: layout, onInteraction: onInteraction)
     }
 
-    // Height for custom content
+    // Высота пользовательского контента
     override func contentHeight(for media: AnyChatContent, width: CGFloat, layout: ChatLayout) -> CGFloat {
         if media.content(as: LocationContent.self) != nil { return 200 }
         return super.contentHeight(for: media, width: width, layout: layout)
@@ -566,38 +570,40 @@ class MyFactory: DefaultChatContentFactory {
 chatVC.contentFactory = MyFactory()
 ```
 
-For the full guide on custom content types, factory patterns, and interaction handling, see **[CUSTOMIZATION.md](CUSTOMIZATION.md)**.
+Полное руководство по пользовательским типам контента, паттернам фабрики и обработке взаимодействий см. в **[CUSTOMIZATION.md](CUSTOMIZATION.md)**.
 
-### All Factory Methods
+### Все методы фабрики
 
-| Method | Purpose |
+| Метод | Назначение |
 |---|---|
-| `contentView(for:message:width:theme:layout:onInteraction:)` | Content rendering (any type) |
-| `contentHeight(for:width:layout:)` | Height calculation for content |
-| `reconfigureContentView(_:for:message:...)` | In-place content update (animations) |
-| `textView(text:ownership:theme:layout:)` | Text portion of message |
-| `textHeight(text:font:width:)` | Text height calculation |
-| `emojiView(text:emojiCount:layout:)` | Emoji-only messages (1-3 emojis) |
-| `reactionsView(reactions:theme:maxWidth:layout:onTap:)` | Reaction chip bar |
-| `replyPreviewView(reply:resolved:ownership:theme:layout:onTap:)` | Quoted message block |
-| `footerView(message:theme:layout:features:)` | Time + edited mark + status icon |
-| `senderNameView(name:theme:layout:)` | Sender name label |
-| `forwardedHeaderView(from:ownership:theme:layout:)` | "Forwarded from X" header |
-| `dateSeparatorView(title:theme:layout:)` | Date separator pill |
-| `dateSeparatorHeight(layout:)` | Date separator height |
-| `floatingDateView(title:theme:layout:)` | Floating date during scroll |
-| `emptyStateView(theme:layout:)` | Empty state placeholder |
-| `emptyStateLoadingView(theme:layout:)` | Loading spinner in empty state |
-| `loadingIndicatorView(theme:layout:)` | Pagination loading indicator |
-| `fabView(theme:layout:)` | Scroll-to-bottom FAB button |
-| `fabBadgeView(theme:layout:)` | Unread badge on FAB |
+| `contentView(for:message:width:theme:layout:onInteraction:)` | Рендеринг контента (любой тип) |
+| `contentHeight(for:width:layout:)` | Вычисление высоты контента |
+| `reconfigureContentView(_:for:message:...)` | Обновление контента на месте (анимации) |
+| `textView(text:ownership:theme:layout:)` | Текстовая часть сообщения |
+| `textHeight(text:font:width:)` | Вычисление высоты текста |
+| `emojiView(text:emojiCount:layout:)` | Эмодзи-сообщения (1-3 эмодзи) |
+| `reactionsView(reactions:theme:maxWidth:layout:onTap:)` | Панель чипов реакций |
+| `replyPreviewView(reply:resolved:ownership:theme:layout:onTap:)` | Блок цитаты сообщения |
+| `footerView(message:theme:layout:features:)` | Время + метка редактирования + иконка статуса |
+| `senderNameView(name:theme:layout:)` | Метка имени отправителя |
+| `forwardedHeaderView(from:ownership:theme:layout:)` | Заголовок «Переслано от X» |
+| `dateSeparatorView(title:theme:layout:)` | Таблетка разделителя дат |
+| `dateSeparatorHeight(layout:)` | Высота разделителя дат |
+| `floatingDateView(title:theme:layout:)` | Плавающая дата при прокрутке |
+| `emptyStateView(theme:layout:)` | Заглушка пустого состояния |
+| `emptyStateLoadingView(theme:layout:)` | Спиннер загрузки в пустом состоянии |
+| `loadingIndicatorView(theme:layout:)` | Индикатор загрузки пагинации |
+| `fabView(theme:layout:)` | FAB кнопка прокрутки вниз |
+| `fabBadgeView(theme:layout:)` | Бейдж непрочитанных на FAB |
+| `threadIndicatorView(thread:ownership:theme:layout:onTap:)` | Индикатор треда (количество ответов) |
+| `avatarView(name:url:size:theme:layout:)` | Прилипающий аватар отправителя |
 
 ---
 
-## Delegate Reference
+## Справочник делегатов
 
 ```swift
-// Composite protocol (implement all 4):
+// Составной протокол (реализуйте все 4):
 typealias ChatViewControllerDelegate =
     ChatScrollDelegate & ChatVisibilityDelegate & ChatMessageDelegate & ChatInputDelegate
 ```
@@ -605,51 +611,52 @@ typealias ChatViewControllerDelegate =
 ### ChatScrollDelegate
 
 ```swift
-func chatDidScroll(offset: CGPoint)          // scroll position changed
-func chatDidReachTop(distance: CGFloat)      // near top — load older messages
-func chatDidReachBottom(distance: CGFloat)   // near bottom — load newer messages
-func chatDidTapFAB()                         // scroll-to-bottom button tapped
+func chatDidScroll(offset: CGPoint)          // позиция прокрутки изменилась
+func chatDidReachTop(distance: CGFloat)      // рядом с верхом — загрузить старые сообщения
+func chatDidReachBottom(distance: CGFloat)   // рядом с низом — загрузить новые сообщения
+func chatDidTapFAB()                         // нажата кнопка прокрутки вниз
+func chatScrollAnchorChanged(anchor: ScrollAnchor)  // с троттлингом ~300мс, для сохранения позиции прокрутки
 ```
 
 ### ChatVisibilityDelegate
 
 ```swift
-func chatVisibleMessagesDidChange(ids: [String])  // throttled snapshot of visible messages
-func chatUnreadMessagesDidAppear(ids: [String])   // debounced unread batch (for read receipts)
+func chatVisibleMessagesDidChange(ids: [String])  // снимок видимых сообщений с троттлингом
+func chatUnreadMessagesDidAppear(ids: [String])   // пакет непрочитанных с дебаунсом (для отчётов о прочтении)
 ```
 
 ### ChatMessageDelegate
 
 ```swift
-func chatDidTapMessage(id: String, attachmentIndex: Int?)               // message/media tap
-func chatDidSelectAction(actionId: String, messageId: String)           // context menu action
-func chatDidSelectEmojiReaction(emoji: String, messageId: String)       // emoji from context menu
-func chatDidTapReaction(messageId: String, emoji: String)               // reaction chip tap
-func chatDidTapReplyMessage(id: String)                                 // quoted message tap
-func chatDidTapThread(messageId: String, threadId: String)              // thread indicator tap
-func chatDidTapLink(url: URL, messageId: String)                        // detected link tap
-func chatDidTapPhoneNumber(phoneNumber: String, messageId: String)      // detected phone tap
-func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)  // all content interactions
+func chatDidTapMessage(id: String, attachmentIndex: Int?)               // нажатие на сообщение/медиа
+func chatDidSelectAction(actionId: String, messageId: String)           // действие контекстного меню
+func chatDidSelectEmojiReaction(emoji: String, messageId: String)       // эмодзи из контекстного меню
+func chatDidTapReaction(messageId: String, emoji: String)               // нажатие на чип реакции
+func chatDidTapReplyMessage(id: String)                                 // нажатие на цитату
+func chatDidTapThread(messageId: String, threadId: String)              // нажатие на индикатор треда
+func chatDidTapLink(url: URL, messageId: String)                        // нажатие на распознанную ссылку
+func chatDidTapPhoneNumber(phoneNumber: String, messageId: String)      // нажатие на распознанный телефон
+func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)  // все взаимодействия с контентом
 ```
 
 ### ChatInputDelegate
 
 ```swift
-func chatDidSendMessage(text: String, replyToId: String?)               // send button
-func chatDidEditMessage(text: String, messageId: String)                // edit confirmed
-func chatDidCancelInputAction(type: String)                             // "reply" or "edit" cancelled
-func chatDidTapAttachment()                                             // attachment button
+func chatDidSendMessage(text: String, replyToId: String?)               // кнопка отправки
+func chatDidEditMessage(text: String, messageId: String)                // подтверждение редактирования
+func chatDidCancelInputAction(type: String)                             // отмена «reply» или «edit»
+func chatDidTapAttachment()                                             // кнопка вложения
 func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval, waveform: [Float])
-func chatDidChangeInputText(_ text: String)                             // text changed (typing indicator)
+func chatDidChangeInputText(_ text: String)                             // текст изменён (индикатор набора)
 ```
 
-All delegate methods have default empty implementations — implement only what you need.
+Все методы делегата имеют пустые реализации по умолчанию — реализуйте только то, что вам нужно.
 
 ---
 
-## Input Bar
+## Панель ввода
 
-The input bar is embedded in `ChatViewController` but can also be used standalone:
+Панель ввода встроена в `ChatViewController`, но может использоваться и отдельно:
 
 ```swift
 let inputBar = InputBarView()
@@ -657,21 +664,21 @@ inputBar.delegate = self
 inputBar.applyTheme(.dark)
 inputBar.applyLayout(ChatLayout())
 
-// Show/hide buttons
+// Показать/скрыть кнопки
 inputBar.showAttachButton = true
 inputBar.voiceRecordingEnabled = true
 
-// Reply/edit modes
+// Режимы ответа/редактирования
 inputBar.beginReply(info: InputBarReplyInfo(
-    messageId: "1", senderName: "Alice", text: "Hello", hasImage: false
+    messageId: "1", senderName: "Алиса", text: "Привет", hasImage: false
 ))
-inputBar.beginEdit(messageId: "1", text: "Updated text")
+inputBar.beginEdit(messageId: "1", text: "Обновлённый текст")
 inputBar.cancelMode()
 
-// Keyboard
+// Клавиатура
 inputBar.activateKeyboard()
 inputBar.dismissKeyboard()
-inputBar.isKeyboardActive  // read-only
+inputBar.isKeyboardActive  // только для чтения
 ```
 
 ### InputBarMode
@@ -684,35 +691,35 @@ public enum InputBarMode: Equatable {
 }
 ```
 
-### Voice Recording
+### Запись голоса
 
-Voice recording uses a long-press gesture on the mic button:
-- **Drag left** to cancel
-- **Drag up** to lock (hands-free recording)
-- **Release** to send
+Запись голоса использует жест долгого нажатия на кнопку микрофона:
+- **Свайп влево** для отмены
+- **Свайп вверх** для блокировки (запись без удержания)
+- **Отпустить** для отправки
 
-The recording produces a `.m4a` file with waveform data, delivered via `chatDidCompleteVoiceRecording`.
+Запись создаёт файл `.m4a` с данными волновой формы, передаваемый через `chatDidCompleteVoiceRecording`.
 
 ---
 
-## Context Menu
+## Контекстное меню
 
-Shown on long-press of a message bubble. Configured per-message via `MessageAction` array and globally via `features.emojiReactions`.
+Отображается при долгом нажатии на пузырь сообщения. Настраивается для каждого сообщения через массив `MessageAction` и глобально через `features.emojiReactions`.
 
 ```swift
-// Per-message actions
+// Действия для каждого сообщения
 let msg = ChatMessage(
     // ...
     actions: [
-        MessageAction(id: "reply", title: "Reply", systemImage: "arrowshape.turn.up.left", isDestructive: false),
-        MessageAction(id: "delete", title: "Delete", systemImage: "trash", isDestructive: true),
+        MessageAction(id: "reply", title: "Ответить", systemImage: "arrowshape.turn.up.left", isDestructive: false),
+        MessageAction(id: "delete", title: "Удалить", systemImage: "trash", isDestructive: true),
     ]
 )
 
-// Global emoji palette
+// Глобальная палитра эмодзи
 chatVC.features.emojiReactions = ["👍", "❤️", "😂", "😮", "😢", "🔥"]
 
-// Disable context menu entirely
+// Полностью отключить контекстное меню
 chatVC.features.contextMenuEnabled = false
 ```
 
@@ -727,84 +734,84 @@ menuTheme.openDuration = 0.3
 
 ---
 
-## Unread Management
+## Управление непрочитанными
 
-Two modes:
+Два режима:
 
-### Automatic (default)
-The library tracks visible messages and decrements unread count automatically:
+### Автоматический (по умолчанию)
+Библиотека отслеживает видимые сообщения и автоматически уменьшает счётчик непрочитанных:
 
 ```swift
-chatVC.unreadCount = 5  // shows badge on FAB
-// As user scrolls, visible unread messages are marked and count decreases
+chatVC.unreadCount = 5  // показывает бейдж на FAB
+// По мере прокрутки пользователем видимые непрочитанные сообщения отмечаются, счётчик уменьшается
 ```
 
-### External
-For apps that manage read state on the backend:
+### Внешний
+Для приложений, которые управляют состоянием прочтения на сервере:
 
 ```swift
-chatVC.setUnreadCount(10)  // switches to external mode
-// Library no longer auto-decrements — you control the count
-chatVC.clearUnread()       // reset to zero
+chatVC.setUnreadCount(10)  // переключает во внешний режим
+// Библиотека больше не уменьшает автоматически — вы контролируете счётчик
+chatVC.clearUnread()       // сбросить до нуля
 ```
 
 ---
 
-## React Native Bridge
+## Мост React Native
 
-Parse messages from JavaScript dictionaries:
+Парсинг сообщений из JavaScript-словарей:
 
 ```swift
 let msg = ChatMessage.from(dict: jsDict)
 ```
 
-Supports all content types, reactions, replies, actions, and status.
+Поддерживает все типы контента, реакции, ответы, действия и статусы.
 
 ---
 
-## Architecture
+## Архитектура
 
-The library core (`ChatView/`) is content-agnostic — it knows nothing about message types. All content rendering lives in `DefaultContent/`, which users can replace entirely.
+Ядро библиотеки (`ChatView/`) не зависит от типов контента — оно ничего не знает о типах сообщений. Весь рендеринг контента находится в `DefaultContent/`, который пользователи могут полностью заменить.
 
 ```
 Sources/IOSChatView/
-├── ChatView/              # CORE — content-agnostic
-│   ├── Controller/        # ChatViewController + 5 extensions
+├── ChatView/              # ЯДРО — не зависит от типов контента
+│   ├── Controller/        # ChatViewController + 5 расширений
 │   ├── DataSource/        # UICollectionViewDataSource + ChatRow (Differentiable)
 │   ├── Components/        # MessageUpdateHandler, FAB, FloatingDate, EmptyState,
 │   │                      # KeyboardFreezeManager, UnreadManager
-│   ├── Factory/           # ChatContentFactory protocol (no implementation)
+│   ├── Factory/           # Протокол ChatContentFactory (без реализации)
 │   ├── Models/            # ChatContent, AnyChatContent, MessageBody, ChatMessage, Theme, Layout
 │   ├── Views/             # MessageCell, MessageBubbleView, ChatCollectionViewLayout
-│   │   └── Content/       # Text, Reactions, Reply, Status (universal elements)
-│   ├── Audio/             # VoicePlayer (singleton)
+│   │   └── Content/       # Text, Reactions, Reply, Status (универсальные элементы)
+│   ├── Audio/             # VoicePlayer (синглтон)
 │   └── Helpers/           # MessageSizeCalculator, SizeCache, ChatTextMeasurer, DateHelper
-├── DefaultContent/        # Built-in content types (opt-in)
+├── DefaultContent/        # Встроенные типы контента (опционально)
 │   ├── DefaultChatContentFactory.swift
 │   ├── Models/            # ImagesContent, VoicePayload, PollPayload, FilesContent, ChatParsing
 │   └── Views/             # MediaGrid, Voice, Poll, File, ImageCache
 ├── InputBar/
-│   ├── InputBarView       # Main view + recording extension
+│   ├── InputBarView       # Основной view + расширение записи
 │   ├── Audio/             # VoiceRecorder
 │   └── Views/             # ReplyPanel, RecordingRow, LockView
 └── ContextMenu/
     ├── Controller/        # ContextMenuViewController
     ├── Models/            # Action, Emoji, Configuration
-    ├── Theme/             # ContextMenuTheme (light/dark)
-    ├── Layout/            # Positioning + spring animations
+    ├── Theme/             # ContextMenuTheme (светлая/тёмная)
+    ├── Layout/            # Позиционирование + пружинные анимации
     └── Views/             # EmojiPanel, ActionsView
 ```
 
-### Performance
+### Производительность
 
-- **Custom layout:** Pre-computed heights, binary search for visible rect, no delegate calls during scroll
-- **Size cache:** Width-aware cache (id + width key), auto-invalidates on rotation
-- **DifferenceKit:** O(n) Heckel diff, animated batch updates only for affected cells
-- **Prepend:** O(delta) — only new rows computed, scroll offset compensated
-- **Append:** Constant time — rows added at end, auto-scroll if near bottom
+- **Кастомный layout:** Предвычисленные высоты, бинарный поиск для видимой области, никаких вызовов делегата во время прокрутки
+- **Кэш размеров:** Кэш с учётом ширины (ключ: id + width), автоматическая инвалидация при повороте
+- **DifferenceKit:** Diff по алгоритму Heckel за O(n), анимированные пакетные обновления только для затронутых ячеек
+- **Подгрузка сверху:** O(delta) — вычисляются только новые строки, смещение прокрутки компенсируется
+- **Добавление снизу:** За константное время — строки добавляются в конец, авто-прокрутка если рядом с низом
 
 ---
 
-## License
+## Лицензия
 
-MIT License. See [LICENSE](LICENSE) for details.
+Лицензия MIT. Подробности см. в [LICENSE](LICENSE).

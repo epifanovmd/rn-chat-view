@@ -28,11 +28,11 @@ public final class ImageCache {
         }
     }
 
-    // MARK: - Memory
+    // MARK: - Память
 
     func image(forKey key: String) -> UIImage? {
         if let img = memoryCache.object(forKey: key as NSString) { return img }
-        // Try disk
+        // Проверяем диск
         let file = cacheDir.appendingPathComponent(key.sha256ImageName)
         guard let data = try? Data(contentsOf: file), let img = UIImage(data: data) else { return nil }
         memoryCache.setObject(img, forKey: key as NSString)
@@ -45,7 +45,7 @@ public final class ImageCache {
         try? data.write(to: file, options: .atomic)
     }
 
-    // MARK: - Load
+    // MARK: - Загрузка
 
     @discardableResult
     func load(url: String, completion: @escaping (UIImage?) -> Void) -> URLSessionDataTask? {
@@ -90,7 +90,7 @@ public final class ImageCache {
     }
 }
 
-// MARK: - SHA256 filename
+// MARK: - SHA256 имя файла
 
 private extension String {
     var sha256ImageName: String {
@@ -103,7 +103,7 @@ private extension String {
     }
 }
 
-// MARK: - UIImageView Extension
+// MARK: - Расширение UIImageView
 
 extension UIImageView {
     private static var taskKey = "ImageCache.Task"

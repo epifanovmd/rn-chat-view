@@ -4,11 +4,11 @@ import UIKit
 
 public struct ContextMenuTheme {
 
-    // MARK: Backdrop
+    // MARK: Фон
     public let backdropColor:     UIColor
     public let backdropBlurStyle: UIBlurEffect.Style
 
-    // MARK: Emoji panel
+    // MARK: Панель эмодзи
     public let emojiPanelBackground:    UIColor
     public let emojiPanelCornerRadius:  CGFloat
     public let emojiPanelShadowColor:   UIColor
@@ -17,7 +17,7 @@ public struct ContextMenuTheme {
     public let emojiFontSize:           CGFloat
     public let emojiItemSize:           CGFloat
 
-    // MARK: Action menu
+    // MARK: Меню действий
     public let menuBackground:              UIColor
     public let menuCornerRadius:            CGFloat
     public let menuShadowColor:             UIColor
@@ -33,13 +33,13 @@ public struct ContextMenuTheme {
     public let actionHorizontalPadding:     CGFloat
     public let actionHighlightColor:        UIColor
 
-    // MARK: Animation
+    // MARK: Анимация
     public let openDuration:  TimeInterval
     public let closeDuration: TimeInterval
     public let springDamping: CGFloat
     public let springVelocity: CGFloat
 
-    // MARK: Layout
+    // MARK: Компоновка
     public let emojiPanelSpacing: CGFloat
     public let menuSpacing:       CGFloat
     public let horizontalPadding: CGFloat
@@ -49,7 +49,7 @@ public struct ContextMenuTheme {
     public let snapOpenShift:     CGFloat
 }
 
-// MARK: - Built-in themes
+// MARK: - Встроенные темы
 
 public extension ContextMenuTheme {
 

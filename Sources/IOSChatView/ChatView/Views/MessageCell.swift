@@ -3,7 +3,7 @@ import UIKit
 public final class MessageCell: UICollectionViewCell {
     public static let reuseID = "MessageCell"
 
-    // MARK: - Callbacks
+    // MARK: - Колбэки
 
     var onTap: (() -> Void)?
     var onLongPress: ((UICollectionViewCell) -> Void)?
@@ -13,12 +13,12 @@ public final class MessageCell: UICollectionViewCell {
     var onThreadTap: (() -> Void)?
     var onLinkTap: ((URL) -> Void)?
 
-    // MARK: - State
+    // MARK: - Состояние
 
     private var currentTheme: ChatTheme = .light
     private var currentLayout: ChatLayout = ChatLayout()
 
-    // MARK: - Views
+    // MARK: - Вью
 
     let bubbleView = MessageBubbleView()
     private var leadingConstraint: NSLayoutConstraint!
@@ -61,7 +61,7 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.addGestureRecognizer(longPress)
     }
 
-    // MARK: - Configure
+    // MARK: - Конфигурация
 
     func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
         currentTheme = theme
@@ -99,7 +99,7 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.onLinkTap = onLinkTap
     }
 
-    // MARK: - Reconfigure In-Place
+    // MARK: - Обновление на месте
 
     func reconfigureInPlace(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, maxWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
         currentTheme = theme
@@ -107,7 +107,6 @@ public final class MessageCell: UICollectionViewCell {
 
         let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, layout: layout, showSenderName: showSenderName, features: features)
 
-        // Update width constraint only if changed
         for c in bubbleView.constraints where c.firstAttribute == .width {
             if c.constant != bw { c.constant = bw }
         }
@@ -120,7 +119,7 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.onLinkTap = onLinkTap
     }
 
-    // MARK: - Highlight
+    // MARK: - Подсветка
 
     func playHighlight() {
         let overlay = UIView(frame: bubbleView.bounds)
@@ -136,7 +135,7 @@ public final class MessageCell: UICollectionViewCell {
         }
     }
 
-    // MARK: - Reuse
+    // MARK: - Переиспользование
 
     public override func prepareForReuse() {
         super.prepareForReuse()
@@ -151,7 +150,7 @@ public final class MessageCell: UICollectionViewCell {
         bubbleView.prepareForReuse()
     }
 
-    // MARK: - Gestures
+    // MARK: - Жесты
 
     @objc private func handleTap() { onTap?() }
 

@@ -1,6 +1,6 @@
 import UIKit
 
-// MARK: - Message Ownership
+// MARK: - Владение сообщением
 
 public enum MessageOwnership: String, Sendable {
     case mine
@@ -18,25 +18,25 @@ public enum MessageOwnership: String, Sendable {
     }
 }
 
-// MARK: - Message Alignment
+// MARK: - Выравнивание сообщения
 
 public enum MessageAlignment: Sendable {
     case leading, trailing, center
 }
 
-// MARK: - Message Status
+// MARK: - Статус сообщения
 
 public enum MessageStatus: String {
     case sending, sent, delivered, read
 }
 
-// MARK: - ChatContent (extensible protocol)
+// MARK: - ChatContent (расширяемый протокол)
 
-/// Protocol for any content type attached to a message.
-/// The library is agnostic to concrete types — all rendering and interaction
-/// logic lives in `ChatContentFactory`.
+/// Протокол для любого типа контента в сообщении.
+/// Библиотека не знает о конкретных типах — всё отображение и обработка
+/// взаимодействий делегированы `ChatContentFactory`.
 ///
-/// Conform your own types to use them as first-class message content:
+/// Реализуйте протокол для своих типов контента:
 /// ```swift
 /// struct PaymentContent: ChatContent {
 ///     static let contentTypeID = "payment"
@@ -45,15 +45,15 @@ public enum MessageStatus: String {
 /// }
 /// ```
 public protocol ChatContent: Equatable, Hashable, Sendable {
-    /// Stable identifier for this content type. Must be unique per type.
-    /// Used for in-place reconfiguration optimization (same typeID = same view structure).
+    /// Стабильный идентификатор типа контента. Должен быть уникальным.
+    /// Используется для оптимизации in-place реконфигурации (одинаковый typeID = та же структура view).
     static var contentTypeID: String { get }
 }
 
-// MARK: - AnyChatContent (type-erased wrapper)
+// MARK: - AnyChatContent (type-erased обёртка)
 
-/// Type-erased wrapper for any `ChatContent`. Preserves `Equatable`/`Hashable`
-/// for DifferenceKit diffing while hiding the concrete type from the library core.
+/// Type-erased обёртка для `ChatContent`. Сохраняет `Equatable`/`Hashable`
+/// для DifferenceKit, скрывая конкретный тип от ядра библиотеки.
 public struct AnyChatContent: Equatable, Hashable, Sendable {
     public let contentTypeID: String
     private let box: AnyHashable
@@ -63,7 +63,6 @@ public struct AnyChatContent: Equatable, Hashable, Sendable {
         self.box = AnyHashable(content)
     }
 
-    /// Unwrap to a specific type. Returns nil if the type doesn't match.
     public func content<T: ChatContent>(as type: T.Type) -> T? {
         box.base as? T
     }
@@ -77,7 +76,7 @@ public struct AnyChatContent: Equatable, Hashable, Sendable {
     }
 }
 
-// MARK: - Message Content
+// MARK: - Тело сообщения
 
 public struct MessageBody: Equatable, Hashable {
     public let text: String?
@@ -89,10 +88,10 @@ public struct MessageBody: Equatable, Hashable {
     }
 }
 
-// MARK: - Content Interaction
+// MARK: - Взаимодействие с контентом
 
-/// Generic content interaction. The library routes it without inspecting contents.
-/// Factory-created views fire these; the delegate receives them.
+/// Обобщённое взаимодействие с контентом. Библиотека маршрутизирует без анализа содержимого.
+/// View из фабрики генерируют эти события; делегат их получает.
 public struct ChatContentInteraction: Sendable {
     public let type: String
     public let payload: [String: AnyHashable]
@@ -103,7 +102,7 @@ public struct ChatContentInteraction: Sendable {
     }
 }
 
-// MARK: - Reaction
+// MARK: - Реакция
 
 public struct Reaction: Equatable, Hashable {
     public let emoji: String
@@ -117,7 +116,7 @@ public struct Reaction: Equatable, Hashable {
     }
 }
 
-// MARK: - Reply Info
+// MARK: - Информация о цитате
 
 public struct ReplyInfo: Equatable, Hashable {
     public let replyToId: String
@@ -133,7 +132,7 @@ public struct ReplyInfo: Equatable, Hashable {
     }
 }
 
-// MARK: - Thread Info
+// MARK: - Информация о треде
 
 public struct ThreadInfo: Equatable, Hashable {
     public let threadId: String
@@ -147,7 +146,7 @@ public struct ThreadInfo: Equatable, Hashable {
     }
 }
 
-// MARK: - Message Action
+// MARK: - Действие контекстного меню
 
 public struct MessageAction: Equatable, Hashable {
     public let id: String
@@ -163,13 +162,13 @@ public struct MessageAction: Equatable, Hashable {
     }
 }
 
-// MARK: - Chat Message
+// MARK: - Сообщение чата
 
 public struct ChatMessage: Equatable, Hashable {
     public let id: String
-    /// Local ID for pending→real mapping. When a pending message (e.g. id="pending_1")
-    /// is confirmed by the server (e.g. id="real_1"), both share the same `localId`.
-    /// This allows the diff engine to treat the ID change as a content update, not delete+insert.
+    /// Локальный ID для маппинга pending→real. Когда pending-сообщение (id="pending_1")
+    /// подтверждается сервером (id="real_1"), оба делят один `localId`.
+    /// Это позволяет diff-движку трактовать смену ID как обновление контента, а не delete+insert.
     public let localId: String?
     public let content: MessageBody
     public let timestamp: Date
@@ -204,7 +203,7 @@ public struct ChatMessage: Equatable, Hashable {
     }
 }
 
-// MARK: - Reply Display
+// MARK: - Отображение цитаты
 
 public struct ReplyDisplayInfo {
     public let senderName: String

@@ -2,16 +2,16 @@ import UIKit
 
 public final class TextContentView: UIView, UIGestureRecognizerDelegate {
 
-    // MARK: - Callback
+    // MARK: - Колбэк
 
     var onLinkTap: ((URL) -> Void)?
 
-    // MARK: - Subviews
+    // MARK: - Вью
 
     private let label = UILabel()
     private var currentLayout = ChatLayout()
 
-    // MARK: - Link Detection State
+    // MARK: - Состояние детекции ссылок
 
     private var linkRanges: [(range: NSRange, url: URL)] = []
     private var hitTestStorage: NSTextStorage?
@@ -42,7 +42,7 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Configure
+    // MARK: - Конфигурация
 
     func configure(text: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout(), linkDetectionEnabled: Bool = true) {
         currentLayout = layout
@@ -86,7 +86,7 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
-    // MARK: - Link Detection
+    // MARK: - Детекция ссылок
 
     private struct DetectedText {
         let string: NSAttributedString
@@ -136,7 +136,7 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
         return DetectedText(string: attrStr, links: links)
     }
 
-    // MARK: - Hit Testing
+    // MARK: - Hit-тестирование
 
     private func setupHitTestKit(attributedText: NSAttributedString, font: UIFont) {
         let storage = NSTextStorage(attributedString: attributedText)
@@ -169,7 +169,7 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
         return nil
     }
 
-    // MARK: - Gesture
+    // MARK: - Жесты
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
         let point = gesture.location(in: label)
@@ -180,8 +180,8 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
 
     // MARK: - UIGestureRecognizerDelegate
 
-    /// Only begin the tap gesture if the tap is on a link.
-    /// Otherwise, fall through to cell-level tap (chatDidTapMessage).
+    /// Начинаем жест только если тап попал на ссылку.
+    /// Иначе — пробрасываем дальше на cell-level тап (chatDidTapMessage).
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         let point = touch.location(in: label)
         return linkURL(at: point) != nil

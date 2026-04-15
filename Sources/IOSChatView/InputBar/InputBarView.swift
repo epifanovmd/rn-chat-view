@@ -7,7 +7,7 @@ public final class InputBarView: UIView {
     public weak var delegate: InputBarDelegate?
     public private(set) var mode: InputBarMode = .normal
 
-    // MARK: - Subviews (internal for +Recording extension)
+    // MARK: - Подвьюхи (доступны для +Recording расширения)
 
     let inputStack = UIStackView()
     let leftButton = UIButton(type: .system)
@@ -21,7 +21,7 @@ public final class InputBarView: UIView {
     let recordingRow = InputBarRecordingRow()
     let lockView = InputBarLockView()
 
-    // MARK: - State (internal for +Recording extension)
+    // MARK: - Состояние (доступно для +Recording расширения)
 
     var recordingState: RecordingState = .idle
     var gestureStartPoint: CGPoint = .zero
@@ -29,24 +29,18 @@ public final class InputBarView: UIView {
     private var textViewHeightConstraint: NSLayoutConstraint!
     private var hasText = false
 
-    /// Layout constants.
     private(set) var layout = ChatLayout()
-
-    /// Voice recorder, owned by InputBar.
     private(set) var voiceRecorder = VoiceRecorder()
 
-    /// Public placeholder text setter.
     public var placeholder: String? {
         get { placeholderLabel.text }
         set { placeholderLabel.text = newValue }
     }
 
-    /// Show/hide attach button.
     public var showAttachButton: Bool = true {
         didSet { leftButton.isHidden = !showAttachButton }
     }
 
-    /// Enable voice recording. If false — mic button hidden, only send shown.
     public var voiceRecordingEnabled: Bool = true {
         didSet {
             guard oldValue != voiceRecordingEnabled else { return }
@@ -70,7 +64,7 @@ public final class InputBarView: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Public API
+    // MARK: - Публичный API
 
     public func applyLayout(_ newLayout: ChatLayout) {
         layout = newLayout
@@ -98,7 +92,6 @@ public final class InputBarView: UIView {
         lockView.applyTheme(theme)
     }
 
-    /// Clear input text and reset mode.
     public func clearInput() {
         cancelMode()
         textView.text = ""
@@ -107,22 +100,19 @@ public final class InputBarView: UIView {
         updateRightButton()
     }
 
-    /// Dismiss the keyboard.
     public func dismissKeyboard() {
         textView.resignFirstResponder()
     }
 
-    /// Whether the keyboard is currently shown for this input bar.
     public var isKeyboardActive: Bool {
         textView.isFirstResponder
     }
 
-    /// Focus the text view.
     public func activateKeyboard() {
         textView.becomeFirstResponder()
     }
 
-    // MARK: - Mode Management
+    // MARK: - Управление режимом
 
     public func beginReply(info: InputBarReplyInfo) {
         let L = layout
@@ -174,14 +164,14 @@ public final class InputBarView: UIView {
         }
     }
 
-    // MARK: - Recording UI
+    // MARK: - UI записи
 
     func showRecordingUI(duration: TimeInterval) {
         let m = Int(duration) / 60, s = Int(duration) % 60, ms = Int((duration - floor(duration)) * 100)
         recordingRow.timerLabel.text = String(format: "%d:%02d,%02d", m, s, ms)
     }
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     private func setupLayout() {
         backgroundColor = .clear
@@ -216,7 +206,7 @@ public final class InputBarView: UIView {
         warmUpKeyboard()
     }
 
-    /// Pre-load keyboard to avoid delay on first focus.
+    // Предзагрузка клавиатуры — убирает задержку при первом фокусе
     private func warmUpKeyboard() {
         let field = UITextField(frame: .zero)
         addSubview(field)
@@ -346,7 +336,7 @@ public final class InputBarView: UIView {
         ])
     }
 
-    // MARK: - Helpers
+    // MARK: - Вспомогательные
 
     func updateTextViewHeight() {
         let L = layout
@@ -423,7 +413,7 @@ public final class InputBarView: UIView {
         }
     }
 
-    // MARK: - Haptic
+    // MARK: - Тактильная обратная связь
 
     func haptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
         switch style {
@@ -434,7 +424,7 @@ public final class InputBarView: UIView {
         }
     }
 
-    // MARK: - Actions
+    // MARK: - Действия
 
     @objc func leftButtonTapped() {
         switch recordingState {

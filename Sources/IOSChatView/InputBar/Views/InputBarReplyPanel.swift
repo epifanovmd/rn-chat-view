@@ -1,6 +1,5 @@
 import UIKit
 
-/// Collapsible reply/edit preview panel displayed inside the input container.
 final class InputBarReplyPanel: UIView {
 
     let accentBar = UIView()
@@ -21,7 +20,7 @@ final class InputBarReplyPanel: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     private func setup() {
         let L = ChatLayout()
@@ -57,8 +56,7 @@ final class InputBarReplyPanel: UIView {
 
         let sp = L.inputReplySpacing
 
-        // Vertical constraints that touch top/bottom use high priority
-        // so they yield to heightConstraint (required) when panel is collapsed to 0.
+        // Вертикальные constraints с high priority — уступают heightConstraint при схлопывании панели до 0
         let accentTop = accentBar.topAnchor.constraint(equalTo: topAnchor, constant: sp - 2)
         let accentBottom = accentBar.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -(sp - 4))
         let senderTop = senderLabel.topAnchor.constraint(equalTo: topAnchor, constant: sp - 3)
@@ -98,7 +96,7 @@ final class InputBarReplyPanel: UIView {
         NSLayoutConstraint.activate(constraints)
     }
 
-    // MARK: - Theme
+    // MARK: - Тема
 
     func applyTheme(_ theme: InputBarTheme) {
         accentBar.backgroundColor = theme.replyAccent
@@ -108,7 +106,7 @@ final class InputBarReplyPanel: UIView {
         separator.backgroundColor = theme.border
     }
 
-    // MARK: - Show / Hide
+    // MARK: - Показать / Скрыть
 
     func show(in container: UIView, height: CGFloat) {
         heightConstraint.constant = height

@@ -13,7 +13,7 @@ public final class PollContentView: UIView {
     private var currentLayout = ChatLayout()
     private var optionRows: [PollOptionRow] = []
 
-    // MARK: - Stored constraints
+    // MARK: - Сохранённые констрейнты
 
     private var optionsTopConstraint: NSLayoutConstraint!
 
@@ -104,7 +104,7 @@ public final class PollContentView: UIView {
         subtitleLabel.text = parts.joined(separator: " · ")
         subtitleLabel.textColor = theme.pollSubtitleColor
 
-        // Reuse existing rows or create/remove as needed
+        // Переиспользуем существующие строки, создаём/удаляем по необходимости
         let optionCount = poll.options.count
         while optionRows.count < optionCount {
             let row = PollOptionRow()
@@ -132,7 +132,7 @@ public final class PollContentView: UIView {
     @objc private func detailTapped() { onDetailTap?() }
 }
 
-// MARK: - PollOptionRow
+// MARK: - Строка опроса
 
 private final class PollOptionRow: UIView {
     var onTap: (() -> Void)?
@@ -145,7 +145,7 @@ private final class PollOptionRow: UIView {
     private var currentLayout = ChatLayout()
     private var isFirstConfigure = true
 
-    // MARK: - Stored constraints
+    // MARK: - Сохранённые констрейнты
 
     private var heightConst: NSLayoutConstraint!
     private var labelLeadingConstraint: NSLayoutConstraint!
@@ -210,25 +210,22 @@ private final class PollOptionRow: UIView {
         let L = currentLayout
         let isOutgoing = ownership == .mine
 
-        // Corner radius — always set immediately with disabled implicit animations
+        // cornerRadius ставим сразу без анимации, иначе CATransaction анимирует
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         barBg.layer.cornerRadius = L.pollBarCornerRadius
         barFill.layer.cornerRadius = L.pollBarCornerRadius
         CATransaction.commit()
 
-        // Layout constants
         heightConst.constant = L.pollBarHeight
         labelLeadingConstraint.constant = L.pollBarHPad
         percentTrailingConstraint.constant = -L.pollBarHPad
 
-        // Content
         label.text = option.text
         barBg.backgroundColor = theme.pollBarEmpty
         percentLabel.font = L.pollPercentFont
         percentLabel.text = "\(Int(option.percentage * 100))%"
 
-        // Style based on selection
         let textColor: UIColor
         let fillColor: UIColor
         let pctColor: UIColor
@@ -244,13 +241,12 @@ private final class PollOptionRow: UIView {
             pctColor = isOutgoing ? theme.outgoingTime : theme.incomingTime
         }
 
-        // Update fill width constraint
         fillWidthConstraint?.isActive = false
         let pct = max(0.02, option.percentage)
         fillWidthConstraint = barFill.widthAnchor.constraint(equalTo: barBg.widthAnchor, multiplier: pct)
         fillWidthConstraint?.isActive = true
 
-        // Animate changes if this is a reconfigure (not first configure)
+        // Анимируем только при реконфигурации, не при первом показе
         let shouldAnimate = !isFirstConfigure
         isFirstConfigure = false
 

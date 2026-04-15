@@ -1,13 +1,10 @@
 import UIKit
 
-/// Default implementation of ChatContentFactory.
-/// Handles built-in media types: images, voice, poll, files.
-/// Subclass and override specific methods for customization.
 open class DefaultChatContentFactory: ChatContentFactory {
 
     public init() {}
 
-    // MARK: - Media Content
+    // MARK: - Медиа контент
 
     open func contentView(
         for media: AnyChatContent,
@@ -54,7 +51,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
             return stack
         }
 
-        // Fallback for unknown types
+        // Заглушка для неизвестных типов контента
         let label = UILabel()
         label.text = "[\(media.contentTypeID)]"
         label.font = layout.messageFont
@@ -134,7 +131,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return h
     }
 
-    // MARK: - Text
+    // MARK: - Текст
 
     open func textView(
         text: String,
@@ -164,7 +161,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return label
     }
 
-    // MARK: - Reactions
+    // MARK: - Реакции
 
     open func reactionsView(
         reactions: [Reaction],
@@ -179,7 +176,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return view
     }
 
-    // MARK: - Thread Indicator
+    // MARK: - Индикатор треда
 
     open func threadIndicatorView(
         thread: ThreadInfo,
@@ -197,7 +194,6 @@ open class DefaultChatContentFactory: ChatContentFactory {
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
 
-        // Icon
         let iconConfig = UIImage.SymbolConfiguration(pointSize: L.threadBarIconSize, weight: .medium)
         let icon = UIImageView(image: UIImage(systemName: "bubble.left.and.bubble.right", withConfiguration: iconConfig))
         icon.tintColor = theme.threadBarIcon
@@ -209,14 +205,12 @@ open class DefaultChatContentFactory: ChatContentFactory {
         ])
         stack.addArrangedSubview(icon)
 
-        // Reply count
         let countLabel = UILabel()
         countLabel.text = Self.threadReplySuffix(thread.replyCount)
         countLabel.font = L.threadBarFont
         countLabel.textColor = theme.threadBarText
         stack.addArrangedSubview(countLabel)
 
-        // Last replier name
         if let name = thread.lastReplierName {
             let dot = UILabel()
             dot.text = "·"
@@ -232,7 +226,6 @@ open class DefaultChatContentFactory: ChatContentFactory {
             stack.addArrangedSubview(nameLabel)
         }
 
-        // Chevron
         let chevronConfig = UIImage.SymbolConfiguration(pointSize: L.threadBarChevronSize, weight: .semibold)
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: chevronConfig))
         chevron.tintColor = theme.threadBarText.withAlphaComponent(0.4)
@@ -269,7 +262,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return "\(count) ответов"
     }
 
-    // MARK: - Reply Preview
+    // MARK: - Превью ответа
 
     open func replyPreviewView(
         reply: ReplyInfo,
@@ -285,7 +278,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return view
     }
 
-    // MARK: - Footer
+    // MARK: - Подвал сообщения
 
     open func footerView(
         message: ChatMessage,
@@ -305,7 +298,6 @@ open class DefaultChatContentFactory: ChatContentFactory {
         stack.spacing = layout.footerSpacing
         stack.alignment = .center
 
-        // Edited
         let editedLabel = UILabel()
         editedLabel.font = layout.editedFont
         editedLabel.text = "изм."
@@ -318,7 +310,6 @@ open class DefaultChatContentFactory: ChatContentFactory {
         editedLabel.isHidden = !message.isEdited || !features.showEditedMark
         stack.addArrangedSubview(editedLabel)
 
-        // Time
         let timeLabel = UILabel()
         timeLabel.font = layout.timeFont
         timeLabel.text = DateHelper.shared.timeString(from: message.timestamp)
@@ -331,7 +322,6 @@ open class DefaultChatContentFactory: ChatContentFactory {
         timeLabel.isHidden = !features.showTimestamp
         stack.addArrangedSubview(timeLabel)
 
-        // Status (only for outgoing)
         let statusView = MessageStatusView()
         statusView.configure(status: message.status, ownership: ownership, theme: theme)
         statusView.isHidden = !isOutgoing || !features.showMessageStatus
@@ -355,7 +345,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return container
     }
 
-    // MARK: - Sender Name
+    // MARK: - Имя отправителя
 
     open func senderNameView(name: String, theme: ChatTheme, layout: ChatLayout) -> UIView {
         let label = UILabel()
@@ -366,7 +356,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return label
     }
 
-    // MARK: - Forwarded Header
+    // MARK: - Заголовок пересылки
 
     open func forwardedHeaderView(from: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout) -> UIView {
         let label = UILabel()
@@ -377,7 +367,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return label
     }
 
-    // MARK: - Date Separator
+    // MARK: - Разделитель дат
 
     open func dateSeparatorView(title: String, theme: ChatTheme, layout: ChatLayout) -> UIView {
         let pill = UIView()
@@ -406,13 +396,13 @@ open class DefaultChatContentFactory: ChatContentFactory {
         layout.dateSeparatorFont.lineHeight + layout.dateSeparatorVPad * 2
     }
 
-    // MARK: - Floating Date
+    // MARK: - Плавающая дата
 
     open func floatingDateView(title: String, theme: ChatTheme, layout: ChatLayout) -> UIView {
         dateSeparatorView(title: title, theme: theme, layout: layout)
     }
 
-    // MARK: - Empty State
+    // MARK: - Пустое состояние
 
     open func emptyStateView(theme: ChatTheme, layout: ChatLayout) -> UIView {
         let label = UILabel()
@@ -430,7 +420,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return spinner
     }
 
-    // MARK: - Loading Indicator
+    // MARK: - Индикатор загрузки
 
     open func loadingIndicatorView(theme: ChatTheme, layout: ChatLayout) -> UIView {
         let spinner = UIActivityIndicatorView(style: .medium)
@@ -477,14 +467,14 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return badge
     }
 
-    // MARK: - Avatar
+    // MARK: - Аватар
 
     open func avatarView(name: String, url: String?, size: CGFloat, theme: ChatTheme, layout: ChatLayout) -> UIView {
         let container = UIView()
         container.layer.cornerRadius = size / 2
         container.layer.masksToBounds = true
 
-        // Initials fallback
+        // Фоллбэк на инициалы если нет картинки
         let initials = String(name.prefix(1)).uppercased()
         let hash = abs(name.hashValue)
         let hue = CGFloat(hash % 360) / 360.0
@@ -502,7 +492,6 @@ open class DefaultChatContentFactory: ChatContentFactory {
             label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
         ])
 
-        // Load image if URL provided
         if let url {
             let imageView = UIImageView()
             imageView.contentMode = .scaleAspectFill
@@ -524,7 +513,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
     }
 }
 
-// MARK: - Thread Tap Target
+// MARK: - Обработчик нажатия на тред
 
 private final class ThreadTapTarget: NSObject {
     static var key: UInt8 = 0

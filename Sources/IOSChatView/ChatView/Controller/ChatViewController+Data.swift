@@ -1,10 +1,9 @@
 import UIKit
 
-// MARK: - Row Building & Layout Data
+// MARK: - Построение строк и данных лейаута
 
 extension ChatViewController {
 
-    /// Build flat `ChatRow` array from messages, injecting date separators and loading indicator.
     func buildRows(from msgs: [ChatMessage]) -> [ChatRow] {
         var result: [ChatRow] = []
         result.reserveCapacity(msgs.count + msgs.count / 5)
@@ -25,7 +24,6 @@ extension ChatViewController {
         return result
     }
 
-    /// Rebuild `rowIndexCache` and `cachedDateSeparators` from current `rows`.
     func rebuildCachesFromRows() {
         var cache: [String: Int] = [:]
         cache.reserveCapacity(rows.count)
@@ -42,13 +40,11 @@ extension ChatViewController {
         cachedDateSeparators = dateSeps
     }
 
-    /// Compute layout data (heights + insets) for every row. Uses `sizeCache` for O(1) lookups.
     func computeLayoutData() -> [RowLayoutInfo] {
         rebuildCachesFromRows()
         return computeLayoutInfo(for: rows)
     }
 
-    /// Compute layout info for a subset of rows (used by incremental prepend).
     func computeLayoutInfo(for rowSlice: [ChatRow]) -> [RowLayoutInfo] {
         var width = collectionView.bounds.width
         if width <= 0 { width = UIScreen.main.bounds.width }
@@ -62,7 +58,6 @@ extension ChatViewController {
         return result
     }
 
-    /// Compute layout info for a single row.
     private func layoutInfo(for row: ChatRow, width: CGFloat) -> RowLayoutInfo {
         switch row {
         case .message(let msg):
@@ -94,7 +89,6 @@ extension ChatViewController {
         }
     }
 
-    /// Compute height for a single message. Uses `sizeCache` for O(1) lookups.
     func computeMessageHeight(forId id: String, width: CGFloat) -> CGFloat {
         if let cached = sizeCache.height(forKey: id, width: width) { return cached }
         guard let msg = messageIndex[id] else { return layout.cellMinHeight }
@@ -112,20 +106,18 @@ extension ChatViewController {
         return h
     }
 
-    /// Rebuild `messageIndex` from current `messages` array.
     func rebuildMessageIndex() {
         messageIndex = Dictionary(minimumCapacity: messages.count)
         for msg in messages { messageIndex[msg.id] = msg }
     }
 
-    /// Full reload — rebuild rows, layout data, and collection view.
     func reloadAll() {
         rows = buildRows(from: messages)
         applyLayoutData(computeLayoutData())
         collectionView.reloadData()
     }
 
-    // MARK: - Internal State Mutation (used by MessageUpdateHandler)
+    // MARK: - Мутация состояния (используется MessageUpdateHandler)
 
     func setMessages(_ newMessages: [ChatMessage]) {
         messages = newMessages
@@ -148,13 +140,10 @@ extension ChatViewController {
         chatLayout.avatarGroups = features.showAvatars ? computeAvatarGroups() : []
     }
 
-    /// Groups consecutive `.theirs` messages from the same sender into avatar groups.
-    /// Full scan — used for initial load and non-prepend updates.
     private func computeAvatarGroups() -> [AvatarGroup] {
         computeAvatarGroups(inRange: 0..<rows.count)
     }
 
-    /// Groups consecutive `.theirs` messages within the given row range.
     private func computeAvatarGroups(inRange range: Range<Int>) -> [AvatarGroup] {
         var groups: [AvatarGroup] = []
         var i = range.lowerBound

@@ -1,15 +1,14 @@
 import UIKit
 
-/// Manages the floating date pill that appears during scrolling.
 public final class FloatingDateManager {
 
-    // MARK: - Views
+    // MARK: - Вьюхи
 
     private let container = UIView()
     private var contentView: UIView?
     private var topConstraint: NSLayoutConstraint?
 
-    // MARK: - State
+    // MARK: - Состояние
 
     private var hideTask: DispatchWorkItem?
     private var currentDate: String?
@@ -17,7 +16,7 @@ public final class FloatingDateManager {
     private var theme: ChatTheme = .light
     private weak var factory: ChatContentFactory?
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     func setup(in parentView: UIView, safeAreaGuide: UILayoutGuide, layout: ChatLayout, theme: ChatTheme, extraInsetTop: CGFloat, factory: ChatContentFactory) {
         self.layout = layout
@@ -40,7 +39,7 @@ public final class FloatingDateManager {
         ])
     }
 
-    // MARK: - Configuration
+    // MARK: - Конфигурация
 
     func setHidden(_ hidden: Bool) {
         container.isHidden = hidden
@@ -58,7 +57,7 @@ public final class FloatingDateManager {
         }
     }
 
-    // MARK: - Update
+    // MARK: - Обновление
 
     func update(
         cachedSeparators: [(rowIndex: Int, groupDate: String)],
@@ -130,7 +129,7 @@ public final class FloatingDateManager {
         show()
     }
 
-    // MARK: - Content
+    // MARK: - Контент
 
     private func rebuildContent(title: String) {
         contentView?.removeFromSuperview()
@@ -146,7 +145,7 @@ public final class FloatingDateManager {
         contentView = view
     }
 
-    // MARK: - Show / Hide
+    // MARK: - Показ / Скрытие
 
     private func show() {
         hideTask?.cancel()

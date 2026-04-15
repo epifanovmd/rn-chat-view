@@ -1,6 +1,6 @@
 import UIKit
 
-// MARK: - Scroll Anchor
+// MARK: - Якорь скролла
 
 /// Якорь скролла: привязка к нижнему видимому сообщению.
 /// `offset` = расстояние от нижнего края viewport до нижнего края ячейки-якоря.
@@ -24,7 +24,7 @@ public struct ScrollAnchor: Codable, Equatable {
 
 public final class ChatViewController: UIViewController {
 
-    // MARK: - Public Configuration
+    // MARK: - Публичная конфигурация
 
     public var theme: ChatTheme = .light {
         didSet { guard isViewLoaded, !isBatchUpdate else { return }; applyTheme() }
@@ -46,7 +46,6 @@ public final class ChatViewController: UIViewController {
 
     private var isBatchUpdate = false
 
-    /// Apply multiple configuration changes at once to avoid redundant reloads.
     public func batchUpdate(_ block: () -> Void) {
         isBatchUpdate = true
         let oldFeatures = features
@@ -57,7 +56,7 @@ public final class ChatViewController: UIViewController {
         applyFeatureChanges(from: oldFeatures)
     }
 
-    // MARK: - Public Properties
+    // MARK: - Публичные свойства
 
     public var contentFactory: ChatContentFactory = DefaultChatContentFactory()
     public weak var delegate: ChatViewControllerDelegate?
@@ -73,6 +72,19 @@ public final class ChatViewController: UIViewController {
     }
     public var isLoadingBottom = false {
         didSet { if oldValue != isLoadingBottom, isViewLoaded { scheduleBottomLoadingRebuild() } }
+    }
+    /// Показывает спиннер-кольцо по внутреннему контуру FAB-кнопки.
+    /// При `true` FAB принудительно отображается даже если скролл внизу.
+    public var isLoadingFab = false {
+        didSet {
+            guard oldValue != isLoadingFab, isViewLoaded else { return }
+            fabManager.setLoading(isLoadingFab)
+            if isLoadingFab {
+                fabManager.forceShow()
+            } else {
+                updateFABVisibility(animated: true)
+            }
+        }
     }
     private var pendingLoadingRebuild: DispatchWorkItem?
     private lazy var topLoadingSpinner: UIActivityIndicatorView = {
@@ -100,36 +112,29 @@ public final class ChatViewController: UIViewController {
         didSet { guard isViewLoaded else { return }; view.setNeedsLayout() }
     }
 
-    // MARK: - Visibility Intervals
+    // MARK: - Интервалы видимости
 
-    /// Throttle interval for visible messages snapshot (seconds). Default 0.3.
     public var visibleMessagesThrottleInterval: TimeInterval = 0.3
-    /// Debounce interval for unread messages batch (seconds). Default 0.3.
     public var unreadMessagesDebounceInterval: TimeInterval = 0.3
-    /// Minimum fraction of cell height to enter "visible" set (0..1). Default 0.8.
     public var visibilityThreshold: CGFloat = 0.8
-    /// Fraction below which a cell exits the "visible" set (hysteresis). Default 0.5.
     public var visibilityExitThreshold: CGFloat = 0.5
-    /// Minimum fraction of cell height visible on screen for mark-as-read (0..1). Default 0.5.
     public var unreadVisibilityThreshold: CGFloat = 0.5
 
-    // MARK: - Initial Scroll
+    // MARK: - Начальный скролл
 
     public var isInitialScrollProtected = false
 
-    /// Saved scroll anchor for pixel-accurate initial restore.
-    /// Set from RN before messages arrive. Used by applyInitial.
+    /// Сохранённый якорь из RN — ставится до прихода сообщений, используется в applyInitial.
     public var pendingScrollAnchor: ScrollAnchor?
 
-    /// Pending initial scroll target set by applyInitial.
-    /// Executed by viewDidLayoutSubviews once bounds > 0 and view is in window.
+    /// Отложенный начальный скролл (applyInitial). Выполняется в viewDidLayoutSubviews когда bounds > 0 и view в window.
     enum PendingInitialScroll {
         case toAnchor(ScrollAnchor)
         case toBottom
     }
     var pendingInitialScroll: PendingInitialScroll?
 
-    // MARK: - Data (internal — mutated by extensions, read by MessageUpdateHandler/DataSource)
+    // MARK: - Данные (мутируются расширениями, читаются MessageUpdateHandler/DataSource)
 
     public internal(set) var messages: [ChatMessage] = []
     var messageIndex: [String: ChatMessage] = [:]
@@ -137,30 +142,30 @@ public final class ChatViewController: UIViewController {
     var cachedDateSeparators: [(rowIndex: Int, groupDate: String)] = []
     var rows: [ChatRow] = []
 
-    // MARK: - Size Cache
+    // MARK: - Кеш размеров
 
     var sizeCache = SizeCache()
 
-    // MARK: - Collection View + Data Source
+    // MARK: - Collection View + DataSource
 
     public private(set) var collectionView: UICollectionView!
     var dataSource: ChatDataSource!
 
-    // MARK: - UI Components
+    // MARK: - UI компоненты
 
     public var inputBar: InputBarView!
 
-    // MARK: - Managers
+    // MARK: - Менеджеры
 
     let floatingDateManager = FloatingDateManager()
     let fabManager = FABManager()
     let emptyStateManager = EmptyStateManager()
 
-    // MARK: - Constraints
+    // MARK: - Констрейнты
 
     var inputBarKeyboardConstraint: NSLayoutConstraint?
 
-    // MARK: - Scroll State
+    // MARK: - Состояние скролла
 
     enum ScrollDirection { case up, down, none }
     var scrollDirection: ScrollDirection = .none
@@ -182,7 +187,7 @@ public final class ChatViewController: UIViewController {
     var pendingScrollToBottom = false
     var isLoadingNewerActive = false
 
-    // MARK: - Keyboard Freeze
+    // MARK: - Заморозка клавиатуры
 
     lazy var keyboardFreezeManager = KeyboardFreezeManager(
         collectionView: collectionView,
@@ -190,7 +195,7 @@ public final class ChatViewController: UIViewController {
         onThaw: { [weak self] in self?.updateCollectionInsets() }
     )
 
-    // MARK: - Lifecycle
+    // MARK: - Жизненный цикл
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -217,8 +222,8 @@ public final class ChatViewController: UIViewController {
         executePendingInitialScroll()
     }
 
-    /// Execute pending initial scroll when the view is fully laid out:
-    /// bounds > 0 and view is in a window (not a temporary RN state).
+    /// Выполняет отложенный начальный скролл когда view полностью отлейаутился
+    /// (bounds > 0 и view в window — не временное RN-состояние).
     func executePendingInitialScroll() {
         guard let scroll = pendingInitialScroll else { return }
 
@@ -227,9 +232,9 @@ public final class ChatViewController: UIViewController {
 
         let insetBottom = cv.contentInset.bottom
 
-        // Wait until view has real dimensions, is in a window, and insets have settled.
-        // During RN mount, keyboard layout guide gives insetBottom=852 temporarily.
-        // We must wait until it settles to the real value (typically < half the screen).
+        // Ждём реальные размеры, window и устоявшиеся insets.
+        // При маунте RN keyboard layout guide временно даёт insetBottom=852 —
+        // ждём пока значение не станет реальным (обычно < половины экрана).
         guard frameH > 0, cv.bounds.width > 0,
               view.window != nil,
               insetBottom < frameH * 0.5 else {
@@ -275,7 +280,7 @@ public final class ChatViewController: UIViewController {
         pendingLoadingRebuild?.cancel()
     }
 
-    // MARK: - Setup Collection View
+    // MARK: - Настройка Collection View
 
     private(set) var chatLayout: ChatCollectionViewLayout!
 
@@ -290,7 +295,7 @@ public final class ChatViewController: UIViewController {
         collectionView.isPrefetchingEnabled = false
         collectionView.clipsToBounds = true
         collectionView.translatesAutoresizingMaskIntoConstraints = false
-        // Set delegate BEFORE creating dataSource — required for FlowLayout + ScrollView delegate
+        // delegate ставится ДО dataSource — иначе FlowLayout + ScrollView delegate не работает
         collectionView.delegate = self
         view.addSubview(collectionView)
 
@@ -306,7 +311,7 @@ public final class ChatViewController: UIViewController {
         collectionView.addGestureRecognizer(tap)
     }
 
-    // MARK: - Setup DataSource
+    // MARK: - Настройка DataSource
 
     private func setupDataSource() {
         collectionView.register(MessageCell.self, forCellWithReuseIdentifier: MessageCell.reuseID)
@@ -317,7 +322,7 @@ public final class ChatViewController: UIViewController {
         collectionView.dataSource = dataSource
     }
 
-    // MARK: - Setup Input Bar
+    // MARK: - Настройка Input Bar
 
     private func setupInputBar() {
         inputBar = InputBarView()
@@ -336,14 +341,14 @@ public final class ChatViewController: UIViewController {
         inputBarKeyboardConstraint = c
     }
 
-    // MARK: - Setup FAB
+    // MARK: - Настройка FAB
 
     private func setupFAB() {
         fabManager.setup(in: view, inputBar: inputBar, factory: contentFactory, layout: layout, theme: theme, features: features)
         fabManager.onTap = { [weak self] in self?.delegate?.chatDidTapFAB() }
     }
 
-    // MARK: - Setup Floating Date
+    // MARK: - Настройка плавающей даты
 
     private func setupFloatingDate() {
         floatingDateManager.setup(
@@ -359,7 +364,7 @@ public final class ChatViewController: UIViewController {
         }
     }
 
-    // MARK: - Theme
+    // MARK: - Тема
 
     func applyTheme() {
         guard isViewLoaded else { return }
@@ -372,7 +377,7 @@ public final class ChatViewController: UIViewController {
         reloadWithCrossfade()
     }
 
-    // MARK: - Feature Changes
+    // MARK: - Применение изменений фич
 
     private func applyFeatureChanges(from old: ChatFeatures) {
         if old.showFab != features.showFab {
@@ -461,7 +466,7 @@ public final class ChatViewController: UIViewController {
         }
     }
 
-    // MARK: - Update Messages
+    // MARK: - Обновление сообщений
 
     private lazy var messageUpdateHandler = MessageUpdateHandler(controller: self)
 
@@ -471,8 +476,8 @@ public final class ChatViewController: UIViewController {
         pendingLoadingRebuild?.cancel()
         pendingLoadingRebuild = nil
 
-        // Defer structural updates while the user is actively scrolling.
-        // Content, append, and prepend are safe — they handle scroll position internally.
+        // Откладываем структурные обновления пока пользователь скроллит.
+        // Content, append и prepend безопасны — они сами управляют позицией скролла.
         if collectionView.isDragging || collectionView.isDecelerating {
             let isStructural = messageUpdateHandler.peekClassify(
                 old: messages, new: newMessages)
@@ -506,11 +511,10 @@ public final class ChatViewController: UIViewController {
     }
 
 
-    // MARK: - Scroll Anchor
+    // MARK: - Якорь скролла
 
-    /// Returns the current scroll position as a stable anchor tied to a message.
-    /// Anchors to the top-most visible message with offset from visible top.
-    /// Accounts for `adjustedContentInset.top` (safe area + extra inset).
+    /// Текущая позиция скролла как стабильный якорь — привязка к нижнему видимому сообщению
+    /// с offset от visible bottom. Учитывает adjustedContentInset.
     public func currentScrollAnchor() -> ScrollAnchor? {
         guard !messages.isEmpty, let cv = collectionView else { return nil }
 
@@ -633,9 +637,9 @@ public final class ChatViewController: UIViewController {
             + chatLayout.rowLayoutData[rowIndex].topInset
             + chatLayout.rowLayoutData[rowIndex].height
 
-        // visibleBottom = contentOffset.y + bounds.height - contentInset.bottom
-        // cellBottom = visibleBottom - offset
-        // → contentOffset.y = cellBottom + offset - bounds.height + contentInset.bottom
+        // visibleBottom = contentOffset.y + bounds.height - contentInset.bottom;
+        // cellBottom = visibleBottom - offset →
+        // contentOffset.y = cellBottom + offset - bounds.height + contentInset.bottom
         let targetOffset = cellBottom + anchor.offset - cv.bounds.height + cv.contentInset.bottom
 
         let minY = -cv.adjustedContentInset.top
@@ -645,7 +649,7 @@ public final class ChatViewController: UIViewController {
         cv.contentOffset = CGPoint(x: 0, y: clampedY)
     }
 
-    // MARK: - Scroll
+    // MARK: - Скролл
 
     public func scrollToBottom(animated: Bool) {
         pendingScrollToBottom = true
@@ -698,18 +702,15 @@ public final class ChatViewController: UIViewController {
         cell.playHighlight()
     }
 
-    // MARK: - Disintegration Effect
+    // MARK: - Эффект разрушения
 
-    /// Enable confetti-like disintegration effect when messages are deleted.
-    /// When `false` (default), deletion uses standard fade animation.
-    /// When `true`, deleted message bubbles shatter into particles automatically
-    /// on any `updateMessages()` call that removes messages.
+    /// Конфетти-эффект при удалении сообщений. По умолчанию false (обычный fade).
+    /// При true пузырь разлетается на частицы при любом updateMessages() с удалениями.
     public var disintegrationEnabled: Bool = false
 
-    /// Particle animation configuration (used when `disintegrationEnabled` is `true`).
     public var disintegrationConfig: DisintegrationAnimator.Config = .default
 
-    // MARK: - Input Mode
+    // MARK: - Режим ввода
 
     public func beginReply(info: ReplyInfo) {
         inputBar.beginReply(info: InputBarReplyInfo(
@@ -720,7 +721,7 @@ public final class ChatViewController: UIViewController {
     public func beginEdit(messageId: String, text: String) { inputBar.beginEdit(messageId: messageId, text: text) }
     public func clearInputMode() { inputBar.cancelMode() }
 
-    // MARK: - Helpers
+    // MARK: - Вспомогательные методы
 
     public func message(forID id: String) -> ChatMessage? { messageIndex[id] }
 
@@ -736,6 +737,8 @@ public final class ChatViewController: UIViewController {
 
     func updateFABVisibility(animated: Bool) {
         guard features.showFab else { return }
+        // Не скрываем FAB пока идёт загрузка
+        if isLoadingFab { return }
         fabManager.updateVisibility(isNearBottom: isNearBottom(), hasMessages: !messages.isEmpty, animated: animated)
         fabManager.updateBadge(unreadCount: unreadManager.count)
     }
@@ -778,14 +781,14 @@ public final class ChatViewController: UIViewController {
             return
         }
 
-        // Compute distanceFromEnd BEFORE changing inset (uses oldBottom)
+        // Считаем distanceFromEnd ДО смены inset (используем oldBottom)
         let distanceFromEnd = cv.contentSize.height - cv.contentOffset.y - cv.bounds.height + oldBottom
 
         cv.contentInset.bottom = newBottom
         cv.verticalScrollIndicatorInsets.bottom = newIndicatorBottom
 
-        // Don't adjust offset during initial scroll protection —
-        // the offset will be set by executePendingInitialScroll.
+        // Не корректируем offset во время начальной защиты скролла —
+        // offset выставит executePendingInitialScroll.
         guard !isInitialScrollProtected,
               pendingInitialScroll == nil else {
             return
@@ -793,7 +796,7 @@ public final class ChatViewController: UIViewController {
 
         let maxOffsetY = cv.contentSize.height - cv.bounds.height + newBottom
         let minOffsetY = -cv.contentInset.top
-        // When content is too small to fill the visible area, keep it pinned at top
+        // Контент меньше видимой области — держим прижатым к верху
         guard maxOffsetY > minOffsetY else { return }
 
         let newOffsetY = cv.contentSize.height - cv.bounds.height + newBottom - distanceFromEnd

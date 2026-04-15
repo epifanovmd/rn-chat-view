@@ -3,7 +3,7 @@ import UIKit
 public final class VoiceContentView: UIView {
     var onPlayTap: (() -> Void)?
 
-    // MARK: - Subviews
+    // MARK: - Вью
 
     private let playButton = UIView()
     private let playIcon = UIImageView()
@@ -11,7 +11,7 @@ public final class VoiceContentView: UIView {
     private let waveformView = WaveformView()
     private let durationLabel = UILabel()
 
-    // MARK: - State
+    // MARK: - Состояние
 
     private var voiceURL: String?
     private var voiceDuration: TimeInterval = 0
@@ -23,14 +23,14 @@ public final class VoiceContentView: UIView {
     private var isFailed = false
     private var currentLayout = ChatLayout()
 
-    // MARK: - Stored constraints
+    // MARK: - Сохранённые констрейнты
 
     private var playButtonWidthConstraint: NSLayoutConstraint!
     private var playButtonHeightConstraint: NSLayoutConstraint!
     private var viewHeightConstraint: NSLayoutConstraint!
     private var waveformHeightConstraint: NSLayoutConstraint!
 
-    // MARK: - Init
+    // MARK: - Инициализация
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -43,13 +43,12 @@ public final class VoiceContentView: UIView {
         VoicePlayer.shared.removeObserver(self)
     }
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     private func setup() {
         let L = currentLayout
         let btnSize = L.voicePlaySize
 
-        // Play button
         playButton.translatesAutoresizingMaskIntoConstraints = false
         playButton.layer.cornerRadius = btnSize / 2
         playButton.layer.masksToBounds = true
@@ -59,13 +58,12 @@ public final class VoiceContentView: UIView {
         let tap = UITapGestureRecognizer(target: self, action: #selector(playTapped))
         playButton.addGestureRecognizer(tap)
 
-        // Play icon
         playIcon.translatesAutoresizingMaskIntoConstraints = false
         playIcon.contentMode = .scaleAspectFit
         playIcon.tintColor = .white
         playButton.addSubview(playIcon)
 
-        // Loading ring inside button
+        // Кольцо загрузки внутри кнопки
         let inset: CGFloat = 4
         let ringRadius = btnSize / 2 - inset
         loadingRing.frame = CGRect(x: 0, y: 0, width: btnSize, height: btnSize)
@@ -85,7 +83,6 @@ public final class VoiceContentView: UIView {
         loadingRing.isHidden = true
         playButton.layer.addSublayer(loadingRing)
 
-        // Waveform
         waveformView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(waveformView)
 
@@ -96,7 +93,6 @@ public final class VoiceContentView: UIView {
             }
         }
 
-        // Duration
         durationLabel.font = L.voiceDurationFont
         durationLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(durationLabel)
@@ -134,7 +130,7 @@ public final class VoiceContentView: UIView {
         ])
     }
 
-    // MARK: - Configure
+    // MARK: - Конфигурация
 
     func configure(voice: VoicePayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
         currentLayout = layout
@@ -147,7 +143,6 @@ public final class VoiceContentView: UIView {
         currentTheme = theme
         isOutgoingMessage = isOutgoing
 
-        // Update layout-dependent values
         playButton.layer.cornerRadius = btnSize / 2
         durationLabel.font = L.voiceDurationFont
 
@@ -157,7 +152,7 @@ public final class VoiceContentView: UIView {
         viewHeightConstraint.constant = btnSize + 12 // 8pt top + 4pt bottom padding
         waveformHeightConstraint.constant = waveH
 
-        // Rebuild loading ring for new size
+        // Пересоздание кольца загрузки под новый размер
         let inset: CGFloat = 4
         let ringRadius = btnSize / 2 - inset
         loadingRing.frame = CGRect(x: 0, y: 0, width: btnSize, height: btnSize)
@@ -184,7 +179,6 @@ public final class VoiceContentView: UIView {
             layout: L
         )
 
-        // Check cache and prefetch
         isCached = AudioCache.shared.localURL(for: voice.url) != nil
         isFailed = false
         if !isCached {
@@ -195,7 +189,7 @@ public final class VoiceContentView: UIView {
         updateUI()
     }
 
-    // MARK: - Update UI
+    // MARK: - Обновление UI
 
     private func updateUI() {
         let state = VoicePlayer.shared.state
@@ -204,7 +198,6 @@ public final class VoiceContentView: UIView {
         let config = UIImage.SymbolConfiguration(pointSize: L.voicePlayIconSize, weight: .semibold)
         let errorConfig = UIImage.SymbolConfiguration(pointSize: L.voicePlayIconSize - 2, weight: .medium)
 
-        // Failed state
         if isFailed {
             hideLoadingRing()
             playButton.backgroundColor = accentColor.withAlphaComponent(0.4)
@@ -214,11 +207,9 @@ public final class VoiceContentView: UIView {
             return
         }
 
-        // Restore normal button color
         playButton.backgroundColor = accentColor
         waveformView.setDimmed(false)
 
-        // Loading: prefetching or player loading
         let isLoading = isPrefetching || (isMe && state.isLoading)
 
         if isLoading {
@@ -229,18 +220,16 @@ public final class VoiceContentView: UIView {
             hideLoadingRing()
         }
 
-        // Play / Pause icon
         if isMe && state.isPlaying {
             playIcon.image = UIImage(systemName: "pause.fill", withConfiguration: config)
         } else {
             playIcon.image = UIImage(systemName: "play.fill", withConfiguration: config)
         }
 
-        // Seek only when this voice is playing or paused
+        // Seek доступен только когда это голосовое играет или на паузе
         let isActive = isMe && (state.isPlaying || { if case .paused = state { return true }; return false }())
         waveformView.isSeekEnabled = isActive
 
-        // Waveform + duration
         if isMe, case .playing(_, let progress, let currentTime) = state {
             waveformView.updateProgress(progress)
             durationLabel.text = formatTime(currentTime)
@@ -253,7 +242,7 @@ public final class VoiceContentView: UIView {
         }
     }
 
-    // MARK: - Loading Ring
+    // MARK: - Кольцо загрузки
 
     private func showLoadingRing() {
         guard loadingRing.isHidden else { return }
@@ -273,7 +262,7 @@ public final class VoiceContentView: UIView {
         loadingRing.isHidden = true
     }
 
-    // MARK: - Prefetch
+    // MARK: - Предзагрузка
 
     private func startPrefetch() {
         guard let url = voiceURL else { return }
@@ -292,7 +281,7 @@ public final class VoiceContentView: UIView {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Вспомогательные методы
 
     private func formatTime(_ seconds: TimeInterval) -> String {
         let mins = Int(seconds) / 60
@@ -416,7 +405,7 @@ public final class WaveformView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
-    // MARK: - Seek gestures
+    // MARK: - Жесты перемотки
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard isSeekEnabled else {
@@ -432,7 +421,7 @@ public final class WaveformView: UIView, UIGestureRecognizerDelegate {
             if !didLockDirection {
                 let velocity = gesture.velocity(in: self)
                 if abs(velocity.x) < abs(velocity.y) {
-                    // Vertical — cancel and let scroll view handle it
+                    // Вертикальный жест — отменяем, чтобы scroll view обработал
                     gesture.state = .cancelled
                     return
                 }
@@ -477,7 +466,7 @@ public final class WaveformView: UIView, UIGestureRecognizerDelegate {
         true
     }
 
-    // MARK: - Resample
+    // MARK: - Ресемплинг
 
     private func resample(_ data: [Float], to count: Int) -> [Float] {
         guard !data.isEmpty else { return Array(repeating: 0.3, count: count) }

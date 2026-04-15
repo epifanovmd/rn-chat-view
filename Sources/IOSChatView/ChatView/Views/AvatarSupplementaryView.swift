@@ -1,7 +1,5 @@
 import UIKit
 
-/// Supplementary view that displays a sender avatar next to message groups.
-/// Positioned by `ChatCollectionViewLayout` with sticky behavior.
 final class AvatarSupplementaryView: UICollectionReusableView {
     static let kind = "AvatarSupplementary"
     static let reuseID = "AvatarSupplementaryView"

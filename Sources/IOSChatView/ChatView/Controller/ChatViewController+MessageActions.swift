@@ -1,8 +1,7 @@
 import UIKit
 
-// MARK: - Message Cell Action Routing
+// MARK: - Маршрутизация действий ячеек
 
-/// Routes cell interaction callbacks to the public `ChatViewControllerDelegate`.
 extension ChatViewController {
 
     func messageSectionDidTap(messageId: String, attachmentIndex: Int?) {

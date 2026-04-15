@@ -1,7 +1,5 @@
 import UIKit
 
-/// Standard UICollectionViewDataSource backed by a flat [ChatRow] array.
-/// Cell configuration via registered cell classes — no DiffableDataSource needed.
 final class ChatDataSource: NSObject, UICollectionViewDataSource {
 
     private weak var controller: ChatViewController?
@@ -69,9 +67,8 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         return cell
     }
 
-    // MARK: - In-Place Reconfiguration
+    // MARK: - In-place реконфигурация
 
-    /// Reconfigures a visible message cell without dequeue, preserving the view hierarchy.
     func reconfigureMessageCellInPlace(_ cell: MessageCell, message msg: ChatMessage, vc: ChatViewController) {
         setupCallbacks(cell, message: msg, vc: vc)
 
@@ -90,7 +87,7 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         )
     }
 
-    // MARK: - Message Cell Configuration
+    // MARK: - Конфигурация ячейки сообщения
 
     private func configureMessageCell(_ cell: MessageCell, message msg: ChatMessage, vc: ChatViewController) {
         setupCallbacks(cell, message: msg, vc: vc)
@@ -109,7 +106,7 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
         )
     }
 
-    // MARK: - Shared Helpers
+    // MARK: - Общие хелперы
 
     private func setupCallbacks(_ cell: MessageCell, message msg: ChatMessage, vc: ChatViewController) {
         cell.onTap = { [weak vc] in

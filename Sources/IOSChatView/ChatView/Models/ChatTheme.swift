@@ -1,13 +1,14 @@
 import UIKit
 
 public struct ChatTheme {
+    /// Тёмная тема или светлая (влияет на пресет InputBarTheme)
     public let isDark: Bool
 
     // MARK: - Фон
 
     /// Основной фон чата
     public var backgroundColor: UIColor
-    /// Цвет обоев/паттерна
+    /// Цвет обоев / подложки за пузырями
     public var wallpaperColor: UIColor
 
     // MARK: - Исходящее сообщение
@@ -16,13 +17,13 @@ public struct ChatTheme {
     public var outgoingBubble: UIColor
     /// Цвет текста исходящего сообщения
     public var outgoingText: UIColor
-    /// Цвет метки времени исходящего сообщения
+    /// Цвет времени отправки в исходящем сообщении
     public var outgoingTime: UIColor
-    /// Цвет иконки статуса (отправка/отправлено/доставлено)
+    /// Цвет иконки статуса доставки (отправлено/доставлено)
     public var outgoingStatus: UIColor
     /// Цвет иконки статуса «прочитано»
     public var outgoingStatusRead: UIColor
-    /// Цвет метки «изменено» исходящего сообщения
+    /// Цвет метки «изменено» в исходящем сообщении
     public var outgoingEdited: UIColor
     /// Цвет ссылок в исходящем сообщении
     public var outgoingLink: UIColor
@@ -33,9 +34,9 @@ public struct ChatTheme {
     public var incomingBubble: UIColor
     /// Цвет текста входящего сообщения
     public var incomingText: UIColor
-    /// Цвет метки времени входящего сообщения
+    /// Цвет времени отправки во входящем сообщении
     public var incomingTime: UIColor
-    /// Цвет метки «изменено» входящего сообщения
+    /// Цвет метки «изменено» во входящем сообщении
     public var incomingEdited: UIColor
     /// Цвет имени отправителя во входящем сообщении
     public var incomingSenderName: UIColor
@@ -48,7 +49,7 @@ public struct ChatTheme {
     public var systemBubble: UIColor
     /// Цвет текста системного сообщения
     public var systemText: UIColor
-    /// Цвет метки времени системного сообщения
+    /// Цвет времени в системном сообщении
     public var systemTime: UIColor
 
     // MARK: - Закреплённое сообщение
@@ -57,26 +58,26 @@ public struct ChatTheme {
     public var pinnedBubble: UIColor
     /// Цвет текста закреплённого сообщения
     public var pinnedText: UIColor
-    /// Цвет метки времени закреплённого сообщения
+    /// Цвет времени в закреплённом сообщении
     public var pinnedTime: UIColor
 
     // MARK: - Превью цитаты внутри пузыря
 
-    /// Фон превью цитаты в исходящем сообщении
+    /// Фон блока цитаты в исходящем сообщении
     public var outgoingReplyBackground: UIColor
-    /// Цвет акцентной полоски цитаты в исходящем
+    /// Цвет акцентной полоски цитаты в исходящем сообщении
     public var outgoingReplyAccent: UIColor
-    /// Цвет имени отправителя в цитате исходящего
+    /// Цвет имени автора цитаты в исходящем сообщении
     public var outgoingReplySender: UIColor
-    /// Цвет текста цитаты в исходящем
+    /// Цвет текста цитаты в исходящем сообщении
     public var outgoingReplyText: UIColor
-    /// Фон превью цитаты во входящем сообщении
+    /// Фон блока цитаты во входящем сообщении
     public var incomingReplyBackground: UIColor
-    /// Цвет акцентной полоски цитаты во входящем
+    /// Цвет акцентной полоски цитаты во входящем сообщении
     public var incomingReplyAccent: UIColor
-    /// Цвет имени отправителя в цитате входящего
+    /// Цвет имени автора цитаты во входящем сообщении
     public var incomingReplySender: UIColor
-    /// Цвет текста цитаты во входящем
+    /// Цвет текста цитаты во входящем сообщении
     public var incomingReplyText: UIColor
 
     // MARK: - Пересланное сообщение
@@ -85,16 +86,16 @@ public struct ChatTheme {
     public var outgoingForwardedLabel: UIColor
     /// Цвет метки «переслано» во входящем сообщении
     public var incomingForwardedLabel: UIColor
-    /// Цвет акцентной полоски пересланного в исходящем
+    /// Цвет акцентной полоски пересланного в исходящем сообщении
     public var outgoingForwardedAccent: UIColor
-    /// Цвет акцентной полоски пересланного во входящем
+    /// Цвет акцентной полоски пересланного во входящем сообщении
     public var incomingForwardedAccent: UIColor
 
     // MARK: - Файл
 
-    /// Фон карточки файла в исходящем сообщении
+    /// Фон блока файла в исходящем сообщении
     public var outgoingFileBackground: UIColor
-    /// Фон карточки файла во входящем сообщении
+    /// Фон блока файла во входящем сообщении
     public var incomingFileBackground: UIColor
     /// Цвет иконки файла
     public var fileIconColor: UIColor
@@ -103,87 +104,87 @@ public struct ChatTheme {
 
     /// Фон чипа реакции (чужой)
     public var reactionBackground: UIColor
-    /// Фон чипа моей реакции
+    /// Фон чипа реакции, выбранной текущим пользователем
     public var reactionMineBackground: UIColor
-    /// Цвет текста/эмодзи реакции
+    /// Цвет текста (эмодзи + счётчик) в чипе реакции
     public var reactionText: UIColor
-    /// Цвет рамки чипа моей реакции
+    /// Цвет рамки чипа реакции, выбранной текущим пользователем
     public var reactionMineBorder: UIColor
 
     // MARK: - Индикатор треда
 
-    /// Цвет текста индикатора треда
+    /// Цвет текста индикатора треда (количество ответов)
     public var threadBarText: UIColor
     /// Цвет иконки индикатора треда
     public var threadBarIcon: UIColor
 
     // MARK: - Разделитель дат
 
-    /// Фон пилюли разделителя дат
+    /// Фон плашки разделителя дат
     public var dateSeparatorBackground: UIColor
     /// Цвет текста разделителя дат
     public var dateSeparatorText: UIColor
 
     // MARK: - FAB (кнопка скролла вниз)
 
-    /// Фон кнопки FAB
+    /// Фон кнопки скролла вниз (FAB)
     public var fabBackground: UIColor
     /// Цвет рамки FAB
     public var fabBorder: UIColor
-    /// Стиль размытия фона FAB
+    /// Стиль блюра FAB
     public var fabBlurStyle: UIBlurEffect.Style
     /// Цвет стрелки FAB
     public var fabArrowColor: UIColor
     /// Фон бейджа непрочитанных на FAB
     public var fabBadgeBackground: UIColor
-    /// Цвет текста бейджа непрочитанных
+    /// Цвет текста бейджа непрочитанных на FAB
     public var fabBadgeTextColor: UIColor
     /// Цвет тени FAB
     public var fabShadowColor: UIColor
 
     // MARK: - Голосовое сообщение (контент)
 
-    /// Цвет активных (проигранных) полосок волны
+    /// Цвет активной (проигранной) части волны голосового сообщения
     public var voiceWaveformActive: UIColor
-    /// Цвет неактивных полосок волны
+    /// Цвет неактивной части волны голосового сообщения
     public var voiceWaveformInactive: UIColor
 
     // MARK: - Опрос
 
-    /// Цвет заполненной полосы варианта опроса
+    /// Цвет заполненной полоски прогресса опроса
     public var pollBarFilled: UIColor
-    /// Цвет фона/пустой полосы варианта опроса
+    /// Цвет пустой полоски прогресса опроса
     public var pollBarEmpty: UIColor
-    /// Цвет бордера выбранного варианта
+    /// Цвет рамки выбранного варианта опроса
     public var pollSelectedBorder: UIColor
-    /// Цвет подписи типа опроса
+    /// Цвет подзаголовка опроса (количество голосов и т.д.)
     public var pollSubtitleColor: UIColor
 
     // MARK: - Сетка медиа
 
-    /// Фон плейсхолдера при загрузке изображений
+    /// Фон-заглушка медиа до загрузки изображения
     public var mediaPlaceholderBackground: UIColor
-    /// Цвет иконки воспроизведения на видео
+    /// Цвет иконки воспроизведения видео
     public var mediaPlayIconColor: UIColor
-    /// Цвет тени иконки воспроизведения
+    /// Цвет тени иконки воспроизведения видео
     public var mediaPlayShadowColor: UIColor
-    /// Фон бейджа длительности видео
+    /// Фон плашки длительности видео
     public var mediaDurationBackground: UIColor
-    /// Цвет текста бейджа длительности видео
+    /// Цвет текста длительности видео
     public var mediaDurationTextColor: UIColor
-    /// Фон оверлея «+N» на сетке медиа
+    /// Фон оверлея «ещё N фото» в сетке медиа
     public var mediaOverlayBackground: UIColor
-    /// Цвет текста оверлея «+N»
+    /// Цвет текста оверлея «ещё N фото» в сетке медиа
     public var mediaOverlayTextColor: UIColor
 
     // MARK: - Подсветка сообщения
 
-    /// Цвет оверлея подсветки при скролле к сообщению
+    /// Цвет подсветки сообщения при scrollToMessage с highlight
     public var messageHighlightColor: UIColor
 
     // MARK: - Пустое состояние
 
-    /// Цвет текста пустого состояния («Нет сообщений»)
+    /// Цвет текста заглушки пустого состояния
     public var emptyStateText: UIColor
 
     // MARK: - Init
@@ -327,7 +328,7 @@ public struct ChatTheme {
     }
 }
 
-// MARK: - Presets
+// MARK: - Пресеты
 
 public extension ChatTheme {
     public static let light = ChatTheme(

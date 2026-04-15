@@ -1,6 +1,6 @@
 import UIKit
 
-// MARK: - Delegate
+// MARK: - Делегат
 
 public protocol InputBarDelegate: AnyObject {
     func inputBarDidSend(text: String, replyToId: String?)
@@ -16,7 +16,7 @@ extension InputBarDelegate {
     func inputBarRecordingStateChanged(isRecording: Bool) {}
 }
 
-// MARK: - Input Mode
+// MARK: - Режим ввода
 
 public enum InputBarMode: Equatable {
     case normal
@@ -24,7 +24,7 @@ public enum InputBarMode: Equatable {
     case edit(messageId: String, text: String)
 }
 
-// MARK: - Recording State
+// MARK: - Состояние записи
 
 public enum RecordingState {
     case idle
@@ -32,7 +32,7 @@ public enum RecordingState {
     case locked
 }
 
-// MARK: - Reply Display Info (for beginReply)
+// MARK: - Данные для отображения ответа
 
 public struct InputBarReplyInfo {
     public let messageId: String

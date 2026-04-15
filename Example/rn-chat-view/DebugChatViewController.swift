@@ -1,6 +1,7 @@
 import IOSChatView
 import UIKit
 import SwiftUI
+import Combine
 
 // MARK: - Debug Chat ViewController
 
@@ -9,6 +10,7 @@ final class DebugChatViewController: UIViewController, ChatViewControllerDelegat
     private let chatVC = ChatViewController()
     private let debugState = DebugState()
     private var pendingMessageId: String? = nil
+    private var cancellables: Set<AnyCancellable> = []
 
     var paginationEnabled: Bool { debugState.paginationEnabled }
 
@@ -66,6 +68,12 @@ final class DebugChatViewController: UIViewController, ChatViewControllerDelegat
         initial.insert(DebugMessageFactory.makePollMessage(timestamp: pollTs), at: initial.count / 2 + 1)
 
         chatVC.updateMessages(initial)
+
+        debugState.$fabLoading
+            .sink { [weak self] loading in
+                self?.chatVC.isLoadingFab = loading
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Action Handler

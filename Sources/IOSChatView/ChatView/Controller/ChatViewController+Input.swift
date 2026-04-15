@@ -1,6 +1,6 @@
 import UIKit
 
-// MARK: - InputBarDelegate
+// MARK: - Делегат панели ввода
 
 extension ChatViewController: InputBarDelegate {
     public func inputBarDidSend(text: String, replyToId: String?) {

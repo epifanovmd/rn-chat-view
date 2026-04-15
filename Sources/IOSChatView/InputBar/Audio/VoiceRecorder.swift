@@ -1,7 +1,7 @@
 import AVFoundation
 import UIKit
 
-// MARK: - Delegate
+// MARK: - Делегат
 
 public protocol VoiceRecorderDelegate: AnyObject {
     func voiceRecorderDidStart()
@@ -60,7 +60,7 @@ public final class VoiceRecorder: NSObject {
 
 
 
-    // MARK: - Private
+    // MARK: - Приватные
 
     private func requestPermission(completion: @escaping (Bool) -> Void) {
         if #available(iOS 17, *) {

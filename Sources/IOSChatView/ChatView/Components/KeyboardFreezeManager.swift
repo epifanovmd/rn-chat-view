@@ -1,10 +1,8 @@
 import UIKit
 
-/// Manages keyboard freeze/restore during context menu presentation.
-///
-/// When a context menu is shown, the collection view's bottom inset is frozen
-/// so keyboard dismissal doesn't cause visual jumps. On dismiss, the keyboard
-/// is restored if it was previously visible.
+// При показе контекстного меню фиксируем bottom inset коллекции,
+// чтобы скрытие клавиатуры не вызывало визуальных прыжков.
+// При dismiss — восстанавливаем клавиатуру, если она была видна.
 final class KeyboardFreezeManager {
 
     private weak var collectionView: UICollectionView?
@@ -25,7 +23,7 @@ final class KeyboardFreezeManager {
 
     var isInsetFrozen: Bool { isFrozen }
 
-    // MARK: - Freeze
+    // MARK: - Заморозка
 
     func freeze() {
         guard !isFrozen else { return }
@@ -42,7 +40,7 @@ final class KeyboardFreezeManager {
         }
     }
 
-    // MARK: - Restore
+    // MARK: - Восстановление
 
     func restore() {
         if let token = kbHideObserver {
@@ -72,7 +70,7 @@ final class KeyboardFreezeManager {
         }
     }
 
-    // MARK: - Private
+    // MARK: - Приватное
 
     private func handleKeyboardWillHide(_ note: Notification) {
         guard isFrozen, let frozen = frozenBottomInset, let cv = collectionView else { return }

@@ -1,12 +1,9 @@
 import Foundation
 
-// MARK: - Message Diff
+// MARK: - Анализ изменений сообщений
 
-/// Вспомогательные функции для анализа массивов сообщений.
-/// Используются для быстрых путей (prepend/append) и pending→real маппинга.
 public struct MessageDiff {
 
-    /// Маппинг pending (локальный) ID → real (серверный) ID через общий `localId`.
     public struct PendingMapping {
         public let oldToNew: [String: String]
         public let newToOld: [String: String]
@@ -16,8 +13,7 @@ public struct MessageDiff {
         public static let empty = PendingMapping(oldToNew: [:], newToOld: [:])
     }
 
-    /// Детекция pending→real переходов: старое и новое сообщение имеют общий `localId`,
-    /// но разные `id`.
+    // Pending→real: старое и новое сообщение с общим localId, но разными id
     public static func buildPendingMapping(old: [ChatMessage], new: [ChatMessage]) -> PendingMapping {
         let oldIDs = Set(old.map(\.id))
         let newIDs = Set(new.map(\.id))
@@ -42,7 +38,6 @@ public struct MessageDiff {
         return PendingMapping(oldToNew: oldToNew, newToOld: newToOld)
     }
 
-    /// Все старые ID — суффикс новых (= чистый prepend старых сообщений).
     public static func isPrependOnly(old: [ChatMessage], new: [ChatMessage]) -> Bool {
         guard new.count > old.count else { return false }
         let offset = new.count - old.count
@@ -52,7 +47,6 @@ public struct MessageDiff {
         return true
     }
 
-    /// Все старые ID — префикс новых (= чистый append новых сообщений).
     public static func isAppendOnly(old: [ChatMessage], new: [ChatMessage]) -> Bool {
         guard new.count > old.count else { return false }
         for i in 0..<old.count {

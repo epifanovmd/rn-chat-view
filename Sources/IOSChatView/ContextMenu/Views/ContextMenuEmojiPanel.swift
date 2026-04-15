@@ -24,13 +24,11 @@ final class ContextMenuEmojiPanel: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    /// Наполняет панель кнопками для переданного списка emoji.
     func configure(with emojis: [ContextMenuEmoji]) {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         emojis.forEach { stack.addArrangedSubview(makeButton(emoji: $0.emoji)) }
     }
 
-    /// Возвращает предпочтительный размер панели для заданного количества emoji.
     func preferredSize(for emojis: [ContextMenuEmoji]) -> CGSize {
         let padding: CGFloat = 10
         let width  = CGFloat(emojis.count) * theme.emojiItemSize + padding * 2
@@ -38,7 +36,7 @@ final class ContextMenuEmojiPanel: UIView {
         return CGSize(width: width, height: height)
     }
 
-    // MARK: - Private
+    // MARK: - Вспомогательные
 
     private func setupAppearance() {
         backgroundColor    = theme.emojiPanelBackground

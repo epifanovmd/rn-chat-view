@@ -76,6 +76,7 @@ enum DebugAction: String, CaseIterable, Identifiable {
 
 class DebugState: ObservableObject {
     @Published var paginationEnabled = true
+    @Published var fabLoading = false
 }
 
 struct DebugBarView: View {
@@ -94,6 +95,7 @@ struct DebugBarView: View {
                     HStack(spacing: 3) {
                         if rowIdx == 0 {
                             toggleButton
+                            fabLoadingToggle
                         }
                         ForEach(rows[rowIdx]) { action in
                             actionButton(action)
@@ -117,6 +119,20 @@ struct DebugBarView: View {
                 .padding(.horizontal, 5)
                 .padding(.vertical, 3)
                 .background(state.paginationEnabled ? Color.green.opacity(0.7) : Color.gray.opacity(0.5))
+                .cornerRadius(3)
+        }
+    }
+
+    private var fabLoadingToggle: some View {
+        Button {
+            state.fabLoading.toggle()
+        } label: {
+            Text(state.fabLoading ? "Fab:⏳" : "Fab:—")
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(.white)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 3)
+                .background(state.fabLoading ? Color.cyan.opacity(0.7) : Color.gray.opacity(0.5))
                 .cornerRadius(3)
         }
     }

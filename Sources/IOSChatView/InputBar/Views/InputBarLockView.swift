@@ -1,6 +1,5 @@
 import UIKit
 
-/// Lock indicator shown above the mic button during voice recording drag.
 final class InputBarLockView: UIView {
 
     // MARK: - Init
@@ -12,7 +11,7 @@ final class InputBarLockView: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     private let chevron = UIImageView()
     private let lockIcon = UIImageView()
@@ -47,7 +46,7 @@ final class InputBarLockView: UIView {
         ])
     }
 
-    // MARK: - Theme
+    // MARK: - Тема
 
     func applyTheme(_ theme: InputBarTheme) {
         backgroundColor = theme.lockBackground
@@ -55,7 +54,7 @@ final class InputBarLockView: UIView {
         lockIcon.tintColor = theme.lockIcon
     }
 
-    // MARK: - Animate
+    // MARK: - Анимация
 
     func animateIn() {
         alpha = 0

@@ -12,13 +12,13 @@ public protocol ContextMenuDelegate: AnyObject {
 
 public final class ContextMenuViewController: UIViewController {
 
-    // MARK: - Public
+    // MARK: - Публичные свойства
 
     public weak var delegate:              ContextMenuDelegate?
     public private(set) var configuration: ContextMenuConfiguration
     public var theme: ContextMenuTheme { didSet { applyTheme() } }
 
-    // MARK: - Private
+    // MARK: - Приватные свойства
 
     private var isDismissing:     Bool = false
     private var didPerformLayout: Bool = false
@@ -35,7 +35,7 @@ public final class ContextMenuViewController: UIViewController {
     private var emojiPanel:   ContextMenuEmojiPanel?
     private var actionsPanel: ContextMenuActionsView?
 
-    // MARK: - Init
+    // MARK: - Инициализация
 
     public init(configuration: ContextMenuConfiguration, theme: ContextMenuTheme = .light) {
         self.configuration = configuration
@@ -55,7 +55,7 @@ public final class ContextMenuViewController: UIViewController {
         fatalError("init(coder:) has not been implemented — use init(configuration:theme:)")
     }
 
-    // MARK: - Lifecycle
+    // MARK: - Жизненный цикл
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -88,7 +88,7 @@ public final class ContextMenuViewController: UIViewController {
         presentingViewController?.preferredStatusBarStyle ?? .default
     }
 
-    // MARK: - Public API
+    // MARK: - Публичный API
 
     public func dismissMenu() {
         close { [weak self] in
@@ -110,7 +110,7 @@ public final class ContextMenuViewController: UIViewController {
         vc.present(menu, animated: false)
     }
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     private func setupBackdrop() {
         backdrop.configure(with: theme)
@@ -131,7 +131,6 @@ public final class ContextMenuViewController: UIViewController {
         scrollView.addSubview(canvas)
     }
 
-    /// Создаёт только те панели, данные для которых непусты.
     private func buildContent() {
         snapshotView = makeSnapshotView(for: configuration.sourceView)
         if let snap = snapshotView { canvas.addSubview(snap) }
@@ -153,7 +152,7 @@ public final class ContextMenuViewController: UIViewController {
         }
     }
 
-    // MARK: - Layout
+    // MARK: - Компоновка
 
     private func applyLayout() {
         let sourceFrame = view.convert(sourceFrameInWindow, from: view.window)
@@ -192,7 +191,7 @@ public final class ContextMenuViewController: UIViewController {
         animator?.prepareOpen(layout: computed)
     }
 
-    // MARK: - Actions
+    // MARK: - Действия
 
     @objc private func handleBackdropTap() { dismissMenu() }
 
@@ -210,7 +209,7 @@ public final class ContextMenuViewController: UIViewController {
         }
     }
 
-    // MARK: - Animation + Dismiss
+    // MARK: - Анимация + закрытие
 
     private func close(completion: @escaping () -> Void) {
         guard !isDismissing, let layout, let animator else { return }
@@ -226,15 +225,14 @@ public final class ContextMenuViewController: UIViewController {
         }
     }
 
-    // MARK: - Theme
+    // MARK: - Тема
 
     private func applyTheme() {
         backdrop.configure(with: theme)
     }
 
-    // MARK: - Helpers
+    // MARK: - Вспомогательные
 
-    /// Создаёт снапшот sourceView.
     /// Радиус скругления берётся из configuration.snapshotCornerRadius —
     /// ContextMenu не знает о деталях рендера чата (нет coupling с ChatLayoutConstants).
     private func makeSnapshotView(for source: UIView) -> UIView? {
@@ -303,7 +301,7 @@ private final class ContextMenuBackdropView: UIView {
     }
 }
 
-// MARK: - UIScrollView factory
+// MARK: - Фабрика UIScrollView
 
 private extension UIScrollView {
     static func contextMenuStyle() -> UIScrollView {

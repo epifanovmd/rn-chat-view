@@ -1,30 +1,30 @@
 import UIKit
 
-/// Manages the Floating Action Button (scroll-to-bottom) and unread badge.
 public final class FABManager {
 
-    // MARK: - Views
+    // MARK: - Вьюхи
 
     private(set) var button: UIView!
     private(set) var badge: UIView!
 
-    // MARK: - State
+    // MARK: - Состояние
 
     private(set) var isVisible = false
     private var isExpanded = false
+    private var isLoading = false
+    private var loadingRing: CAShapeLayer?
     var onTap: (() -> Void)?
 
-    // MARK: - Constraints
+    // MARK: - Констрейнты
 
     private var compactConstraint: NSLayoutConstraint!
     private var expandedConstraint: NSLayoutConstraint!
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     func setup(in parentView: UIView, inputBar: UIView, factory: ChatContentFactory, layout: ChatLayout, theme: ChatTheme, features: ChatFeatures) {
         let size = layout.inputButtonSize
 
-        // FAB button (from factory)
         let fab = factory.fabView(theme: theme, layout: layout)
         fab.translatesAutoresizingMaskIntoConstraints = false
         fab.alpha = 0
@@ -43,7 +43,6 @@ public final class FABManager {
             fab.isHidden = true
         }
 
-        // Badge (from factory)
         let badgeView = factory.fabBadgeView(theme: theme, layout: layout)
         badgeView.translatesAutoresizingMaskIntoConstraints = false
         badgeView.isHidden = true
@@ -73,20 +72,16 @@ public final class FABManager {
         ])
     }
 
-    // MARK: - Theme
+    // MARK: - Тема
 
     func applyTheme(_ theme: ChatTheme, layout: ChatLayout, factory: ChatContentFactory) {
-        // Rebuild FAB button content from factory
         let newFab = factory.fabView(theme: theme, layout: layout)
 
-        // Transfer visual properties from new fab to existing button
         button.backgroundColor = newFab.backgroundColor
         button.layer.borderColor = newFab.layer.borderColor
 
-        // Update arrow tint if present
         for sub in button.subviews {
             if let arrow = sub as? UIImageView {
-                // Find arrow in new fab
                 for newSub in newFab.subviews {
                     if let newArrow = newSub as? UIImageView {
                         arrow.tintColor = newArrow.tintColor
@@ -95,15 +90,16 @@ public final class FABManager {
             }
         }
 
-        // Rebuild badge from factory
         let newBadge = factory.fabBadgeView(theme: theme, layout: layout)
         badge.backgroundColor = newBadge.backgroundColor
         if let label = badge as? UILabel, let newLabel = newBadge as? UILabel {
             label.textColor = newLabel.textColor
         }
+
+        updateLoadingRingColor()
     }
 
-    // MARK: - Position
+    // MARK: - Позиция
 
     func setExpanded(_ expanded: Bool, animated: Bool) {
         guard expanded != isExpanded else { return }
@@ -119,7 +115,7 @@ public final class FABManager {
         }
     }
 
-    // MARK: - Visibility
+    // MARK: - Видимость
 
     func updateVisibility(isNearBottom: Bool, hasMessages: Bool, animated: Bool) {
         let shouldShow = !isNearBottom && hasMessages
@@ -160,7 +156,100 @@ public final class FABManager {
         }
     }
 
-    // MARK: - Actions
+    // MARK: - Загрузка (спиннер-кольцо)
+
+    /// Принудительно показывает FAB с анимацией.
+    func forceShow() {
+        guard !isVisible else { return }
+        isVisible = true
+        // При загрузке нажатия заблокированы
+        button.isUserInteractionEnabled = !isLoading
+        UIView.animate(withDuration: 0.25) {
+            self.button.alpha = 1
+        }
+    }
+
+    /// Включает/выключает спиннер-кольцо по внутреннему контуру FAB.
+    /// При загрузке иконка приглушается и нажатия блокируются.
+    func setLoading(_ loading: Bool) {
+        guard loading != isLoading else { return }
+        isLoading = loading
+
+        if loading {
+            showLoadingRing()
+            setArrowAlpha(0.3)
+            button.isUserInteractionEnabled = false
+        } else {
+            hideLoadingRing()
+            setArrowAlpha(1.0)
+            button.isUserInteractionEnabled = isVisible
+        }
+    }
+
+    private func showLoadingRing() {
+        guard loadingRing == nil else { return }
+        let size = button.bounds.width
+        guard size > 0 else { return }
+
+        let ring = CAShapeLayer()
+        let inset: CGFloat = 4
+        let radius = size / 2 - inset
+        ring.frame = button.bounds
+        ring.path = UIBezierPath(
+            arcCenter: CGPoint(x: size / 2, y: size / 2),
+            radius: radius,
+            startAngle: -.pi / 2,
+            endAngle: .pi * 1.5,
+            clockwise: true
+        ).cgPath
+        ring.fillColor = UIColor.clear.cgColor
+        ring.strokeColor = button.tintColor?.cgColor ?? UIColor.systemBlue.cgColor
+        ring.lineWidth = 2
+        ring.lineCap = .round
+        ring.strokeStart = 0
+        ring.strokeEnd = 0.75
+
+        button.layer.addSublayer(ring)
+        loadingRing = ring
+
+        updateLoadingRingColor()
+
+        let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
+        rotation.fromValue = 0
+        rotation.toValue = CGFloat.pi * 2
+        rotation.duration = 0.8
+        rotation.repeatCount = .infinity
+        rotation.isRemovedOnCompletion = false
+        ring.add(rotation, forKey: "spin")
+    }
+
+    private func hideLoadingRing() {
+        loadingRing?.removeAnimation(forKey: "spin")
+        loadingRing?.removeFromSuperlayer()
+        loadingRing = nil
+    }
+
+    private func setArrowAlpha(_ alpha: CGFloat) {
+        for sub in button.subviews {
+            if sub is UIImageView {
+                sub.alpha = alpha
+            }
+        }
+    }
+
+    /// Обновляет цвет кольца из arrow-цвета FAB.
+    private func updateLoadingRingColor() {
+        guard let ring = loadingRing else { return }
+        // Берём цвет стрелки из subviews
+        for sub in button.subviews {
+            if let arrow = sub as? UIImageView {
+                ring.strokeColor = arrow.tintColor.cgColor
+                return
+            }
+        }
+    }
+
+    // MARK: - Действия
 
     @objc private func handleTap() {
         onTap?()

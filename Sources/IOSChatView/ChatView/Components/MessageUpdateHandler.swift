@@ -14,14 +14,10 @@ private func f(_ v: CGFloat) -> String { String(format: "%.1f", v) }
 
 // MARK: - Роутер обновлений
 
-/// Единая точка входа для обновления списка сообщений.
-///
-/// Быстрые пути (без DifferenceKit):
-/// - Initial, Clear, Prepend, Append
-///
+/// Быстрые пути (без DK): Initial, Clear, Prepend, Append.
 /// DK changeset — единственный diff-движок:
-/// - ContentOnly (structural=0): инкрементальный патч + bottom-stable offset
-/// - Structural (structural>0): DK batch + anchor restore
+/// ContentOnly (structural=0): инкрементальный патч + bottom-stable offset.
+/// Structural (structural>0): DK batch + anchor restore.
 final class MessageUpdateHandler {
 
     private weak var controller: ChatViewController?
@@ -30,7 +26,7 @@ final class MessageUpdateHandler {
         self.controller = controller
     }
 
-    // MARK: - Public
+    // MARK: - Публичное API
 
     func update(with newMessages: [ChatMessage]) {
         guard let vc = controller else { return }
@@ -83,12 +79,10 @@ final class MessageUpdateHandler {
         let newRows = vc.buildRows(from: newMessages)
         let changeset = StagedChangeset(source: snap.oldRows, target: newRows)
 
-        // Подсчёт операций
         var ins = 0, del = 0, mov = 0, upd = 0
         for stage in changeset { ins += stage.elementInserted.count; del += stage.elementDeleted.count; mov += stage.elementMoved.count; upd += stage.elementUpdated.count }
         let structural = ins + del + mov
 
-        // Скролл: только по явному запросу (send, returnToLatest)
         let shouldScroll = vc.pendingScrollToBottom
         if shouldScroll { vc.pendingScrollToBottom = false }
 
@@ -97,13 +91,10 @@ final class MessageUpdateHandler {
             applyContentOnly(vc: vc, newRows: newRows, pendingMapping: pendingMapping, snap: snap, wantScroll: shouldScroll)
         } else {
             log("  Стратегия: STRUCTURAL (ins=\(ins) del=\(del) mov=\(mov) upd=\(upd), stages=\(changeset.count))")
-            // Structural: scrollToBottom только по явному запросу (send, returnToLatest).
-            // Append (новые снизу) обрабатывается отдельным путём со своим auto-scroll.
             applyStructural(vc: vc, newRows: newRows, changeset: changeset, snap: snap, wantScroll: shouldScroll, animateScroll: shouldScroll)
         }
     }
 
-    /// Быстрая проверка: будет ли обновление структурным.
     func peekClassify(old: [ChatMessage], new: [ChatMessage]) -> Bool {
         if old.isEmpty || new.isEmpty { return false }
         let oldRows = controller?.buildRows(from: old) ?? []
@@ -113,7 +104,7 @@ final class MessageUpdateHandler {
     }
 }
 
-// MARK: - Snapshot
+// MARK: - Снимок состояния
 
 private extension MessageUpdateHandler {
     struct Snapshot {
@@ -133,7 +124,7 @@ private extension MessageUpdateHandler {
     }
 }
 
-// MARK: - Initial
+// MARK: - Первичная загрузка
 
 private extension MessageUpdateHandler {
     func applyInitial(vc: ChatViewController, newRows: [ChatRow]) {
@@ -164,7 +155,7 @@ private extension MessageUpdateHandler {
     }
 }
 
-// MARK: - Clear
+// MARK: - Очистка
 
 private extension MessageUpdateHandler {
     func applyClear(vc: ChatViewController) {
@@ -246,7 +237,7 @@ private extension MessageUpdateHandler {
     }
 }
 
-// MARK: - Structural
+// MARK: - Структурные изменения
 
 private extension MessageUpdateHandler {
 
@@ -254,7 +245,6 @@ private extension MessageUpdateHandler {
                          snap s: Snapshot, wantScroll: Bool, animateScroll: Bool = false) {
         let cv = vc.collectionView!
 
-        // Подсчёт операций
         var allInserted: [IndexPath] = [], allDeleted: [IndexPath] = [], allUpdated: [IndexPath] = []
         for stage in changeset {
             allDeleted += stage.elementDeleted.map { IndexPath(item: $0.element, section: $0.section) }
@@ -262,32 +252,21 @@ private extension MessageUpdateHandler {
             allUpdated += stage.elementUpdated.map { IndexPath(item: $0.element, section: $0.section) }
         }
 
-        // Классификация
         let hasInserts = !allInserted.isEmpty
         let hasDeletes = !allDeleted.isEmpty
 
-        // Удалённые ID
         let deletedIDs: Set<String> = {
             let old = Set(s.oldMessages.map(\.id))
             let new = Set(vc.messages.map(\.id))
             return old.subtracting(new)
         }()
 
-        // Якоря (все видимые message cells)
+        // Якоря — видимые message cells для восстановления позиции скролла после DK batch
         let anchors = wantScroll ? [] : vc.currentVisibleAnchors()
 
         if !anchors.isEmpty {
             log("  Anchors: \(anchors.count), top=\(anchors.first!.messageId.prefix(10))…, bot=\(anchors.last!.messageId.prefix(10))…")
         }
-
-        // ── Выбор метода и анимации ──
-        //
-        // | Кейс              | Анимация       | Скролл после         |
-        // |--------------------|----------------|----------------------|
-        // | FullReplace        | Snapshot fade  | anchor / scrollToBot |
-        // | Есть inserts       | Snapshot fade  | anchor / scrollToBot |
-        // | Нет inserts        | DK animated    | DK сам               |
-        // | Disintegration     | Конфетти → DK  | DK сам / anchor      |
 
         let doApply = { [weak self] (suppressAnimation: Bool) in
             guard let self else { return }
@@ -295,13 +274,11 @@ private extension MessageUpdateHandler {
             let offsetBefore = cv.contentOffset.y
             let contentHBefore = cv.contentSize.height
             var dkAnimated = false
-            // Snapshot fade используется для fullReplace и mixed — offset восстанавливается до fade
+            // Snapshot fade для fullReplace/mixed — offset восстанавливается до fade
             var usedSnapshotFade = false
 
-            // ── Применение данных ──
-
             if hasInserts {
-                // Snapshot → DK без анимации → offset → fade
+                // Snapshot → DK без анимации → восстановление offset → fade поверх
                 let snapshot = cv.snapshotView(afterScreenUpdates: false)
 
                 UIView.performWithoutAnimation {
@@ -325,7 +302,7 @@ private extension MessageUpdateHandler {
                 } else if !anchors.isEmpty {
                     vc.restoreBestAnchor(anchors, fallbackOffset: offsetBefore)
                 } else {
-                    // Ни одного якоря — сохраняем старый offset (clamp к новому contentSize)
+                    // Нет якорей — clamp старый offset к новому contentSize
                     let minY = -cv.adjustedContentInset.top
                     let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
                     cv.contentOffset = CGPoint(x: 0, y: min(max(offsetBefore, minY), max(maxY, minY)))
@@ -343,7 +320,7 @@ private extension MessageUpdateHandler {
                 log("  Метод: \(type) (snapshot fade, del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count))")
 
             } else {
-                // DK batch — анимация для delete/shuffle (нет inserts)
+                // DK batch с анимацией — только delete/shuffle (без inserts)
                 let shouldAnimate = !suppressAnimation
                 dkAnimated = shouldAnimate
 
@@ -370,8 +347,6 @@ private extension MessageUpdateHandler {
                 log("  Метод: DK_BATCH (\(animType), stages=\(changeset.count), animated=\(shouldAnimate))")
             }
 
-            // ── Скролл ──
-
             let offsetAfter = cv.contentOffset.y
             let contentHAfter = cv.contentSize.height
 
@@ -397,8 +372,6 @@ private extension MessageUpdateHandler {
             vc.flushPendingMessages()
         }
 
-        // ── Disintegration ──
-
         if vc.disintegrationEnabled && !deletedIDs.isEmpty && !hasInserts {
             log("  Disintegration: \(deletedIDs.count) удалений")
             animateDisintegrationThen(vc: vc, deletedIDs: deletedIDs) { hadVisible in
@@ -410,7 +383,7 @@ private extension MessageUpdateHandler {
     }
 }
 
-// MARK: - ContentOnly
+// MARK: - Контентные обновления (без структурных изменений)
 
 private extension MessageUpdateHandler {
 
@@ -419,14 +392,12 @@ private extension MessageUpdateHandler {
                           snap s: Snapshot, wantScroll: Bool) {
         let cv = vc.collectionView!
 
-        // Lookup + pending mapping
         let newMsgByID = Dictionary(vc.messages.map { ($0.id, $0) }, uniquingKeysWith: { _, l in l })
         var pendingMap: [String: ChatMessage] = [:]
         for (oldId, newId) in pendingMapping.oldToNew {
             if let msg = newMsgByID[newId] { pendingMap[oldId] = msg }
         }
 
-        // Патч строк, сбор изменённых
         var rows = s.oldRows
         var changed: [Int] = []
 
@@ -443,7 +414,7 @@ private extension MessageUpdateHandler {
         vc.setRows(rows)
         if !pendingMapping.isEmpty { vc.rebuildCachesFromRows() }
 
-        // Layout для изменённых — O(changed)
+        // Пересчёт layout только для изменённых строк — O(changed)
         var layoutData = s.oldLayoutData
         var width = cv.bounds.width
         if width <= 0 { width = UIScreen.main.bounds.width }
@@ -486,7 +457,6 @@ private extension MessageUpdateHandler {
 
         log("  Метод: CONTENT_ONLY (\(changed.count) изменений, stayAtBottom=\(stayAtBottom), delta=\(f(delta)))")
 
-        // Crossfade на изменённых ячейках
         for i in changed {
             let ip = IndexPath(item: i, section: 0)
             guard case .message(let msg) = rows[i] else { continue }
@@ -495,7 +465,7 @@ private extension MessageUpdateHandler {
             }
         }
 
-        // Атомарное обновление offset + layout
+        // Атомарное обновление: offset + layout в одном CATransaction без промежуточного кадра
         CATransaction.begin()
         CATransaction.setDisableActions(true)
 
@@ -518,7 +488,7 @@ private extension MessageUpdateHandler {
     }
 }
 
-// MARK: - Disintegration
+// MARK: - Анимация распада
 
 private extension MessageUpdateHandler {
 
@@ -577,7 +547,7 @@ private extension MessageUpdateHandler {
     }
 }
 
-// MARK: - OffsetCalculator
+// MARK: - Калькулятор offset
 
 enum OffsetCalculator {
 

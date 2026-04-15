@@ -1,6 +1,6 @@
 import UIKit
 
-// MARK: - Recording Gesture & State
+// MARK: - Жест и состояние записи
 
 extension InputBarView {
 
@@ -14,7 +14,7 @@ extension InputBarView {
         }
     }
 
-    // MARK: - Start
+    // MARK: - Начало записи
 
     private func startRecording(at point: CGPoint) {
         haptic(.light)
@@ -47,7 +47,7 @@ extension InputBarView {
         delegate?.inputBarRecordingStateChanged(isRecording: true)
     }
 
-    // MARK: - Drag
+    // MARK: - Перетаскивание
 
     private func handleDrag(at point: CGPoint) {
         let L = layout
@@ -74,7 +74,7 @@ extension InputBarView {
         }
     }
 
-    // MARK: - Release → Send
+    // MARK: - Отпускание → Отправка
 
     private func handleRelease() {
         recordingState = .idle
@@ -92,7 +92,7 @@ extension InputBarView {
         delegate?.inputBarRecordingStateChanged(isRecording: false)
     }
 
-    // MARK: - Cancel
+    // MARK: - Отмена
 
     @objc func cancelHintTapped() {
         guard recordingState == .recording || recordingState == .locked else { return }
@@ -132,7 +132,7 @@ extension InputBarView {
         if !wasLocked { lockView.animateOut() }
     }
 
-    // MARK: - Lock
+    // MARK: - Блокировка
 
     private func performLock() {
         let L = layout
@@ -173,7 +173,7 @@ extension InputBarView {
         rightButton.addTarget(self, action: #selector(lockedSendTapped), for: .touchUpInside)
     }
 
-    // MARK: - Pulse
+    // MARK: - Пульсация
 
     private func startSendButtonPulse() {
         let L = layout
@@ -204,7 +204,7 @@ extension InputBarView {
         delegate?.inputBarRecordingStateChanged(isRecording: false)
     }
 
-    // MARK: - Restore
+    // MARK: - Восстановление
 
     func restoreInputBar(trashAnimation: Bool, completion: @escaping () -> Void) {
         let L = layout

@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - ChatMessage Parsing
+// MARK: - Парсинг ChatMessage
 
 extension ChatMessage {
     public static func from(dict: NSDictionary) -> ChatMessage? {
@@ -48,13 +48,13 @@ extension ChatMessage {
     private static func parseContent(dict: NSDictionary, text: String?) -> MessageBody {
         let finalText = (text?.isEmpty == false) ? text : nil
 
-        // Determine media type by priority: poll > files > voice > images
+        // Приоритет типов медиа: poll > files > voice > images
         let media: AnyChatContent?
 
         if let pollDict = dict["poll"] as? NSDictionary {
             media = AnyChatContent(parsePoll(pollDict))
         } else {
-            // Files: support single "file" or array "files"
+            // Поддержка одиночного "file" и массива "files"
             var files: [FilePayload] = []
             if let filesArr = dict["files"] as? [NSDictionary] {
                 files = filesArr.compactMap { parseFile($0) }
@@ -67,7 +67,7 @@ extension ChatMessage {
             } else if let voiceDict = dict["voice"] as? NSDictionary {
                 media = AnyChatContent(parseVoice(voiceDict))
             } else {
-                // Build unified media array from images + video
+                // Объединяем images и video в единый массив MediaItem
                 var items: [MediaItem] = []
                 if let imagesArr = dict["images"] as? [NSDictionary] {
                     for imgDict in imagesArr {
@@ -188,7 +188,7 @@ extension ChatMessage {
     }
 }
 
-// MARK: - Group Date Formatter
+// MARK: - Форматтер даты группировки
 
 public enum ChatParsing {
     static let groupDateFormatter: DateFormatter = {
@@ -199,7 +199,7 @@ public enum ChatParsing {
     }()
 }
 
-// MARK: - NSNumber convenience
+// MARK: - NSNumber расширение
 
 private extension NSNumber {
     var cgFloatValue: CGFloat { CGFloat(doubleValue) }

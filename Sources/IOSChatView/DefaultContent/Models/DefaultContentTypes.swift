@@ -1,15 +1,7 @@
 import UIKit
 
-// MARK: - Built-in Content Types
-//
-// These are the default content types shipped with the library.
-// The library core is agnostic to them — all knowledge lives here
-// and in DefaultChatContentFactory. Users can ignore these entirely
-// and define their own types conforming to `ChatContent`.
+// MARK: - Изображения
 
-// MARK: - Images
-
-/// Image/video grid content.
 public struct ImagesContent: ChatContent {
     public static let contentTypeID = "builtin.images"
     public let items: [MediaItem]
@@ -92,7 +84,7 @@ public struct VideoItem: Equatable, Hashable, Sendable {
     }
 }
 
-// MARK: - Voice
+// MARK: - Голосовое сообщение
 
 public struct VoicePayload: Equatable, Hashable, Sendable, ChatContent {
     public static let contentTypeID = "builtin.voice"
@@ -108,7 +100,7 @@ public struct VoicePayload: Equatable, Hashable, Sendable, ChatContent {
     }
 }
 
-// MARK: - Poll
+// MARK: - Опрос
 
 public struct PollOption: Equatable, Hashable, Sendable {
     public let id: String
@@ -148,7 +140,7 @@ public struct PollPayload: Equatable, Hashable, Sendable, ChatContent {
     }
 }
 
-// MARK: - Files
+// MARK: - Файлы
 
 public struct FilePayload: Equatable, Hashable, Sendable {
     public let url: String
@@ -164,14 +156,13 @@ public struct FilePayload: Equatable, Hashable, Sendable {
     }
 }
 
-/// File attachments content.
 public struct FilesContent: ChatContent {
     public static let contentTypeID = "builtin.files"
     public let items: [FilePayload]
     public init(_ items: [FilePayload]) { self.items = items }
 }
 
-// MARK: - Built-in Interaction Conveniences
+// MARK: - Фабричные методы взаимодействий
 
 extension ChatContentInteraction {
     public static func mediaTap(index: Int) -> ChatContentInteraction {

@@ -2,7 +2,6 @@ import UIKit
 
 // MARK: - ContextMenuLayout
 
-/// Результат расчёта всех позиций контекстного меню.
 struct ContextMenuLayout {
     let snapTarget:    CGRect
     let emojiTarget:   CGRect   // .zero если панель отсутствует
@@ -19,7 +18,6 @@ struct ContextMenuLayout {
 
 // MARK: - ContextMenuLayoutEngine
 
-/// Вычисляет позиции всех элементов контекстного меню.
 /// Чистая функция без UIKit-состояния — легко тестируется.
 /// Панели эмодзи и действий опциональны: если размер нулевой — панель не учитывается в layout.
 enum ContextMenuLayoutEngine {

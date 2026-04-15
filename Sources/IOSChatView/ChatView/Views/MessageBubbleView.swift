@@ -2,7 +2,7 @@ import UIKit
 
 public final class MessageBubbleView: UIView {
 
-    // MARK: - Callbacks
+    // MARK: - Колбэки
 
     var onReplyTap: (() -> Void)?
     var onContentInteraction: ((ChatContentInteraction) -> Void)?
@@ -10,7 +10,7 @@ public final class MessageBubbleView: UIView {
     var onThreadTap: (() -> Void)?
     var onLinkTap: ((URL) -> Void)?
 
-    // MARK: - Subviews
+    // MARK: - Вью
 
     private let stack = UIStackView()
     private var contentView: UIView?
@@ -22,7 +22,7 @@ public final class MessageBubbleView: UIView {
     private var currentLayout = ChatLayout()
     private(set) var currentMessage: ChatMessage?
 
-    // MARK: - Stored constraints (updated in applyLayout)
+    // MARK: - Констрейнты
 
     private var stackTopConstraint: NSLayoutConstraint!
     private var stackLeadingConstraint: NSLayoutConstraint!
@@ -63,7 +63,7 @@ public final class MessageBubbleView: UIView {
         stackTrailingConstraint.constant = -L.bubbleHPad
     }
 
-    // MARK: - Configure
+    // MARK: - Конфигурация
 
     func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
         applyLayout(layout)
@@ -71,7 +71,6 @@ public final class MessageBubbleView: UIView {
         let content = message.content
         isEmojiOnly = content.content == nil && EmojiHelper.emojiOnlyCount(content.text) != nil
 
-        // Background
         if isEmojiOnly {
             backgroundColor = .clear
             layer.cornerRadius = 0
@@ -87,13 +86,11 @@ public final class MessageBubbleView: UIView {
 
         stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
 
-        // Sender Name
         if showSenderName, let name = message.senderName {
             let senderView = factory.senderNameView(name: name, theme: theme, layout: currentLayout)
             stack.addArrangedSubview(senderView)
         }
 
-        // Forwarded
         let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
         if let fwd = message.forwardedFrom, features.showForwardedMark {
             let L = currentLayout
@@ -113,7 +110,6 @@ public final class MessageBubbleView: UIView {
 
             forwardedStack.addArrangedSubview(forwardedHeaderLabel)
 
-            // Reply Preview inside forwarded
             if features.showReplyPreview, let reply = message.reply {
                 let replyView = factory.replyPreviewView(reply: reply, resolved: resolvedReply, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
                     self?.onReplyTap?()
@@ -121,7 +117,6 @@ public final class MessageBubbleView: UIView {
                 forwardedStack.addArrangedSubview(replyView)
             }
 
-            // Content inside forwarded
             let contentInnerW = bubbleWidth - L.bubbleHPad * 2 - L.forwardedAccentWidth - L.forwardedContentInset
             let newContent = createContentView(for: message, width: contentInnerW, theme: theme, features: features, factory: factory)
             contentView = newContent
@@ -147,7 +142,6 @@ public final class MessageBubbleView: UIView {
         }
 
         if !isForwarded {
-            // Reply Preview
             if features.showReplyPreview, let reply = message.reply {
                 let replyView = factory.replyPreviewView(reply: reply, resolved: resolvedReply, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
                     self?.onReplyTap?()
@@ -155,14 +149,12 @@ public final class MessageBubbleView: UIView {
                 stack.addArrangedSubview(replyView)
             }
 
-            // Content
             let innerW = bubbleWidth - currentLayout.bubbleHPad * 2
             let newContent = createContentView(for: message, width: innerW, theme: theme, features: features, factory: factory)
             contentView = newContent
             stack.addArrangedSubview(newContent)
         }
 
-        // Thread indicator
         threadView = nil
         if features.showThreadIndicator, let thread = message.thread {
             let tv = factory.threadIndicatorView(thread: thread, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
@@ -172,7 +164,6 @@ public final class MessageBubbleView: UIView {
             stack.addArrangedSubview(tv)
         }
 
-        // Reactions
         reactionsView = nil
         if features.showReactions, !message.reactions.isEmpty {
             let maxReactionWidth = bubbleWidth - currentLayout.bubbleHPad * 2
@@ -183,7 +174,6 @@ public final class MessageBubbleView: UIView {
             stack.addArrangedSubview(rv)
         }
 
-        // Footer
         footerView = nil
         if !isEmojiOnly {
             if let fv = factory.footerView(message: message, theme: theme, layout: currentLayout, features: features) {
@@ -195,20 +185,17 @@ public final class MessageBubbleView: UIView {
         currentMessage = message
     }
 
-    // MARK: - Content Factory
+    // MARK: - Фабрика контента
 
     private func createContentView(for msg: ChatMessage, width: CGFloat, theme: ChatTheme, features: ChatFeatures, factory: ChatContentFactory) -> UIView {
         let content = msg.content
 
-        // Emoji-only (text without media, 1-3 emoji)
         if content.content == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
             return factory.emojiView(text: content.text!, emojiCount: count, layout: currentLayout)
         }
 
-        // Build content stack: media on top, text on bottom (if both present)
         var views: [UIView] = []
 
-        // Media view
         if let media = content.content {
             let mediaView = factory.contentView(for: media, message: msg, width: width, theme: theme, layout: currentLayout) { [weak self] interaction in
                 self?.onContentInteraction?(interaction)
@@ -216,19 +203,16 @@ public final class MessageBubbleView: UIView {
             views.append(mediaView)
         }
 
-        // Text (caption or standalone)
         if let text = content.text, !text.isEmpty {
             views.append(factory.textView(text: text, ownership: msg.ownership, theme: theme, layout: currentLayout, linkDetectionEnabled: features.linkDetectionEnabled) { [weak self] url in
                 self?.onLinkTap?(url)
             })
         }
 
-        // Single view — return directly
         if views.count == 1 {
             return views[0]
         }
 
-        // Multiple views (media + text) — vertical stack
         if views.count > 1 {
             let container = UIStackView()
             container.axis = .vertical
@@ -237,14 +221,13 @@ public final class MessageBubbleView: UIView {
             return container
         }
 
-        // Fallback: empty text
         return factory.textView(text: "", ownership: msg.ownership, theme: theme, layout: currentLayout, linkDetectionEnabled: false, onLinkTap: nil)
     }
 
-    // MARK: - Reconfigure In-Place
+    // MARK: - Обновление на месте
 
-    /// Reconfigures the bubble without destroying/recreating the view hierarchy.
-    /// Falls back to full `configure()` when structural shape changes.
+    /// Обновляет bubble без пересоздания иерархии вью.
+    /// Если структура изменилась — fallback на полный configure().
     func reconfigureInPlace(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
         guard let old = currentMessage, canReconfigureInPlace(from: old, to: message, showSenderName: showSenderName, features: features) else {
             configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bubbleWidth, showSenderName: showSenderName, features: features, layout: layout, factory: factory)
@@ -254,7 +237,6 @@ public final class MessageBubbleView: UIView {
         applyLayout(layout)
         let content = message.content
 
-        // Background
         switch message.ownership {
         case .mine:   backgroundColor = theme.outgoingBubble
         case .theirs: backgroundColor = theme.incomingBubble
@@ -262,7 +244,6 @@ public final class MessageBubbleView: UIView {
         case .pinned: backgroundColor = theme.pinnedBubble
         }
 
-        // Update content view in-place
         let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
         let innerW: CGFloat
         if isForwarded {
@@ -272,10 +253,8 @@ public final class MessageBubbleView: UIView {
         }
         reconfigureContentView(message: message, width: innerW, theme: theme, layout: layout, features: features, factory: factory)
 
-        // Update reactions
         reconfigureReactions(message: message, bubbleWidth: bubbleWidth, theme: theme, features: features, layout: layout, factory: factory)
 
-        // Update footer (cheap — just replace)
         if let oldFooter = footerView {
             stack.removeArrangedSubview(oldFooter)
             oldFooter.removeFromSuperview()
@@ -291,8 +270,8 @@ public final class MessageBubbleView: UIView {
         currentMessage = message
     }
 
-    /// Structural fingerprint of a bubble — captures everything that affects the view hierarchy.
-    /// Same fingerprint = safe to reconfigure in-place. Different = full rebuild needed.
+    /// Структурный отпечаток bubble — всё, что влияет на иерархию вью.
+    /// Одинаковый отпечаток = можно обновить на месте. Разный = полная пересборка.
     private struct BubbleStructure: Equatable {
         let messageId: String
         let contentTypeID: String   // "" if no content
@@ -322,12 +301,10 @@ public final class MessageBubbleView: UIView {
         bubbleStructure(for: new, showSenderName: showSenderName, features: features)
     }
 
-    /// Reconfigure the content view in-place via the factory.
     private func reconfigureContentView(message: ChatMessage, width: CGFloat, theme: ChatTheme, layout: ChatLayout, features: ChatFeatures, factory: ChatContentFactory) {
         guard let cv = contentView else { return }
         let content = message.content
 
-        // Ask factory to reconfigure the media view in-place
         if let media = content.content {
             let interactionHandler: (ChatContentInteraction) -> Void = { [weak self] interaction in
                 self?.onContentInteraction?(interaction)
@@ -335,7 +312,6 @@ public final class MessageBubbleView: UIView {
             _ = factory.reconfigureContentView(cv, for: media, message: message, width: width, theme: theme, layout: layout, onInteraction: interactionHandler)
         }
 
-        // Update text if present (standalone or mixed content with media)
         if let text = content.text, !text.isEmpty {
             if let textView = cv as? TextContentView {
                 textView.configure(text: text, ownership: message.ownership, theme: theme, layout: layout, linkDetectionEnabled: features.linkDetectionEnabled)
@@ -352,7 +328,6 @@ public final class MessageBubbleView: UIView {
         }
     }
 
-    /// Update reactions: reconfigure existing, add if new, remove if gone.
     private func reconfigureReactions(message: ChatMessage, bubbleWidth: CGFloat, theme: ChatTheme, features: ChatFeatures, layout: ChatLayout, factory: ChatContentFactory) {
         let hasReactions = features.showReactions && !message.reactions.isEmpty
 
@@ -362,7 +337,6 @@ public final class MessageBubbleView: UIView {
                 rv.configure(reactions: message.reactions, theme: theme, maxWidth: maxW, layout: layout)
                 rv.onReactionTap = { [weak self] emoji in self?.onReactionTap?(emoji) }
             } else {
-                // Reactions appeared — insert before footer
                 let rv = factory.reactionsView(reactions: message.reactions, theme: theme, maxWidth: maxW, layout: layout) { [weak self] emoji in
                     self?.onReactionTap?(emoji)
                 }
@@ -382,7 +356,7 @@ public final class MessageBubbleView: UIView {
         }
     }
 
-    // MARK: - Reuse
+    // MARK: - Переиспользование
 
     func prepareForReuse() {
         stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }

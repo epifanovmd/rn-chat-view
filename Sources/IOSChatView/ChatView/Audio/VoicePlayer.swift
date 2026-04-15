@@ -211,13 +211,13 @@ public final class VoicePlayer {
             return
         }
 
-        // Check cache first — instant playback if available
+        // Сначала проверяем кэш — мгновенное воспроизведение если есть
         if let cachedURL = AudioCache.shared.localURL(for: url) {
             startPlayback(url: url, fileURL: cachedURL)
             return
         }
 
-        // Not cached — show loading, download
+        // Нет в кэше — показываем загрузку, скачиваем
         state = .loading(url: url)
 
         AudioCache.shared.fetch(url: url) { [weak self] localURL in

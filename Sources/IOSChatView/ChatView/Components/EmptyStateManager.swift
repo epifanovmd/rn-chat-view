@@ -1,15 +1,14 @@
 import UIKit
 
-/// Manages the empty state view (spinner + "no messages" text).
 public final class EmptyStateManager: NSObject {
 
-    // MARK: - Views
+    // MARK: - Вьюхи
 
     private let container = UIView()
     private var contentView: UIView?
     private var loadingView: UIView?
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     var onTap: (() -> Void)?
 
@@ -21,13 +20,11 @@ public final class EmptyStateManager: NSObject {
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
         container.addGestureRecognizer(tap)
 
-        // Empty state content (from factory)
         let content = factory.emptyStateView(theme: theme, layout: layout)
         content.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(content)
         self.contentView = content
 
-        // Loading view (from factory)
         let loading = factory.emptyStateLoadingView(theme: theme, layout: layout)
         loading.translatesAutoresizingMaskIntoConstraints = false
         loading.isHidden = true
@@ -47,10 +44,9 @@ public final class EmptyStateManager: NSObject {
         ])
     }
 
-    // MARK: - Theme
+    // MARK: - Тема
 
     func applyTheme(factory: ChatContentFactory, theme: ChatTheme, layout: ChatLayout) {
-        // Rebuild content views with new theme
         contentView?.removeFromSuperview()
         loadingView?.removeFromSuperview()
 
@@ -74,14 +70,14 @@ public final class EmptyStateManager: NSObject {
         ])
     }
 
-    // MARK: - Text
+    // MARK: - Текст
 
     func updateText(_ text: String?) {
         guard let label = contentView as? UILabel else { return }
         label.text = text ?? NSLocalizedString("chat.empty", value: "Сообщений пока нет.\nНапишите первым!", comment: "")
     }
 
-    // MARK: - Update
+    // MARK: - Обновление
 
     func update(isEmpty: Bool, isLoading: Bool, showEmptyState: Bool) {
         guard showEmptyState else {
@@ -97,13 +93,13 @@ public final class EmptyStateManager: NSObject {
             loadingView?.isHidden = true
             contentView?.isHidden = false
         }
-        // Force layout before first show to prevent "fly in" animation
+        // Принудительный layout до первого показа — иначе будет анимация "влёта"
         if wasHidden && !container.isHidden {
             container.superview?.layoutIfNeeded()
         }
     }
 
-    // MARK: - Actions
+    // MARK: - Действия
 
     @objc private func handleTap() {
         onTap?()

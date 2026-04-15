@@ -1,6 +1,6 @@
 import UIKit
 
-// MARK: - Context Menu Presentation
+// MARK: - Показ контекстного меню
 
 extension ChatViewController {
     public func showContextMenu(for msg: ChatMessage, from cell: UICollectionViewCell) {
@@ -32,7 +32,7 @@ extension ChatViewController {
     }
 }
 
-// MARK: - ContextMenuDelegate
+// MARK: - Делегат контекстного меню
 
 extension ChatViewController: ContextMenuDelegate {
     public func contextMenu(_ menu: ContextMenuViewController, didSelectEmoji emoji: String, forId id: String) {

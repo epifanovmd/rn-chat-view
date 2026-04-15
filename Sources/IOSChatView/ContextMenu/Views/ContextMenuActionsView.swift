@@ -23,7 +23,6 @@ final class ContextMenuActionsView: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    /// Наполняет меню строками действий и разделителями.
     func configure(with actions: [ContextMenuAction]) {
         self.actions = actions
         subviews.forEach { $0.removeFromSuperview() }
@@ -43,7 +42,6 @@ final class ContextMenuActionsView: UIView {
         setNeedsLayout()
     }
 
-    /// Возвращает высоту под заданный список действий.
     func preferredHeight(for actions: [ContextMenuAction]) -> CGFloat {
         CGFloat(actions.count) * theme.actionItemHeight
             + CGFloat(max(0, actions.count - 1)) * Self.separatorHeight
@@ -87,7 +85,7 @@ private final class ActionRowView: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Setup
+    // MARK: - Настройка
 
     private func setupHighlight(theme: ContextMenuTheme) {
         highlightView.backgroundColor = theme.actionHighlightColor
@@ -139,7 +137,7 @@ private final class ActionRowView: UIView {
         }
     }
 
-    // MARK: - Touch handling
+    // MARK: - Обработка касаний
 
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesBegan(touches, with: event)
@@ -163,7 +161,6 @@ private final class ActionRowView: UIView {
         setHighlighted(false)
     }
 
-    /// Плавно включает или выключает подсветку строки.
     private func setHighlighted(_ on: Bool) {
         guard highlighted != on else { return }
         highlighted = on

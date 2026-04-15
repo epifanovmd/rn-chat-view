@@ -1,13 +1,13 @@
 import UIKit
 
-// MARK: - Scroll Events
+// MARK: - События скролла
 
 public protocol ChatScrollDelegate: AnyObject {
     func chatDidScroll(offset: CGPoint)
     func chatDidReachTop(distance: CGFloat)
     func chatDidReachBottom(distance: CGFloat)
     func chatDidTapFAB()
-    /// Throttled scroll anchor update (~300ms). Use for scroll position persistence.
+    /// Throttled (~300ms) якорь скролла для сохранения/восстановления позиции.
     func chatScrollAnchorChanged(anchor: ScrollAnchor)
 }
 
@@ -19,12 +19,10 @@ public extension ChatScrollDelegate {
     func chatScrollAnchorChanged(anchor: ScrollAnchor) {}
 }
 
-// MARK: - Visibility
+// MARK: - Видимость
 
 public protocol ChatVisibilityDelegate: AnyObject {
-    /// Snapshot of currently visible message IDs (throttled).
     func chatVisibleMessagesDidChange(ids: [String])
-    /// Accumulated unread message IDs that appeared on screen (debounced).
     func chatUnreadMessagesDidAppear(ids: [String])
 }
 
@@ -33,7 +31,7 @@ public extension ChatVisibilityDelegate {
     func chatUnreadMessagesDidAppear(ids: [String]) {}
 }
 
-// MARK: - Message Interactions
+// MARK: - Взаимодействие с сообщениями
 
 public protocol ChatMessageDelegate: AnyObject {
     func chatDidTapMessage(id: String, attachmentIndex: Int?)
@@ -45,8 +43,7 @@ public protocol ChatMessageDelegate: AnyObject {
     func chatDidTapLink(url: URL, messageId: String)
     func chatDidTapPhoneNumber(phoneNumber: String, messageId: String)
 
-    /// Generic content interaction from factory-created views.
-    /// All media-type-specific interactions (poll tap, voice tap, etc.) go through this.
+    /// Универсальный callback для взаимодействий из factory-created views (poll, voice и т.д.).
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)
 }
 
@@ -62,7 +59,7 @@ public extension ChatMessageDelegate {
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {}
 }
 
-// MARK: - Input Events
+// MARK: - События ввода
 
 public protocol ChatInputDelegate: AnyObject {
     func chatDidSendMessage(text: String, replyToId: String?)
@@ -82,6 +79,6 @@ public extension ChatInputDelegate {
     func chatDidChangeInputText(_ text: String) {}
 }
 
-// MARK: - Composite
+// MARK: - Композитный протокол
 
 public typealias ChatViewControllerDelegate = ChatScrollDelegate & ChatVisibilityDelegate & ChatMessageDelegate & ChatInputDelegate

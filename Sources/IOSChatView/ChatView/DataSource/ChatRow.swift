@@ -1,18 +1,14 @@
 import DifferenceKit
 import Foundation
 
-// MARK: - Chat Row
+// MARK: - Строка чата
 
-/// A single item in the chat collection view.
-///
-/// The collection view uses a flat list (`[ChatRow]`) in a single section.
-/// DifferenceKit diffs this array for animated batch updates.
 public enum ChatRow: Hashable {
     case message(ChatMessage)
     case dateSeparator(groupDate: String)
     case loading(position: String)
 
-    // MARK: - Convenience
+    // MARK: - Удобные свойства
 
     public var messageId: String? {
         if case .message(let msg) = self { return msg.id }
@@ -29,8 +25,8 @@ public enum ChatRow: Hashable {
 
 extension ChatRow: Differentiable {
 
-    /// Stable identity for diffing — same ID means same logical item.
-    /// Uses `localId` when available so pending→real messages share the same identity.
+    /// Стабильная идентичность для diff: `localId` если есть, чтобы pending→real
+    /// сообщения делили одну идентичность.
     public var differenceIdentifier: String {
         switch self {
         case .message(let msg):     return "m_\(msg.localId ?? msg.id)"
@@ -39,7 +35,7 @@ extension ChatRow: Differentiable {
         }
     }
 
-    /// Content comparison — `false` triggers a cell reload for this item.
+    /// Сравнение контента — `false` вызывает перезагрузку ячейки.
     public func isContentEqual(to source: ChatRow) -> Bool {
         switch (self, source) {
         case (.message(let a), .message(let b)):             return a == b

@@ -1,50 +1,35 @@
 import UIKit
 
-/// Theme colors for the InputBar module.
 public struct InputBarTheme {
 
-    // MARK: - Container & Text
+    // MARK: - Контейнер и текст
 
-    /// Background of buttons and main container
     public var background: UIColor
-    /// Border color
     public var border: UIColor
-    /// Text color in text view
     public var text: UIColor
-    /// Tint color (cursor, icons)
     public var tint: UIColor
-    /// Placeholder text color
     public var placeholder: UIColor
 
-    // MARK: - Reply Panel
+    // MARK: - Панель ответа
 
-    /// Reply accent bar color
     public var replyAccent: UIColor
-    /// Reply sender name color
     public var replySender: UIColor
-    /// Reply text color
     public var replyText: UIColor
-    /// Reply close button tint
     public var replyClose: UIColor
 
-    // MARK: - Recording
+    // MARK: - Запись
 
-    /// Recording dot color
     public var recordingDot: UIColor
-    /// Cancel button / trash icon color
     public var recordingCancel: UIColor
-    /// Mic button / send button fill during recording
     public var recordingMicFill: UIColor
 
-    // MARK: - Lock
+    // MARK: - Замок
 
-    /// Lock container background
     public var lockBackground: UIColor
-    /// Lock icon tint
     public var lockIcon: UIColor
 }
 
-// MARK: - Factory from ChatTheme
+// MARK: - Пресеты
 
 extension InputBarTheme {
 

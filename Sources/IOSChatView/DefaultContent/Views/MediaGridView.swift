@@ -20,7 +20,7 @@ public final class MediaGridView: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: - Configure
+    // MARK: - Конфигурация
 
     func configure(media: [MediaItem], width: CGFloat, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
         currentLayout = layout
@@ -47,7 +47,7 @@ public final class MediaGridView: UIView {
             let cell = MediaCellView()
             cell.configure(item: item, theme: theme, layout: layout)
 
-            // "+N" overlay on last cell if more items
+            // Оверлей "+N" на последней ячейке если есть ещё элементы
             if i == visibleCount - 1 && count > maxVisible {
                 cell.showOverlay(remaining: count - maxVisible)
             }
@@ -61,7 +61,7 @@ public final class MediaGridView: UIView {
         }
     }
 
-    // MARK: - Reuse
+    // MARK: - Переиспользование
 
     func prepareForReuse() {
         cellViews.forEach { $0.removeFromSuperview() }
@@ -69,9 +69,8 @@ public final class MediaGridView: UIView {
         heightConstraint?.isActive = false
     }
 
-    // MARK: - Layout Calculation
+    // MARK: - Расчёт лейаута
 
-    /// Returns the frames for each visible cell
     private func layoutFrames(count: Int, width: CGFloat, height: CGFloat) -> [CGRect] {
         let s = spacing
 
@@ -108,7 +107,7 @@ public final class MediaGridView: UIView {
         }
     }
 
-    // MARK: - Static Height
+    // MARK: - Статическая высота
 
     static func gridHeight(for media: [MediaItem], width: CGFloat, layout L: ChatLayout = ChatLayout()) -> CGFloat {
         let count = media.count
@@ -134,7 +133,7 @@ public final class MediaGridView: UIView {
     }
 }
 
-// MARK: - Media Cell View (single item in grid)
+// MARK: - Ячейка медиа-сетки
 
 private final class MediaCellView: UIView {
 
@@ -146,7 +145,7 @@ private final class MediaCellView: UIView {
     private let overlayLabel = UILabel()
     private var currentLayout = ChatLayout()
 
-    // MARK: - Stored constraints
+    // MARK: - Сохранённые констрейнты
 
     private var playIconWidthConstraint: NSLayoutConstraint!
     private var playIconHeightConstraint: NSLayoutConstraint!
@@ -168,14 +167,12 @@ private final class MediaCellView: UIView {
         imageView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(imageView)
 
-        // Play icon for video
         let config = UIImage.SymbolConfiguration(pointSize: L.mediaPlayIconSize, weight: .regular)
         playIcon.image = UIImage(systemName: "play.circle.fill", withConfiguration: config)
         playIcon.translatesAutoresizingMaskIntoConstraints = false
         playIcon.isHidden = true
         addSubview(playIcon)
 
-        // Duration badge for video
         durationBg.layer.cornerRadius = L.mediaDurationCornerRadius
         durationBg.translatesAutoresizingMaskIntoConstraints = false
         durationBg.isHidden = true
@@ -185,7 +182,6 @@ private final class MediaCellView: UIView {
         durationLabel.translatesAutoresizingMaskIntoConstraints = false
         durationBg.addSubview(durationLabel)
 
-        // "+N" overlay
         overlayView.isHidden = true
         overlayView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(overlayView)
@@ -231,7 +227,6 @@ private final class MediaCellView: UIView {
         currentLayout = layout
         let L = currentLayout
 
-        // Update layout-dependent values
         durationBg.layer.cornerRadius = L.mediaDurationCornerRadius
         durationLabel.font = L.mediaDurationFont
         overlayLabel.font = L.mediaOverlayFont

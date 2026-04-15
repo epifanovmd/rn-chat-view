@@ -1,10 +1,8 @@
 import UIKit
 
-/// Text measurement utilities for calculating content sizes.
-/// Available for host app use in custom ChatContentFactory implementations.
+/// Утилиты измерения текста для расчёта размеров контента.
 public enum ChatTextMeasurer {
 
-    /// Calculate the height of multi-line text within a given width.
     public static func height(_ text: String, font: UIFont, width: CGFloat) -> CGFloat {
         let size = (text as NSString).boundingRect(
             with: CGSize(width: width, height: .greatestFiniteMagnitude),
@@ -15,7 +13,6 @@ public enum ChatTextMeasurer {
         return ceil(size.height)
     }
 
-    /// Calculate the single-line width of text.
     public static func width(_ text: String, font: UIFont) -> CGFloat {
         let size = (text as NSString).boundingRect(
             with: CGSize(width: CGFloat.greatestFiniteMagnitude, height: font.lineHeight),
@@ -26,7 +23,6 @@ public enum ChatTextMeasurer {
         return ceil(size.width)
     }
 
-    /// Returns the appropriate emoji font for 1, 2, or 3 emoji messages.
     public static func emojiFont(for count: Int, layout: ChatLayout) -> UIFont {
         switch count {
         case 1: return layout.emojiFont1

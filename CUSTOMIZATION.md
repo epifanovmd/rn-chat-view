@@ -1,60 +1,60 @@
-# Custom Content Types & Factory Guide
+# Кастомные типы контента и руководство по Factory
 
-IOSChatView is a content-agnostic chat UI. The library knows nothing about message types — all rendering, sizing, and interaction handling is delegated to `ChatContentFactory`. This guide shows how to define custom content types, build a custom factory, and handle interactions.
+IOSChatView — это контент-агностичный UI для чата. Библиотека ничего не знает о типах сообщений — вся отрисовка, расчёт размеров и обработка взаимодействий делегируется `ChatContentFactory`. Это руководство показывает, как определить кастомные типы контента, создать кастомную factory и обрабатывать взаимодействия.
 
-## Table of Contents
+## Содержание
 
-- [Architecture Overview](#architecture-overview)
-- [Defining Custom Content Types](#defining-custom-content-types)
-- [Creating Messages with Custom Content](#creating-messages-with-custom-content)
-- [Building a Custom Factory](#building-a-custom-factory)
-- [Handling Content Interactions](#handling-content-interactions)
-- [Delegate Reference](#delegate-reference)
-- [Built-in Content Types](#built-in-content-types)
-- [Full Example](#full-example)
+- [Обзор архитектуры](#обзор-архитектуры)
+- [Определение кастомных типов контента](#определение-кастомных-типов-контента)
+- [Создание сообщений с кастомным контентом](#создание-сообщений-с-кастомным-контентом)
+- [Создание кастомной Factory](#создание-кастомной-factory)
+- [Обработка взаимодействий с контентом](#обработка-взаимодействий-с-контентом)
+- [Справочник по Delegate](#справочник-по-delegate)
+- [Встроенные типы контента](#встроенные-типы-контента)
+- [Полный пример](#полный-пример)
 
 ---
 
-## Architecture Overview
+## Обзор архитектуры
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Your App                                           │
+│  Ваше приложение                                    │
 │  ┌─────────────┐  ┌────────────┐  ┌──────────────┐ │
-│  │ Content      │  │ Factory    │  │ Delegate     │ │
-│  │ Types        │  │            │  │              │ │
+│  │ Типы        │  │ Factory    │  │ Delegate     │ │
+│  │ контента    │  │            │  │              │ │
 │  │ PaymentContent│ │ MyFactory  │  │ MyVC         │ │
 │  │ LocationContent│ contentView()│ │ chatDid...() │ │
 │  └──────┬──────┘  └─────┬──────┘  └──────┬───────┘ │
 │         │               │                │         │
 ├─────────┼───────────────┼────────────────┼─────────┤
-│  IOSChatView Library    │                │         │
+│  Библиотека IOSChatView │                │         │
 │         │               │                │         │
 │  ┌──────▼──────┐  ┌─────▼──────┐  ┌──────▼───────┐ │
 │  │AnyChatContent│  │ChatContent │  │ChatViewController│
-│  │(opaque box) │  │Factory     │  │Delegate      │ │
-│  └─────────────┘  │(protocol)  │  │(protocol)    │ │
-│                   └────────────┘  └──────────────┘ │
+│  │(непрозрачная│  │Factory     │  │Delegate      │ │
+│  │ обёртка)    │  │(protocol)  │  │(protocol)    │ │
+│  └─────────────┘  └────────────┘  └──────────────┘ │
 └─────────────────────────────────────────────────────┘
 ```
 
-**Key principle:** The library core only works with `AnyChatContent` (an opaque wrapper) and `ChatContentInteraction` (a generic event struct). It never inspects what's inside — your factory does all the work.
+**Ключевой принцип:** Ядро библиотеки работает только с `AnyChatContent` (непрозрачная обёртка) и `ChatContentInteraction` (универсальная структура события). Оно никогда не заглядывает внутрь — всю работу выполняет ваша factory.
 
 ---
 
-## Defining Custom Content Types
+## Определение кастомных типов контента
 
-Any struct conforming to `ChatContent` can be used as message content:
+Любая структура, реализующая `ChatContent`, может использоваться как контент сообщения:
 
 ```swift
 import IOSChatView
 
-// 1. Define your content type
+// 1. Определяем свой тип контента
 struct PaymentContent: ChatContent {
-    // Required: unique identifier for this type
+    // Обязательно: уникальный идентификатор типа
     static let contentTypeID = "payment"
     
-    // Your custom fields — fully type-safe
+    // Ваши кастомные поля — полностью типобезопасные
     let amount: Decimal
     let currency: String
     let recipientName: String
@@ -83,23 +83,23 @@ struct ContactContent: ChatContent {
 }
 ```
 
-**Requirements for `ChatContent`:**
-- Must conform to `Equatable`, `Hashable`, `Sendable` (inherited from protocol)
-- Must have a `static var contentTypeID: String` — unique string per type
-- All properties must be `Hashable` and `Sendable`
+**Требования к `ChatContent`:**
+- Должен соответствовать `Equatable`, `Hashable`, `Sendable` (наследуется от protocol)
+- Должен иметь `static var contentTypeID: String` — уникальная строка для каждого типа
+- Все свойства должны быть `Hashable` и `Sendable`
 
 ---
 
-## Creating Messages with Custom Content
+## Создание сообщений с кастомным контентом
 
-Wrap your content in `AnyChatContent` and pass it to `MessageBody`:
+Оберните ваш контент в `AnyChatContent` и передайте в `MessageBody`:
 
 ```swift
-// Custom content message
+// Сообщение с кастомным контентом
 let paymentMessage = ChatMessage(
     id: "msg-1",
     content: MessageBody(
-        text: "Payment sent",  // optional text caption
+        text: "Payment sent",  // опциональная текстовая подпись
         content: AnyChatContent(PaymentContent(
             amount: 42.50,
             currency: "USD",
@@ -119,14 +119,14 @@ let paymentMessage = ChatMessage(
     actions: []
 )
 
-// Text-only message (no content)
+// Текстовое сообщение (без контента)
 let textMessage = ChatMessage(
     id: "msg-2",
     content: MessageBody(text: "Hello!"),
-    // ... other fields
+    // ... остальные поля
 )
 
-// Content-only message (no text)
+// Сообщение только с контентом (без текста)
 let locationMessage = ChatMessage(
     id: "msg-3",
     content: MessageBody(
@@ -138,17 +138,17 @@ let locationMessage = ChatMessage(
             mapSnapshotURL: nil
         ))
     ),
-    // ... other fields
+    // ... остальные поля
 )
 ```
 
 ---
 
-## Building a Custom Factory
+## Создание кастомной Factory
 
-### Option A: Subclass DefaultChatContentFactory
+### Вариант A: Наследование от DefaultChatContentFactory
 
-Best when you want to **add** custom types while keeping built-in ones (images, voice, poll, files):
+Лучший вариант, когда нужно **добавить** кастомные типы, сохранив встроенные (изображения, голос, опросы, файлы):
 
 ```swift
 class MyFactory: DefaultChatContentFactory {
@@ -161,14 +161,14 @@ class MyFactory: DefaultChatContentFactory {
         layout: ChatLayout,
         onInteraction: @escaping (ChatContentInteraction) -> Void
     ) -> UIView {
-        // Handle your custom types
+        // Обработка кастомных типов
         if let payment = media.content(as: PaymentContent.self) {
             return makePaymentView(payment, onInteraction: onInteraction)
         }
         if let location = media.content(as: LocationContent.self) {
             return makeLocationView(location, onInteraction: onInteraction)
         }
-        // Fall back to default for built-in types
+        // Делегируем встроенным типам
         return super.contentView(for: media, message: message, width: width,
                                   theme: theme, layout: layout, onInteraction: onInteraction)
     }
@@ -183,7 +183,7 @@ class MyFactory: DefaultChatContentFactory {
         return super.contentHeight(for: media, width: width, layout: layout)
     }
     
-    // Build your custom views
+    // Создание кастомных view
     private func makePaymentView(
         _ payment: PaymentContent,
         onInteraction: @escaping (ChatContentInteraction) -> Void
@@ -201,9 +201,9 @@ class MyFactory: DefaultChatContentFactory {
 }
 ```
 
-### Option B: Implement ChatContentFactory from scratch
+### Вариант B: Реализация ChatContentFactory с нуля
 
-For a fully custom chat with no built-in types:
+Для полностью кастомного чата без встроенных типов:
 
 ```swift
 class MinimalFactory: NSObject, ChatContentFactory {
@@ -211,11 +211,11 @@ class MinimalFactory: NSObject, ChatContentFactory {
     func contentView(for media: AnyChatContent, message: ChatMessage,
                      width: CGFloat, theme: ChatTheme, layout: ChatLayout,
                      onInteraction: @escaping (ChatContentInteraction) -> Void) -> UIView {
-        // Handle ALL your types here — no fallback
+        // Обработка ВСЕХ ваших типов — без fallback
         if let payment = media.content(as: PaymentContent.self) {
             return makePaymentView(payment)
         }
-        // Unknown type fallback
+        // Fallback для неизвестных типов
         let label = UILabel()
         label.text = "[\(media.contentTypeID)]"
         return label
@@ -231,8 +231,8 @@ class MinimalFactory: NSObject, ChatContentFactory {
                                  message: ChatMessage, width: CGFloat,
                                  theme: ChatTheme, layout: ChatLayout,
                                  onInteraction: @escaping (ChatContentInteraction) -> Void) -> Bool {
-        // Return true if you successfully updated the view in-place
-        // Return false to fall back to full view rebuild
+        // Верните true, если удалось обновить view на месте
+        // Верните false для полной пересборки view
         if let payment = media.content(as: PaymentContent.self),
            let paymentView = view as? PaymentCardView {
             paymentView.configure(payment: payment)
@@ -241,25 +241,25 @@ class MinimalFactory: NSObject, ChatContentFactory {
         return false
     }
     
-    // ... implement remaining protocol methods (text, emoji, reactions, etc.)
+    // ... реализуйте остальные методы protocol (text, emoji, reactions и т.д.)
 }
 ```
 
-### Option C: Override specific UI elements only
+### Вариант C: Переопределение только отдельных UI-элементов
 
 ```swift
 class ThemedFactory: DefaultChatContentFactory {
     
-    // Custom sender name with avatar
+    // Кастомное имя отправителя с аватаром
     override func senderNameView(name: String, theme: ChatTheme, layout: ChatLayout) -> UIView {
         let stack = UIStackView()
         stack.axis = .horizontal
         stack.spacing = 6
-        // ... add avatar circle + label
+        // ... добавляем кружок аватара + label
         return stack
     }
     
-    // Custom footer with encryption icon
+    // Кастомный footer с иконкой шифрования
     override func footerView(message: ChatMessage, theme: ChatTheme,
                               layout: ChatLayout, features: ChatFeatures) -> UIView? {
         let view = EncryptedFooterView()
@@ -267,14 +267,14 @@ class ThemedFactory: DefaultChatContentFactory {
         return view
     }
     
-    // Custom empty state
+    // Кастомное пустое состояние
     override func emptyStateView(theme: ChatTheme, layout: ChatLayout) -> UIView {
         let view = AnimatedEmptyStateView()
         view.configure(theme: theme)
         return view
     }
     
-    // Custom FAB button
+    // Кастомная FAB-кнопка
     override func fabView(theme: ChatTheme, layout: ChatLayout) -> UIView {
         let button = GradientFABButton()
         button.configure(theme: theme, size: layout.inputButtonSize)
@@ -283,20 +283,20 @@ class ThemedFactory: DefaultChatContentFactory {
 }
 ```
 
-### Assigning the factory
+### Назначение factory
 
 ```swift
 let chatVC = ChatViewController()
-chatVC.contentFactory = MyFactory()  // or ThemedFactory(), MinimalFactory(), etc.
+chatVC.contentFactory = MyFactory()  // или ThemedFactory(), MinimalFactory() и т.д.
 ```
 
 ---
 
-## Handling Content Interactions
+## Обработка взаимодействий с контентом
 
-### Firing interactions from custom views
+### Отправка взаимодействий из кастомных view
 
-Inside your factory's `contentView(for:...)`, use the `onInteraction` callback:
+Внутри `contentView(for:...)` вашей factory используйте колбэк `onInteraction`:
 
 ```swift
 func makePaymentView(
@@ -306,7 +306,7 @@ func makePaymentView(
     let view = PaymentCardView()
     view.configure(payment: payment)
     
-    // Tap on the whole card
+    // Нажатие на всю карточку
     view.onTap = {
         onInteraction(ChatContentInteraction(
             type: "paymentTap",
@@ -318,7 +318,7 @@ func makePaymentView(
         ))
     }
     
-    // Tap on "Pay Again" button
+    // Нажатие на кнопку "Оплатить снова"
     view.onPayAgain = {
         onInteraction(ChatContentInteraction(
             type: "paymentPayAgain",
@@ -326,7 +326,7 @@ func makePaymentView(
         ))
     }
     
-    // Tap on "Details" link
+    // Нажатие на ссылку "Подробнее"
     view.onDetails = {
         onInteraction(ChatContentInteraction(
             type: "paymentDetails",
@@ -338,9 +338,9 @@ func makePaymentView(
 }
 ```
 
-### Receiving interactions in the delegate
+### Получение взаимодействий в delegate
 
-All content interactions arrive through a single delegate method:
+Все взаимодействия с контентом приходят через единственный метод delegate:
 
 ```swift
 func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {
@@ -368,12 +368,12 @@ func chatDidContentInteraction(messageId: String, interaction: ChatContentIntera
 }
 ```
 
-### Built-in interaction convenience constructors
+### Встроенные конструкторы взаимодействий
 
-`DefaultChatContentFactory` uses these for built-in types:
+`DefaultChatContentFactory` использует их для встроенных типов:
 
 ```swift
-// These are defined as static methods on ChatContentInteraction:
+// Определены как статические методы ChatContentInteraction:
 ChatContentInteraction.mediaTap(index: 0)           // type: "mediaTap"
 ChatContentInteraction.fileTap(index: 2)             // type: "fileTap"
 ChatContentInteraction.pollOptionTap(pollId: "p1", optionId: "o1")  // type: "pollOptionTap"
@@ -383,29 +383,29 @@ ChatContentInteraction.voiceTap(url: "https://...")   // type: "voiceTap"
 
 ---
 
-## Delegate Reference
+## Справочник по Delegate
 
-`ChatViewControllerDelegate` is a composite of four focused protocols. All methods have default empty implementations — implement only what you need.
+`ChatViewControllerDelegate` — это композиция четырёх специализированных protocol. Все методы имеют пустые реализации по умолчанию — реализуйте только то, что нужно.
 
 ### ChatScrollDelegate
 
 ```swift
-/// Called on every scroll event (throttled by `layout.scrollThrottleInterval`).
+/// Вызывается при каждом событии скролла (с троттлингом через `layout.scrollThrottleInterval`).
 func chatDidScroll(offset: CGPoint)
 
-/// Called when the user scrolls near the top (within `features.topLoadThreshold`).
-/// Use this to load older messages.
+/// Вызывается, когда пользователь прокрутил близко к верху (в пределах `features.topLoadThreshold`).
+/// Используйте для загрузки старых сообщений.
 func chatDidReachTop(distance: CGFloat)
 
-/// Called when the user scrolls near the bottom (within `features.bottomLoadThreshold`).
-/// Use this to load newer messages.
+/// Вызывается, когда пользователь прокрутил близко к низу (в пределах `features.bottomLoadThreshold`).
+/// Используйте для загрузки новых сообщений.
 func chatDidReachBottom(distance: CGFloat)
 
-/// Called when the user taps the FAB (scroll-to-bottom button).
+/// Вызывается, когда пользователь нажимает FAB (кнопка прокрутки вниз).
 func chatDidTapFAB()
 ```
 
-**Typical implementation:**
+**Типичная реализация:**
 
 ```swift
 func chatDidReachTop(distance: CGFloat) {
@@ -426,19 +426,19 @@ func chatDidTapFAB() {
 ### ChatVisibilityDelegate
 
 ```swift
-/// Snapshot of currently visible message IDs (throttled).
+/// Снимок текущих видимых ID сообщений (с троттлингом).
 func chatVisibleMessagesDidChange(ids: [String])
 
-/// Accumulated unread message IDs that appeared on screen (debounced).
-/// Use this to send read receipts.
+/// Накопленные ID непрочитанных сообщений, появившихся на экране (с debounce).
+/// Используйте для отправки подтверждений прочтения.
 func chatUnreadMessagesDidAppear(ids: [String])
 ```
 
-**Typical implementation:**
+**Типичная реализация:**
 
 ```swift
 func chatVisibleMessagesDidChange(ids: [String]) {
-    // Track scroll position, analytics, etc.
+    // Отслеживание позиции скролла, аналитика и т.д.
 }
 
 func chatUnreadMessagesDidAppear(ids: [String]) {
@@ -449,36 +449,36 @@ func chatUnreadMessagesDidAppear(ids: [String]) {
 ### ChatMessageDelegate
 
 ```swift
-/// Called when a message bubble is tapped.
+/// Вызывается при нажатии на пузырь сообщения.
 func chatDidTapMessage(id: String, attachmentIndex: Int?)
 
-/// Called when the user selects an action from the context menu.
+/// Вызывается, когда пользователь выбирает действие из контекстного меню.
 func chatDidSelectAction(actionId: String, messageId: String)
 
-/// Called when the user selects an emoji from the context menu reaction bar.
+/// Вызывается, когда пользователь выбирает эмодзи из панели реакций контекстного меню.
 func chatDidSelectEmojiReaction(emoji: String, messageId: String)
 
-/// Called when the user taps an existing reaction chip below a message.
+/// Вызывается, когда пользователь нажимает на существующий чип реакции под сообщением.
 func chatDidTapReaction(messageId: String, emoji: String)
 
-/// Called when the user taps the reply preview inside a message.
+/// Вызывается, когда пользователь нажимает на превью ответа внутри сообщения.
 func chatDidTapReplyMessage(id: String)
 
-/// Called when a factory-created content view fires an interaction.
-/// ALL content-type-specific interactions go through this single method.
+/// Вызывается, когда view контента, созданный factory, генерирует взаимодействие.
+/// ВСЕ взаимодействия, специфичные для типа контента, проходят через этот единственный метод.
 func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction)
 
-/// Called when the user taps a thread indicator on a message.
+/// Вызывается, когда пользователь нажимает на индикатор треда в сообщении.
 func chatDidTapThread(messageId: String, threadId: String)
 
-/// Called when the user taps a detected link in a message.
+/// Вызывается, когда пользователь нажимает на обнаруженную ссылку в сообщении.
 func chatDidTapLink(url: URL, messageId: String)
 
-/// Called when the user taps a detected phone number in a message.
+/// Вызывается, когда пользователь нажимает на обнаруженный номер телефона в сообщении.
 func chatDidTapPhoneNumber(phoneNumber: String, messageId: String)
 ```
 
-**Typical implementation:**
+**Типичная реализация:**
 
 ```swift
 func chatDidSelectAction(actionId: String, messageId: String) {
@@ -523,26 +523,26 @@ func chatDidContentInteraction(messageId: String, interaction: ChatContentIntera
 ### ChatInputDelegate
 
 ```swift
-/// Called when the user sends a message.
+/// Вызывается, когда пользователь отправляет сообщение.
 func chatDidSendMessage(text: String, replyToId: String?)
 
-/// Called when the user confirms an edit.
+/// Вызывается, когда пользователь подтверждает редактирование.
 func chatDidEditMessage(text: String, messageId: String)
 
-/// Called when the user cancels a reply or edit. `type` is "reply" or "edit".
+/// Вызывается, когда пользователь отменяет ответ или редактирование. `type` — "reply" или "edit".
 func chatDidCancelInputAction(type: String)
 
-/// Called when the user taps the attachment button.
+/// Вызывается, когда пользователь нажимает кнопку вложения.
 func chatDidTapAttachment()
 
-/// Called when a voice recording is completed.
+/// Вызывается при завершении записи голосового сообщения.
 func chatDidCompleteVoiceRecording(fileURL: URL, duration: TimeInterval, waveform: [Float])
 
-/// Called on text input changes (throttled).
+/// Вызывается при изменении текста ввода (с троттлингом).
 func chatDidChangeInputText(_ text: String)
 ```
 
-**Typical implementation:**
+**Типичная реализация:**
 
 ```swift
 func chatDidSendMessage(text: String, replyToId: String?) {
@@ -560,7 +560,7 @@ func chatDidEditMessage(text: String, messageId: String) {
     messages[idx] = ChatMessage(
         id: old.id,
         content: MessageBody(text: text, content: old.content.content),
-        // ... copy other fields, set isEdited: true
+        // ... копируем остальные поля, устанавливаем isEdited: true
     )
     chatVC.updateMessages(messages)
 }
@@ -568,19 +568,19 @@ func chatDidEditMessage(text: String, messageId: String) {
 
 ---
 
-## Built-in Content Types
+## Встроенные типы контента
 
-These ship with the library in `DefaultContent/` and are handled by `DefaultChatContentFactory`:
+Поставляются с библиотекой в `DefaultContent/` и обрабатываются `DefaultChatContentFactory`:
 
-| Type | contentTypeID | Payload | View |
-|------|--------------|---------|------|
-| `ImagesContent` | `builtin.images` | `[MediaItem]` — images and videos | Grid layout (1-4 items) |
-| `VoicePayload` | `builtin.voice` | URL, duration, waveform | Play button + waveform |
-| `PollPayload` | `builtin.poll` | Question, options, votes | Animated poll bars |
-| `FilesContent` | `builtin.files` | `[FilePayload]` — files | File rows with icons |
+| Тип | contentTypeID | Данные | View |
+|-----|--------------|--------|------|
+| `ImagesContent` | `builtin.images` | `[MediaItem]` — изображения и видео | Сетка (1-4 элемента) |
+| `VoicePayload` | `builtin.voice` | URL, длительность, осциллограмма | Кнопка воспроизведения + осциллограмма |
+| `PollPayload` | `builtin.poll` | Вопрос, варианты, голоса | Анимированные полосы опроса |
+| `FilesContent` | `builtin.files` | `[FilePayload]` — файлы | Строки файлов с иконками |
 
 ```swift
-// Using built-in types
+// Использование встроенных типов
 let imageMsg = MessageBody(
     text: "Check this out",
     content: AnyChatContent(ImagesContent([
@@ -600,15 +600,15 @@ let voiceMsg = MessageBody(
 
 ---
 
-## Full Example
+## Полный пример
 
-A complete view controller with custom content types:
+Полный view controller с кастомными типами контента:
 
 ```swift
 import IOSChatView
 import UIKit
 
-// MARK: - Custom Types
+// MARK: - Кастомные типы
 
 struct PaymentContent: ChatContent {
     static let contentTypeID = "payment"
@@ -616,7 +616,7 @@ struct PaymentContent: ChatContent {
     let currency: String
 }
 
-// MARK: - Custom Factory
+// MARK: - Кастомная Factory
 
 class MyFactory: DefaultChatContentFactory {
     override func contentView(
@@ -631,7 +631,7 @@ class MyFactory: DefaultChatContentFactory {
             label.textColor = .systemGreen
             label.isUserInteractionEnabled = true
             let tap = UITapGestureRecognizer(target: nil, action: nil)
-            // ... wire up onInteraction
+            // ... подключаем onInteraction
             return label
         }
         return super.contentView(for: media, message: message, width: width,
@@ -693,36 +693,36 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
     // MARK: - Delegate
     
     func chatDidContentInteraction(messageId: String, interaction: ChatContentInteraction) {
-        print("Interaction: \(interaction.type) on message \(messageId)")
+        print("Взаимодействие: \(interaction.type) с сообщением \(messageId)")
     }
     
     func chatDidSendMessage(text: String, replyToId: String?) {
-        // Append and update
+        // Добавляем и обновляем
     }
 }
 ```
 
 ---
 
-## ChatContentFactory Methods
+## Методы ChatContentFactory
 
-The factory protocol covers all customizable views:
+Protocol factory покрывает все кастомизируемые view:
 
-| Category | Methods |
-|----------|---------|
-| **Content** | `contentView(for:...)`, `contentHeight(for:...)`, `reconfigureContentView(_:for:...)` |
-| **Text** | `textView(text:ownership:theme:layout:linkDetectionEnabled:onLinkTap:)`, `textHeight(text:...)` |
-| **Emoji** | `emojiView(text:emojiCount:...)` |
-| **Reactions** | `reactionsView(reactions:...)` |
-| **Reply** | `replyPreviewView(reply:...)` |
+| Категория | Методы |
+|-----------|--------|
+| **Контент** | `contentView(for:...)`, `contentHeight(for:...)`, `reconfigureContentView(_:for:...)` |
+| **Текст** | `textView(text:ownership:theme:layout:linkDetectionEnabled:onLinkTap:)`, `textHeight(text:...)` |
+| **Эмодзи** | `emojiView(text:emojiCount:...)` |
+| **Реакции** | `reactionsView(reactions:...)` |
+| **Ответ** | `replyPreviewView(reply:...)` |
 | **Footer** | `footerView(message:...)` |
-| **Sender** | `senderNameView(name:...)` |
-| **Forward** | `forwardedHeaderView(from:...)` |
-| **Dates** | `dateSeparatorView(title:...)`, `dateSeparatorHeight(...)`, `floatingDateView(title:...)` |
-| **Empty State** | `emptyStateView(...)`, `emptyStateLoadingView(...)` |
-| **Loading** | `loadingIndicatorView(...)` |
-| **Thread** | `threadIndicatorView(thread:ownership:theme:layout:onTap:)` |
-| **Avatar** | `avatarView(name:url:size:theme:layout:)` |
+| **Отправитель** | `senderNameView(name:...)` |
+| **Пересылка** | `forwardedHeaderView(from:...)` |
+| **Даты** | `dateSeparatorView(title:...)`, `dateSeparatorHeight(...)`, `floatingDateView(title:...)` |
+| **Пустое состояние** | `emptyStateView(...)`, `emptyStateLoadingView(...)` |
+| **Загрузка** | `loadingIndicatorView(...)` |
+| **Тред** | `threadIndicatorView(thread:ownership:theme:layout:onTap:)` |
+| **Аватар** | `avatarView(name:url:size:theme:layout:)` |
 | **FAB** | `fabView(...)`, `fabBadgeView(...)` |
 
-Override any of these in your factory subclass to customize the corresponding UI element.
+Переопределите любой из этих методов в вашем подклассе factory, чтобы кастомизировать соответствующий UI-элемент.

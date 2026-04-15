@@ -1,10 +1,9 @@
 import UIKit
 
-// MARK: - UICollectionViewDelegate + UIScrollViewDelegate
+// MARK: - UICollectionViewDelegate + UIScrollViewDelegate (скролл, пагинация, видимость)
 
 extension ChatViewController: UICollectionViewDelegate {
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // Track scroll direction
         let currentY = scrollView.contentOffset.y
         if currentY > lastScrollOffsetY + 1 {
             scrollDirection = .down
@@ -19,7 +18,7 @@ extension ChatViewController: UICollectionViewDelegate {
             delegate?.chatDidScroll(offset: scrollView.contentOffset)
         }
 
-        // Don't trigger pagination when empty or during initial scroll protection
+        // Не трогаем пагинацию при пустых данных или начальной защите скролла
         guard !messages.isEmpty, !isInitialScrollProtected else {
             updateFABVisibility(animated: true)
             updateFloatingDate()
@@ -30,14 +29,14 @@ extension ChatViewController: UICollectionViewDelegate {
         let contentH = scrollView.contentSize.height
         let frameH = scrollView.bounds.height
 
-        // Top pagination — skip only if actively scrolling DOWN
+        // Верхняя пагинация — пропускаем только при скролле ВНИЗ
         if scrollDirection != .down
             && offset < features.topLoadThreshold
             && hasMore && !isLoadingTop {
             delegate?.chatDidReachTop(distance: offset)
         }
 
-        // Bottom pagination — skip only if actively scrolling UP
+        // Нижняя пагинация — пропускаем только при скролле ВВЕРХ
         let distanceToBottom = contentH - offset - frameH
         if scrollDirection != .up
             && distanceToBottom < features.bottomLoadThreshold
@@ -73,27 +72,20 @@ extension ChatViewController: UICollectionViewDelegate {
 
     public func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         isProgrammaticScroll = false
-        // Don't report anchor after programmatic scroll — RN controls that state
+        // Не репортим якорь после программного скролла — RN управляет этим состоянием
     }
 }
 
-// MARK: - Scroll Anchor Reporting
+// MARK: - Отправка якоря скролла
 
 extension ChatViewController {
 
-    /// Throttled anchor report (~300ms).
-    /// Only fires during user-initiated scroll — blocked during:
-    /// - Initial scroll protection (applyInitial → executePendingInitialScroll)
-    /// - Programmatic scroll (scrollToBottom, scrollToMessage)
-    /// - Layout settling after data updates
+    /// Throttled (~300ms) отправка якоря. Работает только при пользовательском скролле —
+    /// заблокирован при начальной защите, программном скролле, стабилизации после обновлений.
     func reportScrollAnchorIfNeeded() {
-        // Block during initial load / restore
         guard !isInitialScrollProtected else { return }
-
-        // Block during programmatic scroll (scrollToBottom, scrollToMessage)
         guard !isProgrammaticScroll else { return }
 
-        // Only report when user is actively dragging or decelerating
         guard let cv = collectionView,
               cv.isDragging || cv.isDecelerating || isUserDragging else { return }
 
@@ -106,15 +98,13 @@ extension ChatViewController {
         }
     }
 
-    /// Force-report current anchor once after user scroll ends.
-    /// Called from scrollViewDidEndDragging / scrollViewDidEndDecelerating
-    /// to capture the final resting position.
+    /// Однократная отправка якоря после окончания скролла пользователем (финальная позиция).
     func reportScrollAnchorOnSettled() {
         guard !isInitialScrollProtected, !isProgrammaticScroll else {
             return
         }
 
-        // Reset throttle so it fires immediately
+        // Сбрасываем throttle чтобы сработало немедленно
         anchorThrottleTime = 0
 
         if let anchor = currentScrollAnchor() {
@@ -123,15 +113,12 @@ extension ChatViewController {
     }
 }
 
-// MARK: - Visibility Tracking
+// MARK: - Отслеживание видимости
 
 extension ChatViewController {
 
-    /// Collects message IDs from visible cells using hysteresis for the visible snapshot
-    /// and a separate threshold for mark-as-read.
-    ///
-    /// Hysteresis: a cell enters `allIDs` at `visibilityThreshold` (0.8),
-    /// stays until it drops below `visibilityExitThreshold` (0.5).
+    /// Гистерезис: ячейка входит в allIDs при visibilityThreshold (0.8),
+    /// выходит при visibilityExitThreshold (0.5). Отдельный порог для mark-as-read.
     func collectVisibleMessageIDs() -> (all: [String], unread: Set<String>) {
         let visibleRect = CGRect(
             origin: collectionView.contentOffset,
@@ -141,7 +128,7 @@ extension ChatViewController {
         let exitThreshold = visibilityExitThreshold
         let unreadThreshold = unreadVisibilityThreshold
 
-        // Collect (indexPath.item, cell) pairs and sort by index (top to bottom)
+        // Собираем пары (index, cell) и сортируем сверху вниз
         var sorted: [(index: Int, cell: UICollectionViewCell, msg: ChatMessage)] = []
 
         for cell in collectionView.visibleCells {
@@ -192,24 +179,24 @@ extension ChatViewController {
 
         guard !allVisibleIDs.isEmpty else { return }
 
-        // --- Mark-as-read (internal) ---
+        // --- Отметка прочитанности (внутренний) ---
         let newUnread = unreadIDs.subtracting(visibleMessageIDs)
         if !newUnread.isEmpty {
             visibleMessageIDs = unreadIDs
             unreadManager.markAsRead(newUnread)
         }
 
-        // --- Visible messages → throttle ---
+        // --- Видимые сообщения → throttle ---
         latestVisibleIDs = allVisibleIDs
         notifyVisibleMessages()
 
-        // --- Unread messages → debounce ---
+        // --- Непрочитанные → debounce ---
         if !newUnread.isEmpty {
             notifyUnreadMessages(newUnread)
         }
     }
 
-    // MARK: - Throttle: visible messages snapshot
+    // MARK: - Throttle: снимок видимых сообщений
 
     private func notifyVisibleMessages() {
         let now = CACurrentMediaTime()
@@ -219,7 +206,7 @@ extension ChatViewController {
             lastVisibleThrottleTime = now
             fireVisibleSnapshot()
         } else {
-            // Schedule trailing edge if not already scheduled
+            // Планируем trailing edge если ещё не запланирован
             guard pendingVisibleThrottleTask == nil else { return }
             let remaining = interval - (now - lastVisibleThrottleTime)
             let task = DispatchWorkItem { [weak self] in
@@ -242,7 +229,7 @@ extension ChatViewController {
         delegate?.chatVisibleMessagesDidChange(ids: ids)
     }
 
-    // MARK: - Debounce: unread messages batch
+    // MARK: - Debounce: батч непрочитанных
 
     private func notifyUnreadMessages(_ newUnread: Set<String>) {
         pendingUnreadIDs.formUnion(newUnread)

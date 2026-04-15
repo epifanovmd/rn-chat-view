@@ -2,7 +2,6 @@ import UIKit
 
 // MARK: - ContextMenuAnimator
 
-/// Управляет анимациями открытия и закрытия контекстного меню.
 /// emojiPanel и actionsPanel опциональны — если nil, анимация их пропускает.
 final class ContextMenuAnimator {
 
@@ -24,7 +23,6 @@ final class ContextMenuAnimator {
         self.actionsPanel = actionsPanel
     }
 
-    /// Устанавливает начальное состояние элементов перед анимацией открытия.
     func prepareOpen(layout: ContextMenuLayout) {
         snapshot?.frame = layout.snapOrigin
 
@@ -39,7 +37,6 @@ final class ContextMenuAnimator {
         backdrop.alpha = 0
     }
 
-    /// Запускает spring-анимацию открытия.
     func animateOpen(layout: ContextMenuLayout) {
         let dur = theme.openDuration
         let d   = theme.springDamping
@@ -88,7 +85,7 @@ final class ContextMenuAnimator {
         } completion: { _ in completion() }
     }
 
-    // MARK: - Private
+    // MARK: - Вспомогательные
 
     private func place(_ view: UIView, in rect: CGRect, scale: CGFloat) {
         view.bounds    = CGRect(origin: .zero, size: rect.size)
@@ -108,7 +105,7 @@ final class ContextMenuAnimator {
     }
 }
 
-// MARK: - CGRect helpers
+// MARK: - Расширение CGRect
 
 private extension CGRect {
     func at(y: CGFloat) -> CGRect {

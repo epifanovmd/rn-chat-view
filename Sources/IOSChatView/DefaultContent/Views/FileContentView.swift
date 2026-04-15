@@ -8,7 +8,7 @@ public final class FileContentView: UIView {
     private let sizeLabel = UILabel()
     private var currentLayout = ChatLayout()
 
-    // MARK: - Stored constraints
+    // MARK: - Сохранённые констрейнты
 
     private var iconLeadingConstraint: NSLayoutConstraint!
     private var iconWidthConstraint: NSLayoutConstraint!
@@ -83,12 +83,10 @@ public final class FileContentView: UIView {
         let pad = L.filePadding
         let isOutgoing = ownership == .mine
 
-        // Update fonts
         nameLabel.font = L.fileNameFont
         sizeLabel.font = L.fileSizeFont
         layer.cornerRadius = L.fileCornerRadius
 
-        // Update constraint constants
         iconLeadingConstraint.constant = pad
         iconWidthConstraint.constant = L.fileIconSize
         iconHeightConstraint.constant = L.fileIconSize

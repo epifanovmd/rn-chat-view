@@ -1,35 +1,18 @@
 import UIKit
 import QuartzCore
 
-/// Animates a view "disintegrating" into a cloud of tiny confetti-like particles
-/// that scatter, spin, and drift downward.
-///
-/// Performance: uses `CAEmitterLayer` — a single GPU-native particle system.
-/// Zero per-particle CALayer or CAAnimation objects. The render server handles
-/// all particle physics, drawing, and compositing on the GPU.
+// CAEmitterLayer — единая GPU-нативная система частиц, без per-particle объектов
 public final class DisintegrationAnimator {
 
-    /// Configuration for the disintegration effect.
     public struct Config {
-        /// Size of each color sample region (points). Controls color diversity.
-        /// Smaller = more color samples = more emitter cells (still very fast).
         public var sampleGridSize: CGFloat = 20
-        /// Number of particles per emitter cell (per color region).
         public var particlesPerCell: Int = 80
-        /// Particle lifetime in seconds.
         public var lifetime: Float = 1.2
-        /// Particle size in points.
         public var particleSize: CGFloat = 1
-        /// Particle size randomization range.
         public var particleSizeRange: CGFloat = 0.7
-        /// Maximum scatter velocity (points/sec).
         public var velocity: CGFloat = 200
-        /// Gravity pull (positive = down).
         public var gravity: CGFloat = 300
-        /// Spin speed (radians/sec).
         public var spin: CGFloat = 8
-        /// Burst duration — how long the emitter fires (seconds).
-        /// After this, emission stops and existing particles fade out.
         public var burstDuration: TimeInterval = 0.15
 
         public static let `default` = Config()
@@ -42,10 +25,10 @@ public final class DisintegrationAnimator {
         case trailingToLeading
     }
 
-    // MARK: - Shared tiny square image (1×1 white pixel, created once)
+    // MARK: - Белый пиксель (4×4, создаётся один раз)
 
     private static let pixelImage: CGImage = {
-        let size = 4 // 4×4 for better anti-aliasing
+        let size = 4
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let ctx = CGContext(
             data: nil, width: size, height: size,
@@ -58,9 +41,8 @@ public final class DisintegrationAnimator {
         return ctx.makeImage()!
     }()
 
-    // MARK: - Public API
+    // MARK: - Публичное API
 
-    /// Disintegrate a view into confetti-like particles.
     static func disintegrate(
         view: UIView,
         in container: UIView,
@@ -73,7 +55,6 @@ public final class DisintegrationAnimator {
             return
         }
 
-        // 1. Snapshot
         let renderer = UIGraphicsImageRenderer(bounds: bounds)
         let snapshot = renderer.image { ctx in
             view.layer.render(in: ctx.cgContext)
@@ -85,17 +66,14 @@ public final class DisintegrationAnimator {
 
         let frameInContainer = view.convert(bounds, to: container)
 
-        // Hide immediately
         view.isHidden = true
 
-        // 2. Sample colors on background thread
         let scale = snapshot.scale
         let gridSize = config.sampleGridSize
         let imgW = cgImage.width
         let imgH = cgImage.height
 
         DispatchQueue.global(qos: .userInteractive).async {
-            // Read pixel data once
             let colorSpace = CGColorSpaceCreateDeviceRGB()
             guard let ctx = CGContext(
                 data: nil, width: imgW, height: imgH,
@@ -127,7 +105,6 @@ public final class DisintegrationAnimator {
 
             for row in 0..<rows {
                 for col in 0..<cols {
-                    // Sample center of each grid cell
                     let ptX = (CGFloat(col) + 0.5) * gridSize
                     let ptY = (CGFloat(row) + 0.5) * gridSize
                     let px = min(Int(ptX * scale), imgW - 1)
@@ -140,10 +117,9 @@ public final class DisintegrationAnimator {
                     let b = CGFloat(ptr[2]) / 255.0
                     let a = CGFloat(ptr[3]) / 255.0
 
-                    // Skip fully transparent regions
                     guard a > 0.02 else { continue }
 
-                    // Premultiplied alpha → восстановить реальный цвет
+                    // Premultiplied alpha → un-premultiply для корректных цветов частиц
                     let realR = a > 0.01 ? min(r / a, 1.0) : r
                     let realG = a > 0.01 ? min(g / a, 1.0) : g
                     let realB = a > 0.01 ? min(b / a, 1.0) : b
@@ -158,7 +134,6 @@ public final class DisintegrationAnimator {
                 return
             }
 
-            // 3. Build emitter on main thread
             DispatchQueue.main.async {
                 let emitterLayer = CAEmitterLayer()
                 emitterLayer.frame = CGRect(origin: .zero, size: frameInContainer.size)
@@ -166,7 +141,6 @@ public final class DisintegrationAnimator {
                 emitterLayer.renderMode = .additive
                 emitterLayer.beginTime = CACurrentMediaTime()
 
-                // Create one emitter cell per color sample
                 var emitterCells: [CAEmitterCell] = []
                 emitterCells.reserveCapacity(cells.count)
 
@@ -179,42 +153,23 @@ public final class DisintegrationAnimator {
                     cell.birthRate = Float(config.particlesPerCell) / Float(config.burstDuration)
                     cell.lifetime = config.lifetime
                     cell.lifetimeRange = config.lifetime * 0.4
-
-                    // Scatter in all directions
                     cell.velocity = config.velocity
                     cell.velocityRange = config.velocity * 0.5
                     cell.emissionRange = .pi * 2
-
-                    // Gravity
                     cell.yAcceleration = config.gravity
-
-                    // Spin
                     cell.spin = config.spin
                     cell.spinRange = config.spin
-
-                    // Size
-                    cell.scale = config.particleSize / 4.0 // pixelImage is 4×4
+                    cell.scale = config.particleSize / 4.0
                     cell.scaleRange = config.particleSizeRange / 4.0
                     cell.scaleSpeed = -config.particleSize / (4.0 * CGFloat(config.lifetime))
-
-                    // Fade out
                     cell.alphaSpeed = -1.0 / config.lifetime
-
-                    // Emit from this cell's grid position
                     cell.emitterCells = nil
 
                     emitterCells.append(cell)
                 }
 
-                // Use sub-emitters per position by creating point emitters
-                // Instead, use multiple emitter layers for position control
-                // OR: single emitter with rectangle shape + random emission
-
-                // Approach: one CAEmitterLayer per grid cell is too many layers.
-                // Better: single layer, rectangle shape, all cells emit from same area.
-                // Trade-off: particles don't start from exact grid positions, but from
-                // random positions within the view bounds. Looks organic.
-
+                // Один rectangle emitter вместо per-cell: частицы стартуют из случайных
+                // позиций внутри bounds, а не из точных grid-позиций — выглядит органично
                 emitterLayer.emitterPosition = CGPoint(
                     x: frameInContainer.width / 2,
                     y: frameInContainer.height / 2
@@ -223,19 +178,16 @@ public final class DisintegrationAnimator {
                 emitterLayer.emitterShape = .rectangle
                 emitterLayer.emitterCells = emitterCells
 
-                // Add to container as an overlay at the view's position
                 let overlay = UIView(frame: frameInContainer)
                 overlay.backgroundColor = .clear
                 overlay.isUserInteractionEnabled = false
                 overlay.layer.addSublayer(emitterLayer)
                 container.addSubview(overlay)
 
-                // Stop emission after burst, let particles finish their lifetime
                 let burstDuration = config.burstDuration
                 let totalDuration = burstDuration + Double(config.lifetime + config.lifetime * 0.4)
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + burstDuration) {
-                    // Stop emitting new particles
                     emitterLayer.birthRate = 0
                 }
 

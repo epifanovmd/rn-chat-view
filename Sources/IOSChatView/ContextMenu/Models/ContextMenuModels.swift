@@ -1,5 +1,3 @@
-// MARK: - ContextMenuModels.swift
-
 import UIKit
 
 // MARK: - ContextMenuAction
@@ -37,7 +35,6 @@ public struct ContextMenuConfiguration {
     public let sourceView:           UIView
     public let emojis:               [ContextMenuEmoji]
     public let actions:              [ContextMenuAction]
-    /// Радиус скругления снапшота исходного view.
     /// Задаётся снаружи — ContextMenu не знает о ChatLayoutConstants.
     public let snapshotCornerRadius: CGFloat
 

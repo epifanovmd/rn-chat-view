@@ -2,7 +2,7 @@ import UIKit
 
 public enum MessageSizeCalculator {
 
-    // MARK: - Public
+    // MARK: - Публичное API
 
     public static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         let bw = bubbleWidth(for: msg, containerWidth: maxWidth, layout: L, showSenderName: showSenderName, features: features)
@@ -10,7 +10,7 @@ public enum MessageSizeCalculator {
         return bh + L.cellVSpacing
     }
 
-    // MARK: - Bubble Width
+    // MARK: - Ширина пузыря
 
     public static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) -> CGFloat {
         let avatarSpace: CGFloat = (features.showAvatars && msg.ownership == .theirs)
@@ -69,7 +69,7 @@ public enum MessageSizeCalculator {
         return min(max(L.bubbleMinWidth, max(senderNameW, replyW)), maxW)
     }
 
-    // MARK: - Bubble Height
+    // MARK: - Высота пузыря
 
     public static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         let content = msg.content
@@ -123,7 +123,7 @@ public enum MessageSizeCalculator {
         return h
     }
 
-    // MARK: - Reaction Lines
+    // MARK: - Строки реакций
 
     public static func reactionLinesCount(for reactions: [Reaction], maxWidth: CGFloat, layout L: ChatLayout = ChatLayout()) -> Int {
         guard !reactions.isEmpty else { return 0 }
@@ -145,7 +145,7 @@ public enum MessageSizeCalculator {
         return lines
     }
 
-    // MARK: - Content Height
+    // MARK: - Высота контента
 
     public static func contentHeight(for content: MessageBody, width: CGFloat, layout L: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         var h: CGFloat = 0
@@ -162,7 +162,7 @@ public enum MessageSizeCalculator {
         return max(h, 0)
     }
 
-    // MARK: - Reaction Width
+    // MARK: - Ширина реакций
 
     public static func reactionWidth(for reactions: [Reaction], layout L: ChatLayout = ChatLayout()) -> CGFloat {
         guard !reactions.isEmpty else { return 0 }
@@ -175,7 +175,7 @@ public enum MessageSizeCalculator {
         return total - L.reactionChipSpacing
     }
 
-    // MARK: - Helpers
+    // MARK: - Вспомогательные
 
     public static func minFooterWidth(for msg: ChatMessage, layout L: ChatLayout = ChatLayout(), features: ChatFeatures = ChatFeatures()) -> CGFloat {
         var w: CGFloat = 0
@@ -193,7 +193,7 @@ public enum MessageSizeCalculator {
     }
 }
 
-// MARK: - Emoji Helper
+// MARK: - Помощник эмодзи
 
 public enum EmojiHelper {
     public static func emojiOnlyCount(_ text: String?) -> Int? {
