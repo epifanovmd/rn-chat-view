@@ -72,7 +72,7 @@ final class InputBarReplyPanel: UIView {
             accentBar.widthAnchor.constraint(equalToConstant: L.inputReplyAccentWidth),
 
             iconView.leadingAnchor.constraint(equalTo: accentBar.trailingAnchor, constant: sp - 2),
-            iconView.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -1),
+            iconView.centerYAnchor.constraint(equalTo: senderLabel.centerYAnchor),
             iconView.widthAnchor.constraint(equalToConstant: L.inputReplyIconSize + 2),
 
             senderLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: sp / 2),

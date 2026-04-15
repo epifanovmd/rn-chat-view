@@ -46,28 +46,41 @@ Extracted managers:
 
 ### Update Strategies (MessageUpdateHandler)
 
-| Strategy | When | Method |
-|----------|------|--------|
-| Initial | First batch (was empty) | `reloadData` + sync scroll to bottom |
-| Prepend | Older messages loaded | Full layout recompute + `reloadData` + offset compensation |
-| Append | New messages at bottom | `reloadData` + auto-scroll if near bottom |
-| Content | Edit/reactions/polls (same IDs) | Incremental patch + in-place reconfigure |
-| Replace | Delete+insert at same position | Targeted `reloadItems(at:)` + offset fix |
-| Structural | Row count changed | DifferenceKit `StagedChangeset` → animated batch |
+Быстрые пути (без DifferenceKit):
 
-**Bottom-edge-stable offset**: content and replace updates pin the
-bottommost visible message's bottom edge to its screen position.
-Height changes expand upward. Uses prefix sums for O(1) cell Y lookup.
+| Стратегия | Когда | Метод |
+|-----------|-------|-------|
+| Initial | Пустой → данные | `reloadData` + scroll to bottom |
+| Clear | Данные → пустой | `reloadData` |
+| Prepend | Старые сообщения сверху | `reloadData` + компенсация offset |
+| Append | Новые сообщения снизу | `reloadData` + сохранение позиции / auto-scroll |
 
-**Incremental patching** (content/replace paths):
-- `analyzeContent()` — single O(messages) pass: classifies, collects changedIDs, invalidates size cache
-- `patchLayoutData()` — recomputes layout only for changed rows, O(changed) not O(n)
-- messageIndex/rows/rowIndexCache patched incrementally
+DK changeset — единственный diff-движок для всего остального:
 
-**DifferenceKit** used only in `applyStructural` (row count differs).
-All other paths bypass it for better performance.
+| Стратегия | Когда | Метод |
+|-----------|-------|-------|
+| ContentOnly | DK structural=0 (только updates) | Инкрементальный патч + bottom-stable offset + CATransaction |
+| Structural | DK structural>0 (insert/delete/move) | Предвычисление targetOffset + `performBatchUpdates` |
+| FullReplace | Большинство ID изменились | `UIView.transition(.transitionCrossDissolve)` |
 
-**Performance (90k messages):** content ~142ms, replace ~92ms, structural ~465ms.
+**Архитектура structural пути:**
+1. Предвычисление `newLayoutData` + `targetOffset` (где якорь останется на прежней позиции)
+2. DK `cv.reload(using:)` для анимации ячеек
+3. Если offset изменился значительно (>3pt) — `performWithoutAnimation` + offset коррекция
+4. Если offset не изменился — DK анимация (видимые insert/delete/move)
+
+**Bottom-edge-stable offset** (contentOnly): пинит нижний видимый элемент к экранной позиции.
+Изменение высоты расширяется вверх. Prefix sums для O(1) lookup. CATransaction для атомарности.
+
+**ContentOnly при wasAtBottom**: `scrollToBottom(animated: false)` внутри CATransaction — без промежуточного кадра, FAB не мерцает.
+
+**Disintegration**: конфетти-эффект при удалении. Работает для всех типов пузырей включая полупрозрачные (system). Un-premultiply alpha для корректных цветов частиц.
+
+**pendingScrollToBottom**: ставится при `scrollToBottom()`, `send`, `edit`. Сбрасывается при `scrollViewWillBeginDragging` (пользователь скроллит). Потребляется в `updateMessages`.
+
+**MessageDiff** (вспомогательный, не для классификации):
+- `isPrependOnly` / `isAppendOnly` — O(n) проверка порядка ID
+- `buildPendingMapping` — pending→real через localId
 
 ### Delegate Hierarchy
 
@@ -92,8 +105,8 @@ ChatViewController properties:
   .layout: ChatLayout      — 350+ sizing/spacing/font parameters
                              New: threadBarHeight, threadBarFont, threadBarSpacing,
                                   threadBarIconSize, threadBarChevronSize (thread indicator)
-                             New: systemCellBottomSpacing (system message extra spacing)
-                             New: pinnedCellBottomSpacing (pinned message extra spacing)
+                             New: systemCellBottomSpacing (system message extra spacing top+bottom)
+                             New: pinnedCellBottomSpacing (pinned message extra spacing top+bottom)
                              New: avatarSize (36), avatarLeadingMargin (6),
                                   avatarBubbleSpacing (2) (sticky avatars)
   .features: ChatFeatures  — behavioral flags (show/hide UI elements)
@@ -129,7 +142,9 @@ Sources/IOSChatView/
 │   │   ├── ChatDataSource.swift               # UICollectionViewDataSource
 │   │   └── ChatRow.swift                      # Differentiable row enum
 │   ├── Components/
-│   │   ├── MessageUpdateHandler.swift         # Update router + incremental patch + offset calculator
+│   │   ├── MessageUpdateHandler.swift         # Роутер обновлений (DK changeset + contentOnly + structural)
+│   │   ├── MessageDiff.swift                  # isPrependOnly/isAppendOnly + pending mapping
+│   │   ├── DisintegrationAnimator.swift       # Конфетти-эффект удаления (CAEmitterLayer)
 │   │   ├── FloatingDateManager.swift          # Floating date pill
 │   │   ├── FABManager.swift                   # Scroll-to-bottom FAB + badge (views from factory)
 │   │   ├── EmptyStateManager.swift            # Empty state (views from factory)
@@ -539,6 +554,45 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
 }
 ```
 
+## Testing
+
+Интеграционные тесты в `Example/rn-chat-view-tests/` (Swift Testing framework, запуск на устройстве):
+
+| Файл | Что проверяет |
+|------|---------------|
+| Case01 | Первоначальная загрузка, layout heights |
+| Case02 | Очистка всех сообщений |
+| Case03 | Prepend: offset compensation, count |
+| Case04 | Append pagination: scroll preserved |
+| Case05 | Socket at bottom: count increases |
+| Case06 | Socket scrolled up: scroll stays |
+| Case07 | Content updates: height change, reaction at bottom, edit above viewport (bottom-stable) |
+| Case08 | Pending→real: pending mapping, count stable |
+| Case09 | Delete: count, scroll preserved |
+| Case10 | Delete + update simultaneously |
+| Case11 | Mass delete: content size decreases |
+| Case20 | Content update while scrolled up |
+| Case21 | Batch socket events |
+| Case22 | Delete + insert (replace): scroll stability |
+| Case23 | Scroll stability: 13 кейсов (reaction/edit/delete/insert/prepend at different positions, pendingScrollToBottom) |
+
+Unit тесты в `Example/Tests/MessageDiffTests.swift`:
+- `MessageDiffPatternTests` — isPrependOnly / isAppendOnly
+- `MessageDiffPendingMappingTests` — pending→real mapping edge cases
+
+```bash
+# Запуск всех тестов
+cd Example
+xcodebuild test -workspace rn-chat-view.xcworkspace \
+  -scheme rn-chat-view \
+  -destination 'id=00008110-000C0CA03A21801E' \
+  -allowProvisioningUpdates \
+  ENABLE_USER_SCRIPT_SANDBOXING=NO \
+  -only-testing:'rn-chat-view-tests'
+```
+
+**Правило: перед исправлением бага или добавлением фичи — написать тест, воспроизводящий проблему или проверяющий новое поведение.** Тесты на русском (`@Suite("Кейс N: ...")`, `@Test("описание")`).
+
 ## Conventions
 
 - All UI built programmatically with AutoLayout constraints
@@ -547,11 +601,13 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
 - New content types go in `ChatView/Views/Content/`
 - Follow existing extension pattern when adding ChatViewController functionality
 - Custom content views — subclass `DefaultChatContentFactory` and override specific methods
+- Horizontal constraints в views с frame-based позиционированием (ContextMenu, InputBar) — `.defaultHigh` (RN bridge начинает с width=0)
+- Debug логи через `log()` wrapper с `#if DEBUG`
 
 ## Build
 
 ```bash
-# Demo app (Example/)
+# Demo app (Example/) — всегда Debug конфигурация
 cd Example
 pod install
 xcodebuild -workspace rn-chat-view.xcworkspace \
@@ -559,14 +615,16 @@ xcodebuild -workspace rn-chat-view.xcworkspace \
   -destination 'id=00008110-000C0CA03A21801E' \
   -allowProvisioningUpdates \
   ENABLE_USER_SCRIPT_SANDBOXING=NO \
+  -configuration Debug \
   build
 
 # Install on device
 xcrun devicectl device install app --device 00008110-000C0CA03A21801E \
   ~/Library/Developer/Xcode/DerivedData/rn-chat-view-*/Build/Products/Debug-iphoneos/rn-chat-view.app
 
-# Launch
-xcrun devicectl device process launch --device 00008110-000C0CA03A21801E ru.force-dev.rn-chat-view
+# Launch (bundle ID: com.rn-chat-view.rn-chat-view)
+xcrun devicectl device process launch --device 00008110-000C0CA03A21801E \
+  com.rn-chat-view.rn-chat-view
 ```
 
 ## Installation

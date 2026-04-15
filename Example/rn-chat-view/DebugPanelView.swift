@@ -15,6 +15,7 @@ enum DebugAction: String, CaseIterable, Identifiable {
     case addReaction = "React"
     case pollVote = "Poll"
     case doubleUpdate = "2xUpd"
+    case updateTwoBottom = "Upd2↓"
 
     // Row 1: Insert / Delete / Batch
     case appendOne = "+1↓"
@@ -36,6 +37,7 @@ enum DebugAction: String, CaseIterable, Identifiable {
     case shuffleVisible = "Shuffle"
     case deleteTwoGaps = "Del2x"
     case insertThree = "Ins3"
+    case prependPlusExtra = "Pre+Ex"
     case sameTimestamp = "SameTS"
     case replaceAll = "Replace"
     case systemMsg = "System"
@@ -45,7 +47,7 @@ enum DebugAction: String, CaseIterable, Identifiable {
 
     var row: Int {
         switch self {
-        case .editTextLonger, .editTextShorter, .editMidLonger, .editMidShorter, .changeStatus, .statusCascade, .addReaction, .pollVote, .doubleUpdate:
+        case .editTextLonger, .editTextShorter, .editMidLonger, .editMidShorter, .changeStatus, .statusCascade, .addReaction, .pollVote, .doubleUpdate, .updateTwoBottom:
             return 0
         case .appendOne, .prependOne, .prependBatch, .appendBatch, .deleteFirst, .deleteLast, .deleteMiddle, .deleteBatch, .clearAll:
             return 1
@@ -56,13 +58,13 @@ enum DebugAction: String, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .editTextLonger, .editTextShorter, .editMidLonger, .editMidShorter, .changeStatus, .statusCascade, .addReaction, .pollVote, .doubleUpdate:
+        case .editTextLonger, .editTextShorter, .editMidLonger, .editMidShorter, .changeStatus, .statusCascade, .addReaction, .pollVote, .doubleUpdate, .updateTwoBottom:
             return .blue
         case .appendOne, .prependOne, .prependBatch, .appendBatch:
             return .green
         case .deleteFirst, .deleteLast, .deleteMiddle, .deleteBatch, .clearAll:
             return .red
-        case .insertAndUpdate, .deleteAndInsert, .deleteAndUpdate, .insertDeleteUpdate, .pendingToReal, .shuffleVisible, .deleteTwoGaps, .insertThree:
+        case .insertAndUpdate, .deleteAndInsert, .deleteAndUpdate, .insertDeleteUpdate, .pendingToReal, .shuffleVisible, .deleteTwoGaps, .insertThree, .prependPlusExtra:
             return .orange
         case .sameTimestamp, .replaceAll, .systemMsg, .pinnedMsg:
             return .purple

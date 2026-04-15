@@ -129,6 +129,13 @@ final class DebugChatViewController: UIViewController, ChatViewControllerDelegat
             let newPoll = PollPayload(id: poll.id, question: poll.question, options: opts, totalVotes: total, selectedOptionIds: poll.selectedOptionIds, isMultipleChoice: poll.isMultipleChoice, isClosed: poll.isClosed, isAnonymous: poll.isAnonymous)
             msgs[idx] = ChatMessage(id: msg.id, content: MessageBody(text: nil, content: AnyChatContent(newPoll)), timestamp: msg.timestamp, senderName: msg.senderName, ownership: msg.ownership, groupDate: msg.groupDate, status: msg.status, reply: msg.reply, forwardedFrom: msg.forwardedFrom, reactions: msg.reactions, isEdited: msg.isEdited, actions: msg.actions)
 
+        case .updateTwoBottom:
+            guard msgs.count >= 4 else { break }
+            let idx2 = msgs.count - 2
+            let idx4 = msgs.count - 4
+            msgs[idx2] = mutate(msgs[idx2], text: (msgs[idx2].content.text ?? "") + " обновлено ✏️", isEdited: true)
+            msgs[idx4] = mutate(msgs[idx4], text: (msgs[idx4].content.text ?? "") + " обновлено ✏️", isEdited: true)
+
         case .doubleUpdate:
             // Two updates in quick succession
             if let idx = msgs.indices.last(where: { msgs[$0].ownership == .theirs }) {
@@ -265,6 +272,24 @@ final class DebugChatViewController: UIViewController, ChatViewControllerDelegat
             msgs.append(DebugMessageFactory.makeMessage(text: "Ins.end 🔽", timestamp: tsEnd))
             msgs.insert(DebugMessageFactory.makeMessage(text: "Ins.mid ◆", timestamp: tsMid), at: mid + 1)
             msgs.insert(DebugMessageFactory.makeMessage(text: "Ins.top 🔼", timestamp: tsStart), at: 0)
+
+        case .prependPlusExtra:
+            // Имитация RN кейса: prepend 30 + 4 extra в середину + 2 обновлённых
+            guard msgs.count >= 10 else { break }
+            let base = msgs[0].timestamp.addingTimeInterval(-7200)
+            // 30 новых сообщений сверху
+            var newMsgs = generateMessages(count: 30, baseDate: base)
+            // 4 extra сообщения в середину существующих (как если API вернул пропущенные)
+            let midIdx = msgs.count / 2
+            for i in 0..<4 {
+                let ts = msgs[midIdx].timestamp.addingTimeInterval(Double(i) + 0.5)
+                newMsgs.append(DebugMessageFactory.makeMessage(text: "Extra #\(i+1) 🔶", timestamp: ts))
+            }
+            // Обновляем 2 существующих сообщения (как API подтверждение)
+            msgs[msgs.count - 2] = mutate(msgs[msgs.count - 2], text: "Updated by API ✏️", isEdited: true)
+            msgs[msgs.count - 4] = mutate(msgs[msgs.count - 4], text: "Also updated ✏️", isEdited: true)
+            // Объединяем и сортируем
+            msgs = (newMsgs + msgs).sorted { $0.timestamp < $1.timestamp }
 
         // ── Edge ────────────────────────────────────────────────────
         case .sameTimestamp:

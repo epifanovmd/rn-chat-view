@@ -494,12 +494,14 @@ private extension MessageUpdateHandler {
             log("  Скролл: bottom-stable delta=\(f(delta)), offset: \(f(s.savedOffset.y)) → \(f(s.savedOffset.y + delta))")
         }
 
-        // Рекофигурация видимых ячеек на месте (без пересоздания)
+        // Рекофигурация видимых ячеек с crossfade анимацией
         for i in changed {
             let ip = IndexPath(item: i, section: 0)
             guard case .message(let msg) = rows[i] else { continue }
             if let cell = cv.cellForItem(at: ip) as? MessageCell {
-                vc.dataSource.reconfigureMessageCellInPlace(cell, message: msg, vc: vc)
+                UIView.transition(with: cell.bubbleView, duration: 0.2, options: .transitionCrossDissolve) {
+                    vc.dataSource.reconfigureMessageCellInPlace(cell, message: msg, vc: vc)
+                }
             }
         }
 
