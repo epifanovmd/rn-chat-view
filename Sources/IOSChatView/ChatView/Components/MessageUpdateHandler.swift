@@ -310,16 +310,44 @@ private extension MessageUpdateHandler {
                 }
                 log("  [2/4] Метод: crossfade (полная замена)")
             } else {
-                let applyDK = {
-                    cv.reload(using: changeset) { [weak vc] data in
-                        guard let vc else { return }
-                        vc.setRows(data)
-                        vc.applyLayoutData(vc.computeLayoutData())
-                    }
-                    cv.layoutIfNeeded()
+                // Собираем операции для определения merged batch
+                var allDeleted: [IndexPath] = []
+                var allInserted: [IndexPath] = []
+                var allUpdated: [IndexPath] = []
+                for stage in changeset {
+                    allDeleted += stage.elementDeleted.map { IndexPath(item: $0.element, section: $0.section) }
+                    allInserted += stage.elementInserted.map { IndexPath(item: $0.element, section: $0.section) }
+                    allUpdated += stage.elementUpdated.map { IndexPath(item: $0.element, section: $0.section) }
                 }
-                if suppressAnimation { UIView.performWithoutAnimation(applyDK) } else { applyDK() }
-                log("  [2/4] Метод: DK batch (stages=\(changeset.count), animated=\(!suppressAnimation))")
+
+                // Del+Ins в multi-stage — merged batch для одновременной fade анимации
+                let isMixedDelIns = !allDeleted.isEmpty && !allInserted.isEmpty && changeset.count > 1
+
+                if isMixedDelIns {
+                    let applyMerged = {
+                        cv.performBatchUpdates({
+                            vc.setRows(newRows)
+                            vc.applyLayoutData(vc.computeLayoutData())
+                            cv.deleteItems(at: allDeleted)
+                            cv.insertItems(at: allInserted)
+                            if !allUpdated.isEmpty { cv.reloadItems(at: allUpdated) }
+                        })
+                        cv.layoutIfNeeded()
+                    }
+                    if suppressAnimation { UIView.performWithoutAnimation(applyMerged) } else { applyMerged() }
+                    log("  [2/4] Метод: merged batch (del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count), animated=\(!suppressAnimation))")
+                } else {
+                    let applyDK = {
+                        cv.reload(using: changeset) { [weak vc] data in
+                            guard let vc else { return }
+                            vc.setRows(data)
+                            vc.applyLayoutData(vc.computeLayoutData())
+                        }
+                        cv.layoutIfNeeded()
+                    }
+                    if suppressAnimation { UIView.performWithoutAnimation(applyDK) } else { applyDK() }
+                    log("  [2/4] Метод: DK batch (stages=\(changeset.count), animated=\(!suppressAnimation))")
+                }
             }
 
             if vc.rows != newRows {
