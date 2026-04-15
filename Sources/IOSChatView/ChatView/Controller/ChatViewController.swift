@@ -543,7 +543,77 @@ public final class ChatViewController: UIViewController {
         return nil
     }
 
-    /// Restores scroll position from a previously saved anchor.
+    /// Все видимые якоря — после batch выбираем тот, который существует и сместился минимально.
+    public func currentVisibleAnchors() -> [ScrollAnchor] {
+        guard !messages.isEmpty, let cv = collectionView else { return [] }
+
+        if isNearBottom() {
+            guard let lastMsg = messages.last else { return [] }
+            return [ScrollAnchor(messageId: lastMsg.id, offset: 0, wasAtBottom: true)]
+        }
+
+        let visibleBottom = cv.contentOffset.y + cv.bounds.height - cv.contentInset.bottom
+        let paths = cv.indexPathsForVisibleItems.sorted { $0.item < $1.item }
+
+        var anchors: [ScrollAnchor] = []
+        for ip in paths {
+            guard ip.item < rows.count,
+                  case .message(let msg) = rows[ip.item] else { continue }
+            let rowIdx = ip.item
+            guard rowIdx < chatLayout.rowLayoutData.count,
+                  rowIdx < chatLayout.yOffsets.count else { continue }
+
+            let cellBottom = chatLayout.yOffsets[rowIdx]
+                + chatLayout.rowLayoutData[rowIdx].topInset
+                + chatLayout.rowLayoutData[rowIdx].height
+            let offset = visibleBottom - cellBottom
+
+            anchors.append(ScrollAnchor(messageId: msg.id, offset: offset, wasAtBottom: false))
+        }
+        return anchors
+    }
+
+    /// Восстанавливает позицию по лучшему из видимых якорей (существует + минимальное смещение).
+    public func restoreBestAnchor(_ anchors: [ScrollAnchor]) {
+        guard let cv = collectionView else { return }
+
+        if anchors.contains(where: { $0.wasAtBottom }) {
+            scrollToBottom(animated: false)
+            return
+        }
+
+        let currentOffset = cv.contentOffset.y
+
+        // Ищем якорь с минимальным смещением среди тех, что ещё существуют в layout
+        var bestTarget: CGFloat?
+        var bestDelta = CGFloat.greatestFiniteMagnitude
+
+        for a in anchors {
+            guard let rowIndex = rowIndexCache[a.messageId],
+                  rowIndex < chatLayout.rowLayoutData.count,
+                  rowIndex < chatLayout.yOffsets.count else { continue }
+
+            let cellBottom = chatLayout.yOffsets[rowIndex]
+                + chatLayout.rowLayoutData[rowIndex].topInset
+                + chatLayout.rowLayoutData[rowIndex].height
+            let target = cellBottom + a.offset - cv.bounds.height + cv.contentInset.bottom
+            let delta = abs(target - currentOffset)
+
+            if delta < bestDelta {
+                bestDelta = delta
+                bestTarget = target
+            }
+        }
+
+        guard let target = bestTarget else { return }
+
+        let minY = -cv.adjustedContentInset.top
+        let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+        let clampedY = min(max(target, minY), max(maxY, minY))
+
+        cv.contentOffset = CGPoint(x: 0, y: clampedY)
+    }
+
     /// Восстанавливает позицию скролла: нижний край ячейки-якоря на прежнем расстоянии от visible bottom.
     public func restoreScrollAnchor(_ anchor: ScrollAnchor) {
         guard let cv = collectionView else { return }

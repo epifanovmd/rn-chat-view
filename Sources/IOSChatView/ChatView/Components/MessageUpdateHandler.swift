@@ -286,11 +286,11 @@ private extension MessageUpdateHandler {
             return oldIDs.subtracting(newIDs)
         }()
 
-        // Якорь (нижний видимый элемент)
-        let anchor = wantScroll ? nil : vc.currentScrollAnchor()
+        // Все видимые якоря — после batch восстанавливаемся по самому стабильному
+        let anchors = wantScroll ? [] : vc.currentVisibleAnchors()
 
-        if let a = anchor {
-            log("  Anchor: msg=\(a.messageId.prefix(12)) offset=\(f(a.offset)) wasAtBottom=\(a.wasAtBottom)")
+        if !anchors.isEmpty {
+            log("  Anchors: \(anchors.count) видимых, top=\(anchors.first!.messageId.prefix(12)) bot=\(anchors.last!.messageId.prefix(12))")
         }
 
         let doApply = { [weak self] (suppressAnimation: Bool) in
@@ -301,12 +301,34 @@ private extension MessageUpdateHandler {
 
             log("  [1/4] Начало: offset=\(f(offsetBefore)) contentH=\(f(contentHBefore)) suppress=\(suppressAnimation)")
 
+            var dkAnimated = false
+
             if isFullReplace {
+                // Snapshot старого состояния
+                let snapshotView = cv.snapshotView(afterScreenUpdates: false)
+
                 vc.setRows(newRows)
                 vc.applyLayoutData(vc.computeLayoutData())
-                UIView.transition(with: cv, duration: 0.25, options: .transitionCrossDissolve) {
-                    cv.reloadData()
-                    cv.layoutIfNeeded()
+                cv.reloadData()
+                cv.layoutIfNeeded()
+
+                // Offset на новую позицию ДО анимации
+                if wantScroll {
+                    self.scrollToBottom(cv: cv, animated: false)
+                } else if !anchors.isEmpty {
+                    vc.restoreBestAnchor(anchors)
+                }
+
+                // Crossfade: snapshot старого поверх нового, fade out
+                if let snap = snapshotView {
+                    let cvFrame = cv.convert(cv.bounds, to: vc.view)
+                    snap.frame = cvFrame
+                    vc.view.addSubview(snap)
+                    UIView.animate(withDuration: 0.25, animations: {
+                        snap.alpha = 0
+                    }, completion: { _ in
+                        snap.removeFromSuperview()
+                    })
                 }
                 log("  [2/4] Метод: crossfade (полная замена)")
             } else {
@@ -320,34 +342,21 @@ private extension MessageUpdateHandler {
                     allUpdated += stage.elementUpdated.map { IndexPath(item: $0.element, section: $0.section) }
                 }
 
-                // Del+Ins в multi-stage — merged batch для одновременной fade анимации
-                let isMixedDelIns = !allDeleted.isEmpty && !allInserted.isEmpty && changeset.count > 1
+                // Анимируем: shuffle (moves) и чистые удаления (del без ins)
+                // Без анимации: всё с inserts (чтобы избежать прыжков от off-screen вставок)
+                let shouldAnimate = allInserted.isEmpty && !suppressAnimation
 
-                if isMixedDelIns {
-                    let applyMerged = {
-                        cv.performBatchUpdates({
-                            vc.setRows(newRows)
-                            vc.applyLayoutData(vc.computeLayoutData())
-                            cv.deleteItems(at: allDeleted)
-                            cv.insertItems(at: allInserted)
-                            if !allUpdated.isEmpty { cv.reloadItems(at: allUpdated) }
-                        })
-                        cv.layoutIfNeeded()
+                let applyDK = {
+                    cv.reload(using: changeset) { [weak vc] data in
+                        guard let vc else { return }
+                        vc.setRows(data)
+                        vc.applyLayoutData(vc.computeLayoutData())
                     }
-                    if suppressAnimation { UIView.performWithoutAnimation(applyMerged) } else { applyMerged() }
-                    log("  [2/4] Метод: merged batch (del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count), animated=\(!suppressAnimation))")
-                } else {
-                    let applyDK = {
-                        cv.reload(using: changeset) { [weak vc] data in
-                            guard let vc else { return }
-                            vc.setRows(data)
-                            vc.applyLayoutData(vc.computeLayoutData())
-                        }
-                        cv.layoutIfNeeded()
-                    }
-                    if suppressAnimation { UIView.performWithoutAnimation(applyDK) } else { applyDK() }
-                    log("  [2/4] Метод: DK batch (stages=\(changeset.count), animated=\(!suppressAnimation))")
+                    cv.layoutIfNeeded()
                 }
+                dkAnimated = shouldAnimate
+                if shouldAnimate { applyDK() } else { UIView.performWithoutAnimation(applyDK) }
+                log("  [2/4] Метод: DK batch (stages=\(changeset.count), del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count), animated=\(shouldAnimate))")
             }
 
             if vc.rows != newRows {
@@ -362,12 +371,18 @@ private extension MessageUpdateHandler {
             let contentHAfter = cv.contentSize.height
             log("  [3/4] После batch: offset=\(f(offsetAfter)) (Δ\(f(offsetAfter - offsetBefore))) contentH=\(f(contentHAfter)) (Δ\(f(contentHAfter - contentHBefore)))")
 
-            if wantScroll {
+            if isFullReplace {
+                // offset уже установлен в crossfade блоке
+                log("  [4/4] Скролл: установлен в crossfade, offset=\(f(cv.contentOffset.y))")
+            } else if wantScroll {
                 self.scrollToBottom(cv: cv, animated: animateScroll)
                 log("  [4/4] Скролл: scrollToBottom (animated=\(animateScroll)), offset=\(f(cv.contentOffset.y))")
-            } else if let anchor {
-                vc.restoreScrollAnchor(anchor)
-                log("  [4/4] Скролл: anchor restore, offset=\(f(cv.contentOffset.y)) (Δ\(f(cv.contentOffset.y - offsetBefore)))")
+            } else if dkAnimated {
+                // DK анимация сама позиционирует правильно — anchor restore не нужен
+                log("  [4/4] Скролл: DK animated, offset=\(f(cv.contentOffset.y)) (Δ\(f(cv.contentOffset.y - offsetBefore)))")
+            } else if !anchors.isEmpty {
+                vc.restoreBestAnchor(anchors)
+                log("  [4/4] Скролл: best anchor, offset=\(f(cv.contentOffset.y)) (Δ\(f(cv.contentOffset.y - offsetBefore)))")
             } else {
                 log("  [4/4] Скролл: не требуется")
             }
