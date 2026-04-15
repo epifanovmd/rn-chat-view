@@ -88,17 +88,18 @@ final class MessageUpdateHandler {
         for stage in changeset { ins += stage.elementInserted.count; del += stage.elementDeleted.count; mov += stage.elementMoved.count; upd += stage.elementUpdated.count }
         let structural = ins + del + mov
 
-        // Скролл
+        // Скролл: только по явному запросу (send, returnToLatest)
         let shouldScroll = vc.pendingScrollToBottom
         if shouldScroll { vc.pendingScrollToBottom = false }
-        let wantScroll = shouldScroll || (snap.wasAtBottom && !vc.isLoadingNewerActive)
 
         if structural == 0 {
             log("  Стратегия: CONTENT_ONLY (upd=\(upd), pending=\(pendingMapping.oldToNew.count))")
             applyContentOnly(vc: vc, newRows: newRows, pendingMapping: pendingMapping, snap: snap, wantScroll: shouldScroll)
         } else {
             log("  Стратегия: STRUCTURAL (ins=\(ins) del=\(del) mov=\(mov) upd=\(upd), stages=\(changeset.count))")
-            applyStructural(vc: vc, newRows: newRows, changeset: changeset, snap: snap, wantScroll: wantScroll, animateScroll: shouldScroll)
+            // Structural: scrollToBottom только по явному запросу (send, returnToLatest).
+            // Append (новые снизу) обрабатывается отдельным путём со своим auto-scroll.
+            applyStructural(vc: vc, newRows: newRows, changeset: changeset, snap: snap, wantScroll: shouldScroll, animateScroll: shouldScroll)
         }
     }
 
@@ -262,11 +263,8 @@ private extension MessageUpdateHandler {
         }
 
         // Классификация
-        let isFullReplace = (allDeleted.count + allInserted.count) > max(s.oldRows.count, newRows.count)
         let hasInserts = !allInserted.isEmpty
         let hasDeletes = !allDeleted.isEmpty
-        // Snapshot fade: fullReplace, mixed (del+ins), insert only — всё с inserts кроме чистых delete/shuffle
-        let useSnapshotFade = !isFullReplace && hasInserts
 
         // Удалённые ID
         let deletedIDs: Set<String> = {
@@ -287,8 +285,8 @@ private extension MessageUpdateHandler {
         // | Кейс              | Анимация       | Скролл после         |
         // |--------------------|----------------|----------------------|
         // | FullReplace        | Snapshot fade  | anchor / scrollToBot |
-        // | Insert / Mixed     | Snapshot fade  | anchor / scrollToBot |
-        // | Delete / Shuffle   | DK animated    | DK сам               |
+        // | Есть inserts       | Snapshot fade  | anchor / scrollToBot |
+        // | Нет inserts        | DK animated    | DK сам               |
         // | Disintegration     | Конфетти → DK  | DK сам / anchor      |
 
         let doApply = { [weak self] (suppressAnimation: Bool) in
@@ -302,7 +300,7 @@ private extension MessageUpdateHandler {
 
             // ── Применение данных ──
 
-            if isFullReplace || useSnapshotFade {
+            if hasInserts {
                 // Snapshot → DK без анимации → offset → fade
                 let snapshot = cv.snapshotView(afterScreenUpdates: false)
 
@@ -336,7 +334,7 @@ private extension MessageUpdateHandler {
                 }
 
                 usedSnapshotFade = true
-                let type = isFullReplace ? "FULL_REPLACE" : (hasDeletes ? "MIXED" : "INSERT")
+                let type = hasDeletes ? "MIXED" : "INSERT"
                 log("  Метод: \(type) (snapshot fade, del=\(allDeleted.count) ins=\(allInserted.count) upd=\(allUpdated.count))")
 
             } else {
@@ -396,7 +394,7 @@ private extension MessageUpdateHandler {
 
         // ── Disintegration ──
 
-        if vc.disintegrationEnabled && !deletedIDs.isEmpty && !isFullReplace && !hasInserts {
+        if vc.disintegrationEnabled && !deletedIDs.isEmpty && !hasInserts {
             log("  Disintegration: \(deletedIDs.count) удалений")
             animateDisintegrationThen(vc: vc, deletedIDs: deletedIDs) { hadVisible in
                 doApply(!hadVisible)
@@ -488,9 +486,7 @@ private extension MessageUpdateHandler {
             let ip = IndexPath(item: i, section: 0)
             guard case .message(let msg) = rows[i] else { continue }
             if let cell = cv.cellForItem(at: ip) as? MessageCell {
-                UIView.transition(with: cell.bubbleView, duration: 0.2, options: .transitionCrossDissolve) {
-                    vc.dataSource.reconfigureMessageCellInPlace(cell, message: msg, vc: vc)
-                }
+                vc.dataSource.reconfigureMessageCellInPlace(cell, message: msg, vc: vc)
             }
         }
 
