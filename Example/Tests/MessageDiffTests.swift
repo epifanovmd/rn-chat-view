@@ -24,6 +24,50 @@ private func msg(_ id: String, localId: String? = nil, text: String = "text", ti
 private let t0 = Date(timeIntervalSince1970: 1000)
 private func ts(_ offset: TimeInterval) -> Date { t0.addingTimeInterval(offset) }
 
+// MARK: - UnreadManager: только .theirs
+
+final class UnreadManagerOwnershipTests: XCTestCase {
+
+    func testTrackAppended_onlyTheirsMessages() {
+        let manager = UnreadManager()
+        let messages = [
+            msg("1", ownership: .theirs),
+            msg("2", ownership: .mine),
+            msg("3", ownership: .system),
+            msg("4", ownership: .theirs),
+            msg("5", ownership: .pinned),
+        ]
+        manager.trackAppended(newMessages: messages, oldCount: 0)
+        XCTAssertEqual(manager.count, 2)
+        XCTAssertTrue(manager.unreadIDs.contains("1"))
+        XCTAssertTrue(manager.unreadIDs.contains("4"))
+        XCTAssertFalse(manager.unreadIDs.contains("2"))
+        XCTAssertFalse(manager.unreadIDs.contains("3"))
+        XCTAssertFalse(manager.unreadIDs.contains("5"))
+    }
+
+    func testTrackAppended_systemAndPinnedIgnored() {
+        let manager = UnreadManager()
+        let messages = [
+            msg("1", ownership: .system),
+            msg("2", ownership: .pinned),
+        ]
+        manager.trackAppended(newMessages: messages, oldCount: 0)
+        XCTAssertEqual(manager.count, 0)
+        XCTAssertTrue(manager.unreadIDs.isEmpty)
+    }
+
+    func testTrackAppended_mineIgnored() {
+        let manager = UnreadManager()
+        let messages = [
+            msg("1", ownership: .mine),
+            msg("2", ownership: .mine),
+        ]
+        manager.trackAppended(newMessages: messages, oldCount: 0)
+        XCTAssertEqual(manager.count, 0)
+    }
+}
+
 // MARK: - Prepend/Append Detection Tests
 
 final class MessageDiffPatternTests: XCTestCase {

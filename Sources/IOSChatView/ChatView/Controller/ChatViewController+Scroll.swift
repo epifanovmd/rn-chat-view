@@ -162,7 +162,7 @@ extension ChatViewController {
                 newActiveIDs.insert(msg.id)
             }
 
-            if visibleFraction >= unreadThreshold && msg.status != .read {
+            if visibleFraction >= unreadThreshold && msg.ownership == .theirs && msg.status != .read {
                 unreadIDs.insert(msg.id)
             }
         }
