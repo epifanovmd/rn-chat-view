@@ -159,6 +159,14 @@ public struct ChatLayout {
     public var voicePlaySize: CGFloat = 36
     /// Размер иконки play/pause внутри кнопки воспроизведения
     public var voicePlayIconSize: CGFloat = 18
+    /// Предпочтительная ширина области волновой формы (задаёт ширину пузыря)
+    public var voiceWaveformWidth: CGFloat = 140
+    /// Отступ волновой формы от правого края контента — столбики не упираются в край пузыря
+    public var voiceWaveformTrailingInset: CGFloat = 8
+    /// Расстояние между кнопкой воспроизведения и волновой формой
+    public var voiceContentSpacing: CGFloat = 10
+    /// Минимальная высота столбика волновой формы (тишина)
+    public var voiceBarMinHeight: CGFloat = 2
 
     // MARK: - Опрос
 

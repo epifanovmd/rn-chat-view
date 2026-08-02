@@ -29,6 +29,8 @@ public final class VoiceContentView: UIView {
     private var playButtonHeightConstraint: NSLayoutConstraint!
     private var viewHeightConstraint: NSLayoutConstraint!
     private var waveformHeightConstraint: NSLayoutConstraint!
+    private var waveformLeadingConstraint: NSLayoutConstraint!
+    private var waveformTrailingConstraint: NSLayoutConstraint!
 
     // MARK: - Инициализация
 
@@ -101,7 +103,6 @@ public final class VoiceContentView: UIView {
         playIcon.image = UIImage(systemName: "play.fill", withConfiguration: config)
 
         let waveH = btnSize - L.voiceDurationFont.lineHeight - 2
-        let contentLeading: CGFloat = 10
 
         let vPadTop: CGFloat = 8
         let vPadBottom: CGFloat = 4
@@ -109,6 +110,10 @@ public final class VoiceContentView: UIView {
         playButtonHeightConstraint = playButton.heightAnchor.constraint(equalToConstant: btnSize)
         viewHeightConstraint = heightAnchor.constraint(equalToConstant: btnSize + vPadTop + vPadBottom)
         waveformHeightConstraint = waveformView.heightAnchor.constraint(equalToConstant: waveH)
+        waveformLeadingConstraint = waveformView.leadingAnchor.constraint(
+            equalTo: playButton.trailingAnchor, constant: L.voiceContentSpacing)
+        waveformTrailingConstraint = waveformView.trailingAnchor.constraint(
+            equalTo: trailingAnchor, constant: -L.voiceWaveformTrailingInset)
 
         NSLayoutConstraint.activate([
             playButton.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -120,8 +125,8 @@ public final class VoiceContentView: UIView {
             playIcon.centerXAnchor.constraint(equalTo: playButton.centerXAnchor),
             playIcon.centerYAnchor.constraint(equalTo: playButton.centerYAnchor),
 
-            waveformView.leadingAnchor.constraint(equalTo: playButton.trailingAnchor, constant: contentLeading),
-            waveformView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            waveformLeadingConstraint,
+            waveformTrailingConstraint,
             waveformView.topAnchor.constraint(equalTo: topAnchor, constant: vPadTop),
             waveformHeightConstraint,
 
@@ -151,6 +156,8 @@ public final class VoiceContentView: UIView {
         playButtonHeightConstraint.constant = btnSize
         viewHeightConstraint.constant = btnSize + 12 // 8pt top + 4pt bottom padding
         waveformHeightConstraint.constant = waveH
+        waveformLeadingConstraint.constant = L.voiceContentSpacing
+        waveformTrailingConstraint.constant = -L.voiceWaveformTrailingInset
 
         // Пересоздание кольца загрузки под новый размер
         let inset: CGFloat = 4
@@ -338,7 +345,9 @@ public final class WaveformView: UIView, UIGestureRecognizerDelegate {
     public required init?(coder: NSCoder) { fatalError() }
 
     func configure(waveform: [Float], activeColor: UIColor, inactiveColor: UIColor, progress: Float, layout: ChatLayout = ChatLayout()) {
-        self.waveform = waveform.isEmpty ? Array(repeating: 0.3, count: 40) : waveform
+        self.waveform = waveform.isEmpty
+            ? Array(repeating: 0.3, count: 40)
+            : Self.normalize(waveform)
         self.activeColor = activeColor
         self.inactiveColor = inactiveColor
         self.progress = progress
@@ -375,11 +384,12 @@ public final class WaveformView: UIView, UIGestureRecognizerDelegate {
         guard count > 0 else { return }
 
         let normalized = resample(waveform, to: count)
-        let minH: CGFloat = 2
+        let minH = currentLayout.voiceBarMinHeight
 
         for i in 0..<count {
             let bar = CALayer()
-            let h = max(minH, CGFloat(normalized[i]) * bounds.height)
+            let level = min(max(CGFloat(normalized[i]), 0), 1)
+            let h = max(minH, level * bounds.height)
             bar.frame = CGRect(
                 x: CGFloat(i) * totalW,
                 y: bounds.height - h,
@@ -464,6 +474,18 @@ public final class WaveformView: UIView, UIGestureRecognizerDelegate {
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
                            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         true
+    }
+
+    // MARK: - Нормализация
+
+    /// Приводит амплитуды к 0…1 по максимуму: источник (рекордер, сервер)
+    /// может отдавать произвольную шкалу, иначе столбики вылезают за область
+    /// волны и обрезаются краем пузыря.
+    static func normalize(_ data: [Float]) -> [Float] {
+        guard let peak = data.map({ abs($0) }).max(), peak > 0 else {
+            return Array(repeating: 0, count: data.count)
+        }
+        return data.map { min(abs($0) / peak, 1) }
     }
 
     // MARK: - Ресемплинг

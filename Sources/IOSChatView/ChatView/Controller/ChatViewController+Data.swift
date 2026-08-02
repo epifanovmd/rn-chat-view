@@ -89,6 +89,19 @@ extension ChatViewController {
         }
     }
 
+    /// Цитата в том виде, в каком её покажет ячейка: имя и текст берутся
+    /// из оригинального сообщения, а не из сырого ReplyInfo.
+    func resolvedReply(for msg: ChatMessage) -> ReplyDisplayInfo? {
+        msg.reply.flatMap { info -> ReplyDisplayInfo? in
+            guard let original = messageIndex[info.replyToId] else { return nil }
+            return ReplyDisplayInfo(
+                senderName: original.senderName ?? "Неизвестный",
+                text: original.content.text ?? "",
+                hasImage: original.content.content != nil
+            )
+        }
+    }
+
     func computeMessageHeight(forId id: String, width: CGFloat) -> CGFloat {
         if let cached = sizeCache.height(forKey: id, width: width) { return cached }
         guard let msg = messageIndex[id] else { return layout.cellMinHeight }
@@ -99,7 +112,8 @@ extension ChatViewController {
             layout: layout,
             showSenderName: showName,
             features: features,
-            factory: contentFactory
+            factory: contentFactory,
+            resolvedReply: resolvedReply(for: msg)
         )
         let h = max(height, layout.cellMinHeight)
         sizeCache.set(height: h, forKey: id, width: width)

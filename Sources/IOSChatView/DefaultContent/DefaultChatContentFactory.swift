@@ -81,6 +81,23 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return L.messageFont.lineHeight + L.bubbleVPad * 2
     }
 
+    open func contentPreferredWidth(
+        for media: AnyChatContent,
+        maxWidth: CGFloat,
+        layout L: ChatLayout
+    ) -> CGFloat? {
+        // Голосовое: пузырь по контенту, иначе волна растягивается на всю
+        // ширину и упирается в край пузыря.
+        if media.content(as: VoicePayload.self) != nil {
+            let width = L.voicePlaySize
+                + L.voiceContentSpacing
+                + L.voiceWaveformWidth
+                + L.voiceWaveformTrailingInset
+            return min(width, maxWidth)
+        }
+        return nil
+    }
+
     open func reconfigureContentView(
         _ view: UIView,
         for media: AnyChatContent,

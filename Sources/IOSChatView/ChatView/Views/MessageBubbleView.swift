@@ -69,7 +69,8 @@ public final class MessageBubbleView: UIView {
         applyLayout(layout)
         let ownership = message.ownership
         let content = message.content
-        isEmojiOnly = content.content == nil && EmojiHelper.emojiOnlyCount(content.text) != nil
+        isEmojiOnly = Self.isBubblelessEmoji(
+            message, showSenderName: showSenderName, features: features)
 
         if isEmojiOnly {
             backgroundColor = .clear
@@ -185,6 +186,19 @@ public final class MessageBubbleView: UIView {
         currentMessage = message
     }
 
+    /// Крупное эмодзи без фона пузыря — только когда рядом нет имени
+    /// отправителя, цитаты и заголовка пересылки: им нужен контейнер.
+    static func isBubblelessEmoji(_ msg: ChatMessage, showSenderName: Bool, features: ChatFeatures) -> Bool {
+        guard msg.content.content == nil,
+              EmojiHelper.emojiOnlyCount(msg.content.text) != nil else { return false }
+
+        if showSenderName, msg.senderName != nil { return false }
+        if features.showReplyPreview, msg.reply != nil { return false }
+        if features.showForwardedMark, msg.forwardedFrom != nil { return false }
+
+        return true
+    }
+
     // MARK: - Фабрика контента
 
     private func createContentView(for msg: ChatMessage, width: CGFloat, theme: ChatTheme, features: ChatFeatures, factory: ChatContentFactory) -> UIView {
@@ -292,7 +306,7 @@ public final class MessageBubbleView: UIView {
             hasReply: features.showReplyPreview && msg.reply != nil,
             hasSenderName: showSenderName && msg.senderName != nil,
             hasThread: features.showThreadIndicator && msg.thread != nil,
-            isEmojiOnly: msg.content.content == nil && EmojiHelper.emojiOnlyCount(msg.content.text) != nil
+            isEmojiOnly: Self.isBubblelessEmoji(msg, showSenderName: showSenderName, features: features)
         )
     }
 

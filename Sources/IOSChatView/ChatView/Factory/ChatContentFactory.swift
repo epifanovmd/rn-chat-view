@@ -30,6 +30,15 @@ public protocol ChatContentFactory: AnyObject {
         layout: ChatLayout
     ) -> CGFloat
 
+    /// Предпочтительная ширина контента (без внутренних отступов пузыря).
+    /// `nil` — контент занимает всю доступную ширину (изображения, опросы).
+    /// Конкретное значение — пузырь сжимается под контент (голосовое сообщение).
+    func contentPreferredWidth(
+        for media: AnyChatContent,
+        maxWidth: CGFloat,
+        layout: ChatLayout
+    ) -> CGFloat?
+
     /// In-place реконфигурация существующего view при изменении данных.
     /// Возвращает `true` если view обновлён, `false` — нужна полная пересборка.
     func reconfigureContentView(
@@ -185,4 +194,15 @@ public protocol ChatContentFactory: AnyObject {
         theme: ChatTheme,
         layout: ChatLayout
     ) -> UIView
+}
+
+// MARK: - Значения по умолчанию
+
+public extension ChatContentFactory {
+    /// По умолчанию контент занимает всю доступную ширину.
+    func contentPreferredWidth(
+        for media: AnyChatContent,
+        maxWidth: CGFloat,
+        layout: ChatLayout
+    ) -> CGFloat? { nil }
 }

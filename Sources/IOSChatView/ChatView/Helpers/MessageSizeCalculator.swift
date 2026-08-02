@@ -4,30 +4,20 @@ public enum MessageSizeCalculator {
 
     // MARK: - Публичное API
 
-    public static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
-        let bw = bubbleWidth(for: msg, containerWidth: maxWidth, layout: L, showSenderName: showSenderName, features: features)
+    public static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory(), resolvedReply: ReplyDisplayInfo? = nil) -> CGFloat {
+        let bw = bubbleWidth(for: msg, containerWidth: maxWidth, layout: L, showSenderName: showSenderName, features: features, factory: factory, resolvedReply: resolvedReply)
         let bh = bubbleHeight(for: msg, bubbleWidth: bw, layout: L, showSenderName: showSenderName, features: features, factory: factory)
         return bh + L.cellVSpacing
     }
 
     // MARK: - Ширина пузыря
 
-    public static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures()) -> CGFloat {
+    public static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory(), resolvedReply: ReplyDisplayInfo? = nil) -> CGFloat {
         let avatarSpace: CGFloat = (features.showAvatars && msg.ownership == .theirs)
             ? L.avatarSize + L.avatarLeadingMargin + L.avatarBubbleSpacing
             : 0
         let maxW = containerWidth * L.bubbleMaxWidthRatio - avatarSpace
         let content = msg.content
-
-        if content.content == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
-            let font = ChatTextMeasurer.emojiFont(for: count, layout: L)
-            let tw = ChatTextMeasurer.width(content.text!, font: font)
-            var w = min(tw + L.bubbleHPad * 2, maxW)
-            if features.showReactions, !msg.reactions.isEmpty {
-                w = max(w, reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2)
-            }
-            return min(w, maxW)
-        }
 
         var senderNameW: CGFloat = 0
         if showSenderName, let name = msg.senderName {
@@ -37,15 +27,48 @@ public enum MessageSizeCalculator {
         var replyW: CGFloat = 0
         if features.showReplyPreview, let reply = msg.reply {
             let replyInner = L.replyAccentWidth + L.bubbleHPad + L.bubbleHPad
-            let senderW = ChatTextMeasurer.width(reply.senderName ?? "", font: L.replySenderFont)
-            let textW = ChatTextMeasurer.width(reply.text ?? "…", font: L.replyFont)
+            // Меряем ровно то, что покажет ReplyPreviewView (с его фоллбэками).
+            let senderW = ChatTextMeasurer.width(
+                ReplyPreviewView.senderText(reply: reply, resolved: resolvedReply),
+                font: L.replySenderFont)
+            let textW = ChatTextMeasurer.width(
+                ReplyPreviewView.contentText(reply: reply, resolved: resolvedReply),
+                font: L.replyFont)
             let replyContentW = max(senderW, textW)
             let minReplyW = min(replyContentW + replyInner, maxW * 0.7)
             replyW = minReplyW + L.bubbleHPad * 2
         }
 
-        if content.content != nil {
+        // Эмодзи-сообщение: ширина по крупному шрифту, но не уже имени
+        // отправителя и цитаты — иначе они схлопываются в несколько символов.
+        if content.content == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
+            let font = ChatTextMeasurer.emojiFont(for: count, layout: L)
+            let tw = ChatTextMeasurer.width(content.text!, font: font)
+            var w = min(tw + L.bubbleHPad * 2, maxW)
+
+            w = max(w, senderNameW, replyW)
+            if features.showReactions, !msg.reactions.isEmpty {
+                w = max(w, reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2)
+            }
+            return min(w, maxW)
+        }
+
+        if let media = content.content {
             var w = maxW
+
+            // Контент с предпочтительной шириной (голосовое) сжимает пузырь,
+            // но не уже футера, цитаты, имени отправителя и текста.
+            if let preferred = factory.contentPreferredWidth(
+                for: media, maxWidth: maxW - L.bubbleHPad * 2, layout: L
+            ) {
+                w = preferred + L.bubbleHPad * 2
+                if let text = content.text, !text.isEmpty {
+                    w = max(w, ChatTextMeasurer.width(text, font: L.messageFont) + L.bubbleHPad * 2)
+                }
+                w = max(w, minFooterWidth(for: msg, layout: L, features: features) + L.bubbleHPad * 2)
+                w = max(w, senderNameW, replyW)
+            }
+
             if features.showReactions, !msg.reactions.isEmpty {
                 w = max(w, reactionWidth(for: msg.reactions, layout: L) + L.bubbleHPad * 2)
             }
@@ -73,8 +96,16 @@ public enum MessageSizeCalculator {
 
     public static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         let content = msg.content
+        let emojiCount = content.content == nil ? EmojiHelper.emojiOnlyCount(content.text) : nil
+        let showsName = showSenderName && msg.senderName != nil
+        let hasReply = features.showReplyPreview && msg.reply != nil
 
-        if content.content == nil, let count = EmojiHelper.emojiOnlyCount(content.text) {
+        // Пузырь без фона — только у «чистого» эмодзи: с именем, цитатой или
+        // пересылкой это обычное сообщение с крупным эмодзи внутри.
+        if let count = emojiCount,
+           !showsName,
+           !hasReply,
+           !(features.showForwardedMark && msg.forwardedFrom != nil) {
             let font = ChatTextMeasurer.emojiFont(for: count, layout: L)
             var h = ChatTextMeasurer.height(content.text!, font: font, width: bw - L.bubbleHPad * 2) + L.bubbleVPad * 2
 
@@ -96,17 +127,20 @@ public enum MessageSizeCalculator {
         let innerW = bw - L.bubbleHPad * 2 - forwardedInset
         var h: CGFloat = L.bubbleVPad
 
-        if showSenderName, msg.senderName != nil {
+        if showsName {
             h += L.senderNameFont.lineHeight + L.bubbleSpacing
         }
         if isForwarded {
             h += L.forwardedFont.lineHeight + L.bubbleSpacing
         }
-        if features.showReplyPreview, msg.reply != nil {
+        if hasReply {
             h += L.replyHeight + L.bubbleSpacing
         }
 
-        h += contentHeight(for: content, width: innerW, layout: L, factory: factory)
+        // Текст эмодзи-сообщения меряется крупным шрифтом и в общем пути.
+        let emojiFont = emojiCount.map { ChatTextMeasurer.emojiFont(for: $0, layout: L) }
+
+        h += contentHeight(for: content, width: innerW, layout: L, factory: factory, textFont: emojiFont)
 
         if features.showThreadIndicator, msg.thread != nil {
             h += L.threadBarHeight + L.bubbleSpacing
@@ -147,7 +181,7 @@ public enum MessageSizeCalculator {
 
     // MARK: - Высота контента
 
-    public static func contentHeight(for content: MessageBody, width: CGFloat, layout L: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
+    public static func contentHeight(for content: MessageBody, width: CGFloat, layout L: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory(), textFont: UIFont? = nil) -> CGFloat {
         var h: CGFloat = 0
 
         if let media = content.content {
@@ -156,7 +190,7 @@ public enum MessageSizeCalculator {
 
         if let text = content.text, !text.isEmpty {
             if h > 0 { h += L.mixedContentSpacing }
-            h += factory.textHeight(text: text, font: L.messageFont, width: width)
+            h += factory.textHeight(text: text, font: textFont ?? L.messageFont, width: width)
         }
 
         return max(h, 0)

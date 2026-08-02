@@ -148,13 +148,6 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
     }
 
     private func resolveReply(for msg: ChatMessage, vc: ChatViewController) -> ReplyDisplayInfo? {
-        msg.reply.flatMap { info -> ReplyDisplayInfo? in
-            guard let original = vc.messageIndex[info.replyToId] else { return nil }
-            return ReplyDisplayInfo(
-                senderName: original.senderName ?? "Неизвестный",
-                text: original.content.text ?? "",
-                hasImage: original.content.content != nil
-            )
-        }
+        vc.resolvedReply(for: msg)
     }
 }

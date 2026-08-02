@@ -71,7 +71,7 @@ public final class MessageCell: UICollectionViewCell {
             : 0
         leadingConstraint.constant = layout.cellHMargin + avatarSpace
         trailingConstraint.constant = -layout.cellHMargin
-        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, layout: layout, showSenderName: showSenderName, features: features)
+        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, layout: layout, showSenderName: showSenderName, features: features, factory: factory, resolvedReply: resolvedReply)
 
         leadingConstraint.isActive = false
         trailingConstraint.isActive = false
@@ -105,7 +105,7 @@ public final class MessageCell: UICollectionViewCell {
         currentTheme = theme
         currentLayout = layout
 
-        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, layout: layout, showSenderName: showSenderName, features: features)
+        let bw = MessageSizeCalculator.bubbleWidth(for: message, containerWidth: maxWidth, layout: layout, showSenderName: showSenderName, features: features, factory: factory, resolvedReply: resolvedReply)
 
         for c in bubbleView.constraints where c.firstAttribute == .width {
             if c.constant != bw { c.constant = bw }

@@ -61,23 +61,33 @@ public final class ReplyPreviewView: UIView {
         contentLabel.font = L.replyFont
     }
 
+    /// Строки, которые реально попадают в цитату. Используются и при отрисовке,
+    /// и при расчёте ширины пузыря — иначе размер считается по одному тексту,
+    /// а показывается другой, и цитата обрезается.
+    public static func senderText(reply: ReplyInfo, resolved: ReplyDisplayInfo?) -> String {
+        resolved?.senderName ?? reply.senderName ?? ""
+    }
+
+    public static func contentText(reply: ReplyInfo, resolved: ReplyDisplayInfo?) -> String {
+        if let text = resolved?.text ?? reply.text, !text.isEmpty {
+            return text
+        }
+        if reply.hasImage || (resolved?.hasImage == true) {
+            return "📷 Photo"
+        }
+        return "…"
+    }
+
     func configure(reply: ReplyInfo, resolved: ReplyDisplayInfo?, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
         applyLayout(layout)
         let isOutgoing = ownership == .mine
         backgroundColor = isOutgoing ? theme.outgoingReplyBackground : theme.incomingReplyBackground
         accentBar.backgroundColor = isOutgoing ? theme.outgoingReplyAccent : theme.incomingReplyAccent
 
-        let sender = resolved?.senderName ?? reply.senderName ?? ""
-        senderLabel.text = sender
+        senderLabel.text = Self.senderText(reply: reply, resolved: resolved)
         senderLabel.textColor = isOutgoing ? theme.outgoingReplySender : theme.incomingReplySender
 
-        if let text = resolved?.text ?? reply.text, !text.isEmpty {
-            contentLabel.text = text
-        } else if reply.hasImage || (resolved?.hasImage == true) {
-            contentLabel.text = "📷 Photo"
-        } else {
-            contentLabel.text = "…"
-        }
+        contentLabel.text = Self.contentText(reply: reply, resolved: resolved)
         contentLabel.textColor = isOutgoing ? theme.outgoingReplyText : theme.incomingReplyText
     }
 
