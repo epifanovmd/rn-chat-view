@@ -418,7 +418,7 @@ public final class ChatViewController: UIViewController {
     }
 
     private func updateTopLoadingOverlay() {
-        if isLoadingTop {
+        if isLoadingTop && !messages.isEmpty {
             if topLoadingSpinner.superview == nil {
                 topLoadingSpinner.translatesAutoresizingMaskIntoConstraints = false
                 collectionView.addSubview(topLoadingSpinner)
@@ -499,6 +499,7 @@ public final class ChatViewController: UIViewController {
     func finalizeUpdate(count: Int, animated: Bool) {
         lastKnownMessageCount = count
         updateEmptyState()
+        updateTopLoadingOverlay()
         updateFABVisibility(animated: animated)
     }
 

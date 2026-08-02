@@ -18,7 +18,7 @@ extension ChatViewController {
             result.append(.message(msg))
         }
 
-        if isLoadingBottom && features.showBottomLoadingIndicator {
+        if isLoadingBottom && features.showBottomLoadingIndicator && !msgs.isEmpty {
             result.append(.loading(position: "bottom"))
         }
         return result
