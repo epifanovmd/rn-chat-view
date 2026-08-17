@@ -29,17 +29,15 @@ public final class ChatViewController: UIViewController {
     public var theme: ChatTheme = .light {
         didSet { guard isViewLoaded, !isBatchUpdate else { return }; applyTheme() }
     }
-    public var layout: ChatLayout = ChatLayout() {
+    public var layout: ChatLayout = ChatLayout.shared {
         didSet {
             guard isViewLoaded, !isBatchUpdate else { return }
-            sizeCache.invalidateAll()
             reloadWithCrossfade()
         }
     }
     public var features: ChatFeatures = ChatFeatures() {
         didSet {
             guard isViewLoaded, !isBatchUpdate else { return }
-            sizeCache.invalidateAll()
             applyFeatureChanges(from: oldValue)
         }
     }
@@ -175,6 +173,7 @@ public final class ChatViewController: UIViewController {
     var anchorThrottleTime: CFTimeInterval = 0
     var visibleMessageIDs: Set<String> = []
     var lastVisibleThrottleTime: CFTimeInterval = 0
+    var lastVisibleCollectTime: CFTimeInterval = 0
     var pendingVisibleThrottleTask: DispatchWorkItem?
     var lastFiredVisibleIDs: Set<String> = []
     var activeVisibleIDs: Set<String> = []
@@ -217,7 +216,6 @@ public final class ChatViewController: UIViewController {
 
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        let cv = collectionView!
         updateCollectionInsets()
         executePendingInitialScroll()
     }
@@ -244,22 +242,17 @@ public final class ChatViewController: UIViewController {
         guard let layout = chatLayout else { return }
 
         let topInset = cv.adjustedContentInset.top
-        let contentH = cv.contentSize.height
+        let maxY = max(cv.chatMaxOffsetY, -topInset)
 
         switch scroll {
         case .toAnchor(let anchor):
-            if anchor.wasAtBottom {
-                let maxY = max(contentH - frameH + insetBottom, -topInset)
-                cv.contentOffset = CGPoint(x: 0, y: maxY)
-            } else if rowIndexCache[anchor.messageId] != nil {
+            if !anchor.wasAtBottom, rowIndexCache[anchor.messageId] != nil {
                 restoreScrollAnchor(anchor)
             } else {
-                let maxY = max(contentH - frameH + insetBottom, -topInset)
                 cv.contentOffset = CGPoint(x: 0, y: maxY)
             }
 
         case .toBottom:
-            let maxY = max(contentH - frameH + insetBottom, -topInset)
             cv.contentOffset = CGPoint(x: 0, y: maxY)
         }
 
@@ -373,8 +366,8 @@ public final class ChatViewController: UIViewController {
         floatingDateManager.applyTheme(theme)
         fabManager.applyTheme(theme, layout: layout, factory: contentFactory)
         emptyStateManager.applyTheme(factory: contentFactory, theme: theme, layout: layout)
-        sizeCache.invalidateAll()
-        reloadWithCrossfade()
+        // Тема — только цвета: размеры ячеек не меняются, кеш не сбрасываем
+        reloadWithCrossfade(invalidateSizes: false)
     }
 
     // MARK: - Применение изменений фич
@@ -409,8 +402,13 @@ public final class ChatViewController: UIViewController {
             || old.showReactions != features.showReactions
             || old.showReplyPreview != features.showReplyPreview
             || old.showEditedMark != features.showEditedMark
-            || old.showForwardedMark != features.showForwardedMark {
+            || old.showForwardedMark != features.showForwardedMark
+            || old.showThreadIndicator != features.showThreadIndicator
+            || old.showAvatars != features.showAvatars {
             reloadWithCrossfade()
+        } else if old.linkDetectionEnabled != features.linkDetectionEnabled {
+            // Детекция ссылок не влияет на размеры — только перерисовка
+            reloadWithCrossfade(invalidateSizes: false)
         }
         if old.showEmptyState != features.showEmptyState {
             updateEmptyState()
@@ -453,9 +451,9 @@ public final class ChatViewController: UIViewController {
         DispatchQueue.main.async(execute: work)
     }
 
-    private func reloadWithCrossfade() {
+    private func reloadWithCrossfade(invalidateSizes: Bool = true) {
         let anchor = currentScrollAnchor()
-        sizeCache.invalidateAll()
+        if invalidateSizes { sizeCache.invalidateAll() }
         rows = buildRows(from: messages)
         applyLayoutData(computeLayoutData())
         UIView.transition(with: collectionView, duration: 0.25, options: .transitionCrossDissolve) {
@@ -514,38 +512,10 @@ public final class ChatViewController: UIViewController {
 
     // MARK: - Якорь скролла
 
-    /// Текущая позиция скролла как стабильный якорь — привязка к нижнему видимому сообщению
-    /// с offset от visible bottom. Учитывает adjustedContentInset.
+    /// Текущая позиция скролла как стабильный якорь — нижний видимый message
+    /// из `currentVisibleAnchors()` (обе функции — одна геометрия).
     public func currentScrollAnchor() -> ScrollAnchor? {
-        guard !messages.isEmpty, let cv = collectionView else { return nil }
-
-        if isNearBottom() {
-            guard let lastMsg = messages.last else { return nil }
-            return ScrollAnchor(messageId: lastMsg.id, offset: 0, wasAtBottom: true)
-        }
-
-        // Нижний край видимой области (с учётом insets)
-        let visibleBottom = cv.contentOffset.y + cv.bounds.height - cv.contentInset.bottom
-
-        // Нижний видимый message cell
-        let paths = cv.indexPathsForVisibleItems.sorted { $0.item > $1.item }
-
-        for ip in paths {
-            guard ip.item < rows.count,
-                  case .message(let msg) = rows[ip.item] else { continue }
-
-            let rowIdx = ip.item
-            guard rowIdx < chatLayout.rowLayoutData.count,
-                  rowIdx < chatLayout.yOffsets.count else { continue }
-
-            let cellBottom = chatLayout.yOffsets[rowIdx]
-                + chatLayout.rowLayoutData[rowIdx].topInset
-                + chatLayout.rowLayoutData[rowIdx].height
-            let offset = visibleBottom - cellBottom
-
-            return ScrollAnchor(messageId: msg.id, offset: offset, wasAtBottom: false)
-        }
-        return nil
+        currentVisibleAnchors().last
     }
 
     /// Все видимые якоря — после batch выбираем тот, который существует и сместился минимально.
@@ -563,17 +533,10 @@ public final class ChatViewController: UIViewController {
         var anchors: [ScrollAnchor] = []
         for ip in paths {
             guard ip.item < rows.count,
-                  case .message(let msg) = rows[ip.item] else { continue }
-            let rowIdx = ip.item
-            guard rowIdx < chatLayout.rowLayoutData.count,
-                  rowIdx < chatLayout.yOffsets.count else { continue }
+                  case .message(let msg) = rows[ip.item],
+                  let cellBottom = chatLayout.anchorCellBottom(at: ip.item) else { continue }
 
-            let cellBottom = chatLayout.yOffsets[rowIdx]
-                + chatLayout.rowLayoutData[rowIdx].topInset
-                + chatLayout.rowLayoutData[rowIdx].height
-            let offset = visibleBottom - cellBottom
-
-            anchors.append(ScrollAnchor(messageId: msg.id, offset: offset, wasAtBottom: false))
+            anchors.append(ScrollAnchor(messageId: msg.id, offset: visibleBottom - cellBottom, wasAtBottom: false))
         }
         return anchors
     }
@@ -594,12 +557,8 @@ public final class ChatViewController: UIViewController {
 
         for a in anchors {
             guard let rowIndex = rowIndexCache[a.messageId],
-                  rowIndex < chatLayout.rowLayoutData.count,
-                  rowIndex < chatLayout.yOffsets.count else { continue }
+                  let cellBottom = chatLayout.anchorCellBottom(at: rowIndex) else { continue }
 
-            let cellBottom = chatLayout.yOffsets[rowIndex]
-                + chatLayout.rowLayoutData[rowIndex].topInset
-                + chatLayout.rowLayoutData[rowIndex].height
             let target = cellBottom + a.offset - cv.bounds.height + cv.contentInset.bottom
             let delta = abs(target - referenceOffset)
 
@@ -610,7 +569,7 @@ public final class ChatViewController: UIViewController {
         }
 
         let minY = -cv.adjustedContentInset.top
-        let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+        let maxY = cv.chatMaxOffsetY
 
         // Если ни один якорь не найден — fallback к referenceOffset
         let target = bestTarget ?? referenceOffset
@@ -629,14 +588,9 @@ public final class ChatViewController: UIViewController {
         }
 
         guard let rowIndex = rowIndexCache[anchor.messageId],
-              rowIndex < chatLayout.rowLayoutData.count,
-              rowIndex < chatLayout.yOffsets.count else {
+              let cellBottom = chatLayout.anchorCellBottom(at: rowIndex) else {
             return
         }
-
-        let cellBottom = chatLayout.yOffsets[rowIndex]
-            + chatLayout.rowLayoutData[rowIndex].topInset
-            + chatLayout.rowLayoutData[rowIndex].height
 
         // visibleBottom = contentOffset.y + bounds.height - contentInset.bottom;
         // cellBottom = visibleBottom - offset →
@@ -644,7 +598,7 @@ public final class ChatViewController: UIViewController {
         let targetOffset = cellBottom + anchor.offset - cv.bounds.height + cv.contentInset.bottom
 
         let minY = -cv.adjustedContentInset.top
-        let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+        let maxY = cv.chatMaxOffsetY
         let clampedY = min(max(targetOffset, minY), max(maxY, minY))
 
         cv.contentOffset = CGPoint(x: 0, y: clampedY)
@@ -660,7 +614,7 @@ public final class ChatViewController: UIViewController {
         }
         collectionView.layoutIfNeeded()
         isProgrammaticScroll = true
-        let maxY = collectionView.contentSize.height - collectionView.bounds.height + collectionView.contentInset.bottom
+        let maxY = collectionView.chatMaxOffsetY
         if maxY > -collectionView.contentInset.top {
             collectionView.setContentOffset(CGPoint(x: 0, y: maxY), animated: animated)
         }
@@ -728,7 +682,7 @@ public final class ChatViewController: UIViewController {
 
     public func distanceFromBottom() -> CGFloat {
         guard let cv = collectionView else { return 0 }
-        return max(0, cv.contentSize.height - cv.contentOffset.y - cv.bounds.height + cv.contentInset.bottom)
+        return max(0, cv.chatMaxOffsetY - cv.contentOffset.y)
     }
 
     public func isNearBottom() -> Bool {

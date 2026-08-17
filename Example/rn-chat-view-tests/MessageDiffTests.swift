@@ -167,3 +167,143 @@ final class MessageDiffPendingMappingTests: XCTestCase {
     }
 }
 
+// MARK: - Structural Change Detection Tests
+
+final class MessageDiffStructuralChangeTests: XCTestCase {
+
+    func testNoChange_sameMessages() {
+        let old = [msg("1"), msg("2")]
+        let new = [msg("1"), msg("2")]
+        XCTAssertFalse(MessageDiff.hasStructuralChange(old: old, new: new))
+    }
+
+    func testNoChange_contentOnlyUpdate() {
+        let old = [msg("1"), msg("2", text: "a")]
+        let new = [msg("1"), msg("2", text: "b")]
+        XCTAssertFalse(MessageDiff.hasStructuralChange(old: old, new: new))
+    }
+
+    func testNoChange_pendingToRealSamePosition() {
+        // pending→real с общим localId — одна DK-идентичность, не структурное
+        let old = [msg("1"), msg("pending_1", localId: "l1")]
+        let new = [msg("1"), msg("real_1", localId: "l1")]
+        XCTAssertFalse(MessageDiff.hasStructuralChange(old: old, new: new))
+    }
+
+    func testStructural_countChanged() {
+        let old = [msg("1")]
+        let new = [msg("1"), msg("2")]
+        XCTAssertTrue(MessageDiff.hasStructuralChange(old: old, new: new))
+    }
+
+    func testStructural_delete() {
+        let old = [msg("1"), msg("2")]
+        let new = [msg("1")]
+        XCTAssertTrue(MessageDiff.hasStructuralChange(old: old, new: new))
+    }
+
+    func testStructural_reorder() {
+        let old = [msg("1"), msg("2")]
+        let new = [msg("2"), msg("1")]
+        XCTAssertTrue(MessageDiff.hasStructuralChange(old: old, new: new))
+    }
+
+    func testStructural_replacedId() {
+        // Смена id без общего localId — delete+insert
+        let old = [msg("1"), msg("2")]
+        let new = [msg("1"), msg("3")]
+        XCTAssertTrue(MessageDiff.hasStructuralChange(old: old, new: new))
+    }
+
+    func testStructural_dateSeparatorChanges() {
+        // Изменение groupDate меняет строки-разделители — структурное
+        var old = [msg("1"), msg("2")]
+        let changed = ChatMessage(
+            id: "2", localId: nil,
+            content: MessageBody(text: "text", content: nil),
+            timestamp: t0, senderName: "Test", ownership: .theirs,
+            groupDate: "2026-01-02", status: .read,
+            reply: nil, forwardedFrom: nil, reactions: [],
+            isEdited: false, actions: []
+        )
+        let new = [old[0], changed]
+        XCTAssertTrue(MessageDiff.hasStructuralChange(old: old, new: new))
+        old = []
+    }
+
+    func testEmpty_bothEmpty() {
+        XCTAssertFalse(MessageDiff.hasStructuralChange(old: [], new: []))
+    }
+}
+
+// MARK: - ChatStrings Tests
+
+final class ChatStringsTests: XCTestCase {
+
+    func testThreadRepliesPluralization() {
+        XCTAssertEqual(ChatStrings.threadReplies(1), "1 ответ")
+        XCTAssertEqual(ChatStrings.threadReplies(2), "2 ответа")
+        XCTAssertEqual(ChatStrings.threadReplies(4), "4 ответа")
+        XCTAssertEqual(ChatStrings.threadReplies(5), "5 ответов")
+        XCTAssertEqual(ChatStrings.threadReplies(11), "11 ответов")
+        XCTAssertEqual(ChatStrings.threadReplies(14), "14 ответов")
+        XCTAssertEqual(ChatStrings.threadReplies(21), "21 ответ")
+        XCTAssertEqual(ChatStrings.threadReplies(22), "22 ответа")
+        XCTAssertEqual(ChatStrings.threadReplies(111), "111 ответов")
+    }
+
+    func testStaticStrings() {
+        XCTAssertFalse(ChatStrings.editedMark.isEmpty)
+        XCTAssertFalse(ChatStrings.unknownSender.isEmpty)
+        XCTAssertTrue(ChatStrings.forwardedFrom("Иван").contains("Иван"))
+    }
+}
+
+// MARK: - DateHelper Caching Tests
+
+final class DateHelperCacheTests: XCTestCase {
+
+    func testSectionTitleStableAcrossCalls() {
+        let h = DateHelper.shared
+        let first = h.sectionTitle(from: "2020-03-15")
+        let second = h.sectionTitle(from: "2020-03-15")
+        XCTAssertEqual(first, second)
+        XCTAssertFalse(first.isEmpty)
+    }
+
+    func testSectionTitleToday() {
+        let h = DateHelper.shared
+        let todayKey = h.groupKey(from: Date())
+        // Дважды — второй раз из кеша, результат идентичен
+        XCTAssertEqual(h.sectionTitle(from: todayKey), h.sectionTitle(from: todayKey))
+    }
+
+    func testSectionTitleInvalidKeyReturnsKey() {
+        XCTAssertEqual(DateHelper.shared.sectionTitle(from: "not-a-date"), "not-a-date")
+    }
+}
+
+// MARK: - EmojiHelper Memoization Tests
+
+final class EmojiHelperTests: XCTestCase {
+
+    func testEmojiOnlyCount() {
+        XCTAssertEqual(EmojiHelper.emojiOnlyCount("👍"), 1)
+        XCTAssertEqual(EmojiHelper.emojiOnlyCount("👍🔥"), 2)
+        XCTAssertEqual(EmojiHelper.emojiOnlyCount("👍🔥😂"), 3)
+        XCTAssertNil(EmojiHelper.emojiOnlyCount("👍🔥😂😮"))  // > 3
+        XCTAssertNil(EmojiHelper.emojiOnlyCount("hi"))
+        XCTAssertNil(EmojiHelper.emojiOnlyCount("👍 hi"))
+        XCTAssertNil(EmojiHelper.emojiOnlyCount(""))
+        XCTAssertNil(EmojiHelper.emojiOnlyCount(nil))
+        // Текст длиннее 3 графем — не эмодзи-сообщение (short-circuit по длине)
+        XCTAssertNil(EmojiHelper.emojiOnlyCount(String(repeating: "длинный текст ", count: 20)))
+    }
+
+    func testEmojiOnlyCountStableOnRepeat() {
+        // Повторный вызов (из кеша) даёт тот же результат
+        XCTAssertEqual(EmojiHelper.emojiOnlyCount("👍"), EmojiHelper.emojiOnlyCount("👍"))
+        XCTAssertEqual(EmojiHelper.emojiOnlyCount("text"), EmojiHelper.emojiOnlyCount("text"))
+    }
+}
+

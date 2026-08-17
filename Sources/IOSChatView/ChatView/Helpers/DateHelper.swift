@@ -40,6 +40,12 @@ public final class DateHelper {
         return f
     }()
 
+    /// Кеш заголовков: парсинг + форматирование даты не выполняются заново
+    /// на каждый dequeue разделителя. Сбрасывается при смене календарного дня
+    /// («Сегодня» → «Вчера»).
+    private var titleCache: [String: String] = [:]
+    private var titleCacheDay = ""
+
     public func timeString(from date: Date) -> String {
         timeFormatter.string(from: date)
     }
@@ -49,14 +55,26 @@ public final class DateHelper {
     }
 
     public func sectionTitle(from groupKey: String) -> String {
+        let today = groupParser.string(from: Date())
+        if today != titleCacheDay {
+            titleCache.removeAll()
+            titleCacheDay = today
+        }
+        if let cached = titleCache[groupKey] { return cached }
+        let title = computeSectionTitle(from: groupKey)
+        titleCache[groupKey] = title
+        return title
+    }
+
+    private func computeSectionTitle(from groupKey: String) -> String {
         guard let date = groupParser.date(from: groupKey) else { return groupKey }
         let cal = Calendar.current
 
         if cal.isDateInToday(date) {
-            return NSLocalizedString("chat.today", value: "Сегодня", comment: "")
+            return ChatStrings.today
         }
         if cal.isDateInYesterday(date) {
-            return NSLocalizedString("chat.yesterday", value: "Вчера", comment: "")
+            return ChatStrings.yesterday
         }
         if let weekAgo = cal.date(byAdding: .day, value: -6, to: cal.startOfDay(for: Date())),
            date >= weekAgo {

@@ -132,7 +132,15 @@ public final class FABManager {
         }
     }
 
+    private var lastBadgeCount = -1
+    private var lastBadgeVisible: Bool?
+
     func updateBadge(unreadCount: Int) {
+        // Вызывается на каждом кадре скролла — не трогаем view без изменений
+        guard unreadCount != lastBadgeCount || isVisible != lastBadgeVisible else { return }
+        lastBadgeCount = unreadCount
+        lastBadgeVisible = isVisible
+
         badge.isHidden = unreadCount == 0 || !isVisible
         guard unreadCount > 0 else { return }
         if let label = badge as? UILabel {
@@ -146,10 +154,12 @@ public final class FABManager {
         button.isHidden = !enabled
         if !enabled {
             button.alpha = 0; badge.alpha = 0; isVisible = false
+            lastBadgeCount = -1
         }
     }
 
     func hideForRecording() {
+        lastBadgeCount = -1
         UIView.animate(withDuration: 0.2) {
             self.button.alpha = 0
             self.badge.alpha = 0
@@ -192,40 +202,21 @@ public final class FABManager {
         guard size > 0 else { return }
 
         let ring = CAShapeLayer()
-        let inset: CGFloat = 4
-        let radius = size / 2 - inset
-        ring.frame = button.bounds
-        ring.path = UIBezierPath(
-            arcCenter: CGPoint(x: size / 2, y: size / 2),
-            radius: radius,
-            startAngle: -.pi / 2,
-            endAngle: .pi * 1.5,
-            clockwise: true
-        ).cgPath
-        ring.fillColor = UIColor.clear.cgColor
+        LoadingRing.configure(ring, size: size)
         ring.strokeColor = button.tintColor?.cgColor ?? UIColor.systemBlue.cgColor
-        ring.lineWidth = 2
-        ring.lineCap = .round
-        ring.strokeStart = 0
-        ring.strokeEnd = 0.75
 
         button.layer.addSublayer(ring)
         loadingRing = ring
 
         updateLoadingRingColor()
-
-        let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
-        rotation.fromValue = 0
-        rotation.toValue = CGFloat.pi * 2
-        rotation.duration = 0.8
-        rotation.repeatCount = .infinity
-        rotation.isRemovedOnCompletion = false
-        ring.add(rotation, forKey: "spin")
+        LoadingRing.startSpinning(ring)
     }
 
     private func hideLoadingRing() {
-        loadingRing?.removeAnimation(forKey: "spin")
-        loadingRing?.removeFromSuperlayer()
+        if let ring = loadingRing {
+            LoadingRing.stopSpinning(ring)
+            ring.removeFromSuperlayer()
+        }
         loadingRing = nil
     }
 

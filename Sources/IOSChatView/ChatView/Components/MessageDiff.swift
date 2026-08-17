@@ -38,6 +38,20 @@ public struct MessageDiff {
         return PendingMapping(oldToNew: oldToNew, newToOld: newToOld)
     }
 
+    /// Дешёвая проверка структурности — O(n) без построения DK-changeset.
+    /// Структурное изменение: несовпадение последовательности DK-идентичностей
+    /// (`localId ?? id`) или смена `groupDate` (меняет строки-разделители).
+    /// Контентные правки на месте (текст, статус, реакции) — не структурные.
+    public static func hasStructuralChange(old: [ChatMessage], new: [ChatMessage]) -> Bool {
+        guard old.count == new.count else { return true }
+        for i in 0..<old.count {
+            let o = old[i], n = new[i]
+            if (o.localId ?? o.id) != (n.localId ?? n.id) { return true }
+            if o.groupDate != n.groupDate { return true }
+        }
+        return false
+    }
+
     public static func isPrependOnly(old: [ChatMessage], new: [ChatMessage]) -> Bool {
         guard new.count > old.count else { return false }
         let offset = new.count - old.count

@@ -9,7 +9,7 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
     // MARK: - Вью
 
     private let label = UILabel()
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
 
     // MARK: - Состояние детекции ссылок
 
@@ -44,26 +44,13 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
 
     // MARK: - Конфигурация
 
-    func configure(text: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout(), linkDetectionEnabled: Bool = true) {
+    func configure(text: String, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout.shared, linkDetectionEnabled: Bool = true) {
         currentLayout = layout
         label.font = layout.messageFont
         label.textAlignment = ownership == .system ? .center : .natural
 
-        let textColor: UIColor
-        switch ownership {
-        case .mine:   textColor = theme.outgoingText
-        case .theirs: textColor = theme.incomingText
-        case .system: textColor = theme.systemText
-        case .pinned: textColor = theme.pinnedText
-        }
-
-        let linkColor: UIColor
-        switch ownership {
-        case .mine:   linkColor = theme.outgoingLink
-        case .theirs: linkColor = theme.incomingLink
-        case .system: linkColor = theme.incomingLink
-        case .pinned: linkColor = theme.incomingLink
-        }
+        let textColor = theme.textColor(for: ownership)
+        let linkColor = theme.linkColor(for: ownership)
 
         if linkDetectionEnabled {
             let attributed = Self.buildAttributedText(
@@ -74,7 +61,14 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
             )
             label.attributedText = attributed.string
             linkRanges = attributed.links
-            setupHitTestKit(attributedText: attributed.string, font: layout.messageFont)
+            // TextKit-стек нужен только для hit-теста ссылок
+            if attributed.links.isEmpty {
+                hitTestStorage = nil
+                hitTestLayoutManager = nil
+                hitTestContainer = nil
+            } else {
+                setupHitTestKit(attributedText: attributed.string, font: layout.messageFont)
+            }
         } else {
             label.attributedText = nil
             label.text = text
@@ -93,22 +87,33 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
         let links: [(range: NSRange, url: URL)]
     }
 
+    /// Кешируемый результат детекции — зависит только от текста,
+    /// цвета и шрифт накладываются поверх при каждой конфигурации.
+    private final class DetectionResult {
+        let links: [(range: NSRange, url: URL)]
+        init(links: [(range: NSRange, url: URL)]) { self.links = links }
+    }
+
     private static let detector: NSDataDetector? = {
         try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue | NSTextCheckingResult.CheckingType.phoneNumber.rawValue)
     }()
 
-    private static func buildAttributedText(text: String, font: UIFont, textColor: UIColor, linkColor: UIColor) -> DetectedText {
-        let attrStr = NSMutableAttributedString(string: text, attributes: [
-            .font: font,
-            .foregroundColor: textColor,
-        ])
+    /// NSDataDetector — regex по всему тексту; без кеша он гоняется заново
+    /// при каждом dequeue той же ячейки.
+    private static let detectionCache: NSCache<NSString, DetectionResult> = {
+        let cache = NSCache<NSString, DetectionResult>()
+        cache.countLimit = 500
+        return cache
+    }()
+
+    private static func detectLinks(in text: String) -> DetectionResult {
+        if let cached = detectionCache.object(forKey: text as NSString) { return cached }
 
         var links: [(range: NSRange, url: URL)] = []
         let nsRange = NSRange(location: 0, length: (text as NSString).length)
 
         detector?.enumerateMatches(in: text, options: [], range: nsRange) { result, _, _ in
             guard let result else { return }
-            let range = result.range
 
             let url: URL?
             switch result.resultType {
@@ -125,15 +130,30 @@ public final class TextContentView: UIView, UIGestureRecognizerDelegate {
             }
 
             if let url {
-                attrStr.addAttributes([
-                    .foregroundColor: linkColor,
-                    .underlineStyle: NSUnderlineStyle.single.rawValue,
-                ], range: range)
-                links.append((range: range, url: url))
+                links.append((range: result.range, url: url))
             }
         }
 
-        return DetectedText(string: attrStr, links: links)
+        let detection = DetectionResult(links: links)
+        detectionCache.setObject(detection, forKey: text as NSString)
+        return detection
+    }
+
+    private static func buildAttributedText(text: String, font: UIFont, textColor: UIColor, linkColor: UIColor) -> DetectedText {
+        let attrStr = NSMutableAttributedString(string: text, attributes: [
+            .font: font,
+            .foregroundColor: textColor,
+        ])
+
+        let detection = detectLinks(in: text)
+        for link in detection.links {
+            attrStr.addAttributes([
+                .foregroundColor: linkColor,
+                .underlineStyle: NSUnderlineStyle.single.rawValue,
+            ], range: link.range)
+        }
+
+        return DetectedText(string: attrStr, links: detection.links)
     }
 
     // MARK: - Hit-тестирование

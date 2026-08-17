@@ -17,7 +17,7 @@ final class InputBarLockView: UIView {
     private let lockIcon = UIImageView()
 
     private func setup() {
-        let L = ChatLayout()
+        let L = ChatLayout.shared
 
         layer.cornerRadius = L.recordLockContainerSize / 2
         clipsToBounds = true

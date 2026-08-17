@@ -83,7 +83,8 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
             showSenderName: showName,
             features: vc.features,
             layout: vc.layout,
-            factory: vc.contentFactory
+            factory: vc.contentFactory,
+            bubbleWidth: vc.cachedBubbleWidth(for: msg, containerWidth: vc.collectionView.bounds.width)
         )
     }
 
@@ -102,39 +103,46 @@ final class ChatDataSource: NSObject, UICollectionViewDataSource {
             showSenderName: showName,
             features: vc.features,
             layout: vc.layout,
-            factory: vc.contentFactory
+            factory: vc.contentFactory,
+            bubbleWidth: vc.cachedBubbleWidth(for: msg, containerWidth: vc.collectionView.bounds.width)
         )
     }
 
     // MARK: - Общие хелперы
 
     private func setupCallbacks(_ cell: MessageCell, message msg: ChatMessage, vc: ChatViewController) {
+        // Захватываем только нужные значения — не весь ChatMessage
+        // (7 замыканий × копия структуры с массивами на каждую конфигурацию).
+        let messageId = msg.id
+        let replyToId = msg.reply?.replyToId
+        let threadId = msg.thread?.threadId
+
         cell.onTap = { [weak vc] in
-            vc?.messageSectionDidTap(messageId: msg.id, attachmentIndex: nil)
+            vc?.messageSectionDidTap(messageId: messageId, attachmentIndex: nil)
         }
         cell.onLongPress = { [weak vc] c in
-            vc?.messageSectionDidLongPress(messageId: msg.id, cell: c)
+            vc?.messageSectionDidLongPress(messageId: messageId, cell: c)
         }
         cell.onReplyTap = { [weak vc] in
-            guard let replyTo = msg.reply?.replyToId else { return }
-            vc?.messageSectionDidTapReply(messageId: replyTo)
+            guard let replyToId else { return }
+            vc?.messageSectionDidTapReply(messageId: replyToId)
         }
         cell.onContentInteraction = { [weak vc] interaction in
-            vc?.messageSectionDidContentInteraction(messageId: msg.id, interaction: interaction)
+            vc?.messageSectionDidContentInteraction(messageId: messageId, interaction: interaction)
         }
         cell.onReactionTap = { [weak vc] emoji in
-            vc?.messageSectionDidTapReaction(messageId: msg.id, emoji: emoji)
+            vc?.messageSectionDidTapReaction(messageId: messageId, emoji: emoji)
         }
         cell.onThreadTap = { [weak vc] in
-            guard let thread = msg.thread else { return }
-            vc?.messageSectionDidTapThread(messageId: msg.id, threadId: thread.threadId)
+            guard let threadId else { return }
+            vc?.messageSectionDidTapThread(messageId: messageId, threadId: threadId)
         }
         cell.onLinkTap = { [weak vc] url in
             if url.scheme == "tel" {
                 let phone = url.absoluteString.replacingOccurrences(of: "tel:", with: "")
-                vc?.messageSectionDidTapPhoneNumber(phoneNumber: phone, messageId: msg.id)
+                vc?.messageSectionDidTapPhoneNumber(phoneNumber: phone, messageId: messageId)
             } else {
-                vc?.messageSectionDidTapLink(url: url, messageId: msg.id)
+                vc?.messageSectionDidTapLink(url: url, messageId: messageId)
             }
         }
     }

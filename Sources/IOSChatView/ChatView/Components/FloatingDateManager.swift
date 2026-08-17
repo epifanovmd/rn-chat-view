@@ -11,8 +11,10 @@ public final class FloatingDateManager {
     // MARK: - Состояние
 
     private var hideTask: DispatchWorkItem?
+    private var lastActivity: CFTimeInterval = 0
+    private var isShown = false
     private var currentDate: String?
-    private var layout = ChatLayout()
+    private var layout = ChatLayout.shared
     private var theme: ChatTheme = .light
     private weak var factory: ChatContentFactory?
 
@@ -66,21 +68,7 @@ public final class FloatingDateManager {
         extraInsetTop: CGFloat
     ) {
         let spacing = layout.sectionSpacing
-
-        struct DateInfo {
-            let groupDate: String
-            let minY: CGFloat
-            let maxY: CGFloat
-        }
-        var dateSections: [DateInfo] = []
-
-        for (rowIndex, groupDate) in cachedSeparators {
-            guard let attrs = collectionView.layoutAttributesForItem(at: IndexPath(item: rowIndex, section: 0)) else { continue }
-            let f = collectionView.convert(attrs.frame, to: parentView)
-            dateSections.append(DateInfo(groupDate: groupDate, minY: f.minY, maxY: f.maxY))
-        }
-
-        guard !dateSections.isEmpty else { return }
+        guard !cachedSeparators.isEmpty else { return }
 
         let pillRestY = parentView.safeAreaLayoutGuide.layoutFrame.minY + spacing + extraInsetTop
         let pillH = container.bounds.height > 0
@@ -88,33 +76,40 @@ public final class FloatingDateManager {
             : factory?.dateSeparatorHeight(layout: layout) ?? 24
         let pillBottom = pillRestY + pillH
 
-        var foundDate: String?
-        var datePassed = false
-        var nextInfo: DateInfo?
+        // Frame разделителя в координатах parentView — только для кандидатов поиска.
+        func separatorFrame(at i: Int) -> CGRect? {
+            let ip = IndexPath(item: cachedSeparators[i].rowIndex, section: 0)
+            guard let attrs = collectionView.layoutAttributesForItem(at: ip) else { return nil }
+            return collectionView.convert(attrs.frame, to: parentView)
+        }
 
-        for (i, info) in dateSections.enumerated() {
-            if info.maxY < pillRestY - spacing {
-                foundDate = info.groupDate
-                datePassed = true
-                nextInfo = (i + 1 < dateSections.count) ? dateSections[i + 1] : nil
+        // Разделители упорядочены по Y — бинарный поиск последнего ушедшего
+        // за верхний край (maxY < pillRestY - spacing) вместо полного прохода.
+        var lo = 0, hi = cachedSeparators.count
+        while lo < hi {
+            let mid = (lo + hi) >> 1
+            if let f = separatorFrame(at: mid), f.maxY < pillRestY - spacing {
+                lo = mid + 1
+            } else {
+                hi = mid
             }
         }
 
-        if !datePassed {
+        guard lo > 0 else {
             currentDate = nil
             hide()
             return
         }
 
-        guard let groupDate = foundDate else { return }
+        let foundIdx = lo - 1
+        let groupDate = cachedSeparators[foundIdx].groupDate
 
-        if let next = nextInfo {
+        // Вытеснение пилюли следующим разделителем
+        if foundIdx + 1 < cachedSeparators.count, let next = separatorFrame(at: foundIdx + 1) {
             let triggerY = pillBottom + spacing
-            if next.minY < triggerY {
-                container.transform = CGAffineTransform(translationX: 0, y: next.minY - triggerY)
-            } else {
-                container.transform = .identity
-            }
+            container.transform = next.minY < triggerY
+                ? CGAffineTransform(translationX: 0, y: next.minY - triggerY)
+                : .identity
         } else {
             container.transform = .identity
         }
@@ -124,6 +119,7 @@ public final class FloatingDateManager {
             rebuildContent(title: DateHelper.shared.sectionTitle(from: groupDate))
             container.transform = .identity
             container.alpha = 0
+            isShown = false
         }
 
         show()
@@ -147,21 +143,38 @@ public final class FloatingDateManager {
 
     // MARK: - Показ / Скрытие
 
+    /// Вызывается на каждом кадре скролла: анимация запускается один раз,
+    /// hide-таймер не пересоздаётся — вместо этого продлевается по lastActivity.
     private func show() {
-        hideTask?.cancel()
-        if container.alpha < 1 {
+        lastActivity = CACurrentMediaTime()
+        if !isShown {
+            isShown = true
             UIView.animate(withDuration: layout.floatingDateShowDuration) { self.container.alpha = 1 }
         }
+        scheduleHideIfNeeded(after: layout.floatingDateHideDelay)
+    }
+
+    private func scheduleHideIfNeeded(after delay: TimeInterval) {
+        guard hideTask == nil else { return }
         let task = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            UIView.animate(withDuration: self.layout.floatingDateHideDuration) { self.container.alpha = 0 }
+            self.hideTask = nil
+            let remaining = self.layout.floatingDateHideDelay - (CACurrentMediaTime() - self.lastActivity)
+            if remaining > 0.01 {
+                self.scheduleHideIfNeeded(after: remaining)
+            } else {
+                self.isShown = false
+                UIView.animate(withDuration: self.layout.floatingDateHideDuration) { self.container.alpha = 0 }
+            }
         }
         hideTask = task
-        DispatchQueue.main.asyncAfter(deadline: .now() + layout.floatingDateHideDelay, execute: task)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: task)
     }
 
     func hide() {
         hideTask?.cancel()
+        hideTask = nil
+        isShown = false
         UIView.animate(withDuration: layout.floatingDateHideDuration) {
             self.container.alpha = 0
             self.container.transform = .identity

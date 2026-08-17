@@ -6,7 +6,7 @@ public final class FileContentView: UIView {
     private let iconView = UIImageView()
     private let nameLabel = UILabel()
     private let sizeLabel = UILabel()
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
 
     // MARK: - Сохранённые констрейнты
 
@@ -77,7 +77,7 @@ public final class FileContentView: UIView {
         addGestureRecognizer(tap)
     }
 
-    func configure(file: FilePayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(file: FilePayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout.shared) {
         currentLayout = layout
         let L = currentLayout
         let pad = L.filePadding

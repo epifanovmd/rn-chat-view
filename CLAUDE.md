@@ -164,7 +164,7 @@ Sources/IOSChatView/
 │   │   └── ChatContentFactory.swift           # Протокол — все view делегируются сюда
 │   ├── Models/
 │   │   ├── ChatModels.swift                   # ChatContent, AnyChatContent, MessageBody, MessageOwnership, ThreadInfo, ChatMessage и т.д.
-│   │   ├── ChatTheme.swift                    # 66 цветов, пресеты light/dark, contextMenuTheme
+│   │   ├── ChatTheme.swift                    # 66 цветов, пресеты light/dark, contextMenuTheme; хелперы bubbleColor/textColor/timeColor(for: ownership)
 │   │   ├── ChatLayout.swift                   # 169 параметров layout
 │   │   └── ChatFeatures.swift                 # Флаги фич
 │   ├── Audio/
@@ -173,10 +173,12 @@ Sources/IOSChatView/
 │       ├── MessageSizeCalculator.swift        # Вычисление высоты ячейки
 │       ├── SizeCache.swift                    # Кеш размеров с привязкой к ширине
 │       ├── ChatTextMeasurer.swift             # Утилиты измерения текста
-│       └── DateHelper.swift                   # Форматирование дат
+│       ├── ChatStrings.swift                  # Все строки UI (локализация через ключи chat.*)
+│       ├── LoadingRing.swift                  # Общий спиннер-кольцо (FAB, голосовое)
+│       └── DateHelper.swift                   # Форматирование дат (+кеш заголовков разделителей)
 │
 ├── DefaultContent/                            # Встроенные типы контента (опциональные)
-│   ├── DefaultChatContentFactory.swift        # Фабрика по умолчанию: изображения, голос, опрос, файлы
+│   ├── DefaultChatContentFactory.swift        # Фабрика по умолчанию: реестр ChatContentRenderer (изображения, голос, опрос, файлы); register(contentTypeID:renderer:) для новых типов
 │   ├── Models/
 │   │   ├── DefaultContentTypes.swift          # ImagesContent, VoicePayload, PollPayload, FilesContent
 │   │   └── ChatParsing.swift                  # NSDictionary → ChatMessage (RN bridge)
@@ -572,7 +574,7 @@ class MyChatVC: UIViewController, ChatViewControllerDelegate {
 ## Тестирование
 
 Интеграционные тесты в `Example/rn-chat-view-tests/` (Swift Testing, запуск на устройстве).
-Unit-тесты в `Example/Tests/MessageDiffTests.swift`.
+Unit-тесты в `Example/rn-chat-view-tests/MessageDiffTests.swift` (XCTest, в одном таргете с интеграционными).
 
 Полный список тестов: [TESTS.md](TESTS.md)
 

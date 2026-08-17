@@ -10,7 +10,7 @@ public final class PollContentView: UIView {
     private let footerStack = UIStackView()
     private let votesLabel = UILabel()
     private let resultsLabel = UILabel()
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
     private var optionRows: [PollOptionRow] = []
 
     // MARK: - Сохранённые констрейнты
@@ -82,7 +82,7 @@ public final class PollContentView: UIView {
         ])
     }
 
-    func configure(poll: PollPayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(poll: PollPayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout.shared) {
         currentLayout = layout
         let L = currentLayout
         let isOutgoing = ownership == .mine
@@ -142,7 +142,7 @@ private final class PollOptionRow: UIView {
     private let label = UILabel()
     private let percentLabel = UILabel()
     private var fillWidthConstraint: NSLayoutConstraint?
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
     private var isFirstConfigure = true
 
     // MARK: - Сохранённые констрейнты

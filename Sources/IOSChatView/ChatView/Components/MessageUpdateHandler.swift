@@ -3,10 +3,10 @@ import DifferenceKit
 
 // MARK: - Логирование
 
-private func log(_ items: Any...) {
+/// Аргумент — @autoclosure: интерполяция строки не вычисляется в release-сборках.
+private func log(_ message: @autoclosure () -> String) {
     #if DEBUG
-    let msg = items.map { "\($0)" }.joined(separator: " ")
-    print(msg)
+    print(message())
     #endif
 }
 
@@ -95,12 +95,11 @@ final class MessageUpdateHandler {
         }
     }
 
+    /// Вызывается во время скролла — дешёвая O(n) проверка без DK-changeset
+    /// и без построения строк.
     func peekClassify(old: [ChatMessage], new: [ChatMessage]) -> Bool {
         if old.isEmpty || new.isEmpty { return false }
-        let oldRows = controller?.buildRows(from: old) ?? []
-        let newRows = controller?.buildRows(from: new) ?? []
-        let changeset = StagedChangeset(source: oldRows, target: newRows)
-        return changeset.reduce(0) { $0 + $1.elementInserted.count + $1.elementDeleted.count + $1.elementMoved.count } > 0
+        return MessageDiff.hasStructuralChange(old: old, new: new)
     }
 }
 
@@ -220,10 +219,7 @@ private extension MessageUpdateHandler {
         vc.collectionView.layoutIfNeeded()
 
         if wantScroll {
-            let maxY = vc.collectionView.contentSize.height - vc.collectionView.bounds.height + vc.collectionView.contentInset.bottom
-            if maxY > -vc.collectionView.contentInset.top {
-                vc.collectionView.setContentOffset(CGPoint(x: 0, y: maxY), animated: true)
-            }
+            scrollToBottom(cv: vc.collectionView, animated: true)
             log("  Метод: reloadData → scrollToBottom (animated)")
         } else {
             vc.collectionView.contentOffset = s.savedOffset
@@ -304,7 +300,7 @@ private extension MessageUpdateHandler {
                 } else {
                     // Нет якорей — clamp старый offset к новому contentSize
                     let minY = -cv.adjustedContentInset.top
-                    let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+                    let maxY = cv.chatMaxOffsetY
                     cv.contentOffset = CGPoint(x: 0, y: min(max(offsetBefore, minY), max(maxY, minY)))
                 }
 
@@ -392,7 +388,8 @@ private extension MessageUpdateHandler {
                           snap s: Snapshot, wantScroll: Bool) {
         let cv = vc.collectionView!
 
-        let newMsgByID = Dictionary(vc.messages.map { ($0.id, $0) }, uniquingKeysWith: { _, l in l })
+        // rebuildMessageIndex() уже вызван — vc.messageIndex индексирует новые сообщения
+        let newMsgByID = vc.messageIndex
         var pendingMap: [String: ChatMessage] = [:]
         for (oldId, newId) in pendingMapping.oldToNew {
             if let msg = newMsgByID[newId] { pendingMap[oldId] = msg }
@@ -432,18 +429,8 @@ private extension MessageUpdateHandler {
         for i in changed {
             guard case .message(let msg) = rows[i] else { continue }
             let oldH = layoutData[i].height
-            let newH = vc.computeMessageHeight(forId: msg.id, width: width)
-            let extra: CGFloat
-            switch msg.ownership {
-            case .system: extra = vc.layout.systemCellBottomSpacing
-            case .pinned: extra = vc.layout.pinnedCellBottomSpacing
-            default:      extra = 0
-            }
-            layoutData[i] = RowLayoutInfo(
-                height: newH,
-                topInset: vc.layout.cellVSpacing / 2 + extra,
-                bottomInset: vc.layout.cellVSpacing / 2 + extra
-            )
+            layoutData[i] = vc.messageRowLayoutInfo(for: msg, width: width)
+            let newH = layoutData[i].height
             if abs(oldH - newH) > 0.5 {
                 log("  Height: \(msg.id.prefix(12)) \(f(oldH)) → \(f(newH)) (Δ\(f(newH - oldH)))")
             }
@@ -453,7 +440,8 @@ private extension MessageUpdateHandler {
         let stayAtBottom = s.wasAtBottom
         let delta = (wantScroll || stayAtBottom) ? 0 : OffsetCalculator.bottomStableDelta(
             oldRows: s.oldRows, oldLayout: s.oldLayoutData,
-            newRows: rows, newLayout: layoutData, vc: vc)
+            newRows: rows, newLayout: layoutData,
+            visibleItems: cv.indexPathsForVisibleItems.map(\.item))
 
         log("  Метод: CONTENT_ONLY (\(changed.count) изменений, stayAtBottom=\(stayAtBottom), delta=\(f(delta)))")
 
@@ -523,10 +511,11 @@ private extension MessageUpdateHandler {
 
 private extension MessageUpdateHandler {
 
+    /// Вызывается ДО setMessages/rebuildMessageIndex — vc.messageIndex на этот
+    /// момент индексирует старые сообщения, отдельный словарь не нужен.
     func invalidateChangedMessages(vc: ChatViewController, oldMessages: [ChatMessage], newMessages: [ChatMessage]) {
-        let oldById = Dictionary(oldMessages.map { ($0.id, $0) }, uniquingKeysWith: { _, l in l })
         for msg in newMessages {
-            if let prev = oldById[msg.id], prev != msg {
+            if let prev = vc.messageIndex[msg.id], prev != msg {
                 vc.invalidateSizeCache(forKey: msg.id)
             }
         }
@@ -540,7 +529,7 @@ private extension MessageUpdateHandler {
     }
 
     func scrollToBottom(cv: UICollectionView, animated: Bool = true) {
-        let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+        let maxY = cv.chatMaxOffsetY
         if maxY > -cv.contentInset.top {
             cv.setContentOffset(CGPoint(x: 0, y: maxY), animated: animated)
         }
@@ -551,10 +540,12 @@ private extension MessageUpdateHandler {
 
 enum OffsetCalculator {
 
+    /// Чистая функция: принимает индексы видимых строк (сверху вниз по item)
+    /// вместо доступа к контроллеру — тестируется без UIKit.
     static func bottomStableDelta(
         oldRows: [ChatRow], oldLayout: [RowLayoutInfo],
         newRows: [ChatRow], newLayout: [RowLayoutInfo],
-        vc: ChatViewController
+        visibleItems: [Int]
     ) -> CGFloat {
         var newIndex: [String: Int] = Dictionary(minimumCapacity: newRows.count)
         for (i, row) in newRows.enumerated() {
@@ -564,9 +555,8 @@ enum OffsetCalculator {
         let oldSums = prefixSums(oldLayout)
         let newSums = prefixSums(newLayout)
 
-        let paths = vc.collectionView.indexPathsForVisibleItems.sorted { $0.item > $1.item }
-        for ip in paths {
-            let idx = ip.item
+        // Нижний видимый элемент — первый в порядке убывания item
+        for idx in visibleItems.sorted(by: >) {
             guard idx < oldRows.count, idx < oldLayout.count,
                   let id = oldRows[idx].messageId,
                   let newIdx = newIndex[id],
@@ -580,7 +570,7 @@ enum OffsetCalculator {
 
     static func clamp(cv: UICollectionView, savedX: CGFloat, skip: Bool) {
         guard !skip else { return }
-        let maxY = cv.contentSize.height - cv.bounds.height + cv.contentInset.bottom
+        let maxY = cv.chatMaxOffsetY
         let minY = -cv.adjustedContentInset.top
         let clamped = min(max(cv.contentOffset.y, minY), max(maxY, minY))
         if abs(clamped - cv.contentOffset.y) > 0.5 {

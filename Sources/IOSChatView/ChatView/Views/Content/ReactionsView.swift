@@ -5,7 +5,7 @@ public final class ReactionsView: UIView {
 
     private var chipViews: [UIView] = []
     private var currentMaxWidth: CGFloat = 0
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -13,7 +13,7 @@ public final class ReactionsView: UIView {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    func configure(reactions: [Reaction], theme: ChatTheme, maxWidth: CGFloat, layout: ChatLayout = ChatLayout()) {
+    func configure(reactions: [Reaction], theme: ChatTheme, maxWidth: CGFloat, layout: ChatLayout = ChatLayout.shared) {
         chipViews.forEach { $0.removeFromSuperview() }
         chipViews.removeAll()
         currentMaxWidth = maxWidth

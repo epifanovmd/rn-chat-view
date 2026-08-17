@@ -1,10 +1,47 @@
 import UIKit
 
+// MARK: - Рендерер типа контента
+
+/// Рендерер одного типа контента: view, высота, предпочтительная ширина и
+/// in-place реконфигурация. Регистрируется в `DefaultChatContentFactory` по
+/// `contentTypeID` — добавление нового типа не требует переопределять четыре
+/// метода фабрики согласованно.
+public struct ChatContentRenderer {
+    public typealias InteractionHandler = (ChatContentInteraction) -> Void
+
+    public let makeView: (AnyChatContent, ChatMessage, CGFloat, ChatTheme, ChatLayout, @escaping InteractionHandler) -> UIView
+    public let contentHeight: (AnyChatContent, CGFloat, ChatLayout) -> CGFloat
+    public let preferredWidth: ((AnyChatContent, CGFloat, ChatLayout) -> CGFloat?)?
+    public let reconfigure: ((UIView, AnyChatContent, ChatMessage, CGFloat, ChatTheme, ChatLayout, @escaping InteractionHandler) -> Bool)?
+
+    public init(
+        makeView: @escaping (AnyChatContent, ChatMessage, CGFloat, ChatTheme, ChatLayout, @escaping InteractionHandler) -> UIView,
+        contentHeight: @escaping (AnyChatContent, CGFloat, ChatLayout) -> CGFloat,
+        preferredWidth: ((AnyChatContent, CGFloat, ChatLayout) -> CGFloat?)? = nil,
+        reconfigure: ((UIView, AnyChatContent, ChatMessage, CGFloat, ChatTheme, ChatLayout, @escaping InteractionHandler) -> Bool)? = nil
+    ) {
+        self.makeView = makeView
+        self.contentHeight = contentHeight
+        self.preferredWidth = preferredWidth
+        self.reconfigure = reconfigure
+    }
+}
+
 open class DefaultChatContentFactory: ChatContentFactory {
 
-    public init() {}
+    private var renderers: [String: ChatContentRenderer] = [:]
 
-    // MARK: - Медиа контент
+    public init() {
+        registerBuiltInRenderers()
+    }
+
+    /// Регистрирует рендерер для типа контента. Повторная регистрация того же
+    /// `contentTypeID` заменяет предыдущий рендерер (можно переопределить встроенный).
+    public final func register(contentTypeID: String, renderer: ChatContentRenderer) {
+        renderers[contentTypeID] = renderer
+    }
+
+    // MARK: - Медиа контент (диспетчеризация через реестр)
 
     open func contentView(
         for media: AnyChatContent,
@@ -14,41 +51,8 @@ open class DefaultChatContentFactory: ChatContentFactory {
         layout: ChatLayout,
         onInteraction: @escaping (ChatContentInteraction) -> Void
     ) -> UIView {
-        let ownership = message.ownership
-
-        if let images = media.content(as: ImagesContent.self) {
-            let grid = MediaGridView()
-            grid.configure(media: images.items, width: width, theme: theme, layout: layout)
-            grid.onItemTap = { index in onInteraction(.mediaTap(index: index)) }
-            return grid
-        }
-
-        if let voice = media.content(as: VoicePayload.self) {
-            let view = VoiceContentView()
-            view.configure(voice: voice, ownership: ownership, theme: theme, layout: layout)
-            view.onPlayTap = { onInteraction(.voiceTap(url: voice.url)) }
-            return view
-        }
-
-        if let poll = media.content(as: PollPayload.self) {
-            let view = PollContentView()
-            view.configure(poll: poll, ownership: ownership, theme: theme, layout: layout)
-            view.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
-            view.onDetailTap = { onInteraction(.pollDetailTap(pollId: poll.id)) }
-            return view
-        }
-
-        if let files = media.content(as: FilesContent.self) {
-            let stack = UIStackView()
-            stack.axis = .vertical
-            stack.spacing = layout.fileRowSpacing
-            for (i, file) in files.items.enumerated() {
-                let view = FileContentView()
-                view.configure(file: file, ownership: ownership, theme: theme, layout: layout)
-                view.onTap = { onInteraction(.fileTap(index: i)) }
-                stack.addArrangedSubview(view)
-            }
-            return stack
+        if let renderer = renderers[media.contentTypeID] {
+            return renderer.makeView(media, message, width, theme, layout, onInteraction)
         }
 
         // Заглушка для неизвестных типов контента
@@ -65,18 +69,8 @@ open class DefaultChatContentFactory: ChatContentFactory {
         width: CGFloat,
         layout L: ChatLayout
     ) -> CGFloat {
-        if let images = media.content(as: ImagesContent.self) {
-            return MediaGridView.gridHeight(for: images.items, width: width, layout: L)
-        }
-        if media.content(as: VoicePayload.self) != nil {
-            return L.voicePlaySize + 12 // 8pt top + 4pt bottom internal padding
-        }
-        if let poll = media.content(as: PollPayload.self) {
-            return pollHeight(poll, width: width, layout: L)
-        }
-        if let files = media.content(as: FilesContent.self) {
-            let rowH = L.fileIconSize + L.filePadding * 2
-            return rowH * CGFloat(files.items.count) + L.fileRowSpacing * CGFloat(max(0, files.items.count - 1))
+        if let renderer = renderers[media.contentTypeID] {
+            return renderer.contentHeight(media, width, L)
         }
         return L.messageFont.lineHeight + L.bubbleVPad * 2
     }
@@ -86,16 +80,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         maxWidth: CGFloat,
         layout L: ChatLayout
     ) -> CGFloat? {
-        // Голосовое: пузырь по контенту, иначе волна растягивается на всю
-        // ширину и упирается в край пузыря.
-        if media.content(as: VoicePayload.self) != nil {
-            let width = L.voicePlaySize
-                + L.voiceContentSpacing
-                + L.voiceWaveformWidth
-                + L.voiceWaveformTrailingInset
-            return min(width, maxWidth)
-        }
-        return nil
+        renderers[media.contentTypeID]?.preferredWidth?(media, maxWidth, L)
     }
 
     open func reconfigureContentView(
@@ -107,38 +92,119 @@ open class DefaultChatContentFactory: ChatContentFactory {
         layout: ChatLayout,
         onInteraction: @escaping (ChatContentInteraction) -> Void
     ) -> Bool {
-        let ownership = message.ownership
-
-        if let poll = media.content(as: PollPayload.self), let pollView = view as? PollContentView {
-            pollView.configure(poll: poll, ownership: ownership, theme: theme, layout: layout)
-            pollView.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
-            pollView.onDetailTap = { onInteraction(.pollDetailTap(pollId: poll.id)) }
-            return true
-        }
-        if let voice = media.content(as: VoicePayload.self), let voiceView = view as? VoiceContentView {
-            voiceView.configure(voice: voice, ownership: ownership, theme: theme, layout: layout)
-            voiceView.onPlayTap = { onInteraction(.voiceTap(url: voice.url)) }
-            return true
-        }
-        if let images = media.content(as: ImagesContent.self), let gridView = view as? MediaGridView {
-            gridView.configure(media: images.items, width: width, theme: theme, layout: layout)
-            gridView.onItemTap = { index in onInteraction(.mediaTap(index: index)) }
-            return true
-        }
-        if let files = media.content(as: FilesContent.self), let filesStack = view as? UIStackView {
-            for (i, sub) in filesStack.arrangedSubviews.enumerated() {
-                if let fileView = sub as? FileContentView, i < files.items.count {
-                    fileView.configure(file: files.items[i], ownership: ownership, theme: theme, layout: layout)
-                    fileView.onTap = { onInteraction(.fileTap(index: i)) }
-                }
-            }
-            return true
-        }
-        return false
+        renderers[media.contentTypeID]?.reconfigure?(view, media, message, width, theme, layout, onInteraction) ?? false
     }
 
+    // MARK: - Встроенные рендереры
 
-    private func pollHeight(_ poll: PollPayload, width: CGFloat, layout L: ChatLayout) -> CGFloat {
+    private func registerBuiltInRenderers() {
+        register(contentTypeID: ImagesContent.contentTypeID, renderer: ChatContentRenderer(
+            makeView: { media, _, width, theme, layout, onInteraction in
+                guard let images = media.content(as: ImagesContent.self) else { return UIView() }
+                let grid = MediaGridView()
+                grid.configure(media: images.items, width: width, theme: theme, layout: layout)
+                grid.onItemTap = { index in onInteraction(.mediaTap(index: index)) }
+                return grid
+            },
+            contentHeight: { media, width, L in
+                guard let images = media.content(as: ImagesContent.self) else { return 0 }
+                return MediaGridView.gridHeight(for: images.items, width: width, layout: L)
+            },
+            reconfigure: { view, media, _, width, theme, layout, onInteraction in
+                guard let images = media.content(as: ImagesContent.self),
+                      let gridView = view as? MediaGridView else { return false }
+                gridView.configure(media: images.items, width: width, theme: theme, layout: layout)
+                gridView.onItemTap = { index in onInteraction(.mediaTap(index: index)) }
+                return true
+            }
+        ))
+
+        register(contentTypeID: VoicePayload.contentTypeID, renderer: ChatContentRenderer(
+            makeView: { media, message, _, theme, layout, onInteraction in
+                guard let voice = media.content(as: VoicePayload.self) else { return UIView() }
+                let view = VoiceContentView()
+                view.configure(voice: voice, ownership: message.ownership, theme: theme, layout: layout)
+                view.onPlayTap = { onInteraction(.voiceTap(url: voice.url)) }
+                return view
+            },
+            contentHeight: { _, _, L in
+                L.voicePlaySize + VoiceContentView.contentTopPadding + VoiceContentView.contentBottomPadding
+            },
+            preferredWidth: { _, maxWidth, L in
+                // Голосовое: пузырь по контенту, иначе волна растягивается на
+                // всю ширину и упирается в край пузыря.
+                let width = L.voicePlaySize
+                    + L.voiceContentSpacing
+                    + L.voiceWaveformWidth
+                    + L.voiceWaveformTrailingInset
+                return min(width, maxWidth)
+            },
+            reconfigure: { view, media, message, _, theme, layout, onInteraction in
+                guard let voice = media.content(as: VoicePayload.self),
+                      let voiceView = view as? VoiceContentView else { return false }
+                voiceView.configure(voice: voice, ownership: message.ownership, theme: theme, layout: layout)
+                voiceView.onPlayTap = { onInteraction(.voiceTap(url: voice.url)) }
+                return true
+            }
+        ))
+
+        register(contentTypeID: PollPayload.contentTypeID, renderer: ChatContentRenderer(
+            makeView: { media, message, _, theme, layout, onInteraction in
+                guard let poll = media.content(as: PollPayload.self) else { return UIView() }
+                let view = PollContentView()
+                view.configure(poll: poll, ownership: message.ownership, theme: theme, layout: layout)
+                view.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
+                view.onDetailTap = { onInteraction(.pollDetailTap(pollId: poll.id)) }
+                return view
+            },
+            contentHeight: { media, width, L in
+                guard let poll = media.content(as: PollPayload.self) else { return 0 }
+                return Self.pollHeight(poll, width: width, layout: L)
+            },
+            reconfigure: { view, media, message, _, theme, layout, onInteraction in
+                guard let poll = media.content(as: PollPayload.self),
+                      let pollView = view as? PollContentView else { return false }
+                pollView.configure(poll: poll, ownership: message.ownership, theme: theme, layout: layout)
+                pollView.onOptionTap = { optionId in onInteraction(.pollOptionTap(pollId: poll.id, optionId: optionId)) }
+                pollView.onDetailTap = { onInteraction(.pollDetailTap(pollId: poll.id)) }
+                return true
+            }
+        ))
+
+        register(contentTypeID: FilesContent.contentTypeID, renderer: ChatContentRenderer(
+            makeView: { media, message, _, theme, layout, onInteraction in
+                guard let files = media.content(as: FilesContent.self) else { return UIView() }
+                let stack = UIStackView()
+                stack.axis = .vertical
+                stack.spacing = layout.fileRowSpacing
+                for (i, file) in files.items.enumerated() {
+                    let view = FileContentView()
+                    view.configure(file: file, ownership: message.ownership, theme: theme, layout: layout)
+                    view.onTap = { onInteraction(.fileTap(index: i)) }
+                    stack.addArrangedSubview(view)
+                }
+                return stack
+            },
+            contentHeight: { media, _, L in
+                guard let files = media.content(as: FilesContent.self) else { return 0 }
+                let rowH = L.fileIconSize + L.filePadding * 2
+                return rowH * CGFloat(files.items.count) + L.fileRowSpacing * CGFloat(max(0, files.items.count - 1))
+            },
+            reconfigure: { view, media, message, _, theme, layout, onInteraction in
+                guard let files = media.content(as: FilesContent.self),
+                      let filesStack = view as? UIStackView else { return false }
+                for (i, sub) in filesStack.arrangedSubviews.enumerated() {
+                    if let fileView = sub as? FileContentView, i < files.items.count {
+                        fileView.configure(file: files.items[i], ownership: message.ownership, theme: theme, layout: layout)
+                        fileView.onTap = { onInteraction(.fileTap(index: i)) }
+                    }
+                }
+                return true
+            }
+        ))
+    }
+
+    private static func pollHeight(_ poll: PollPayload, width: CGFloat, layout L: ChatLayout) -> CGFloat {
         let count = poll.options.count
         var h: CGFloat = ChatTextMeasurer.height(poll.question, font: L.pollQuestionFont, width: width)
         h += L.bubbleSpacing + L.pollSubtitleFont.lineHeight
@@ -223,7 +289,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         stack.addArrangedSubview(icon)
 
         let countLabel = UILabel()
-        countLabel.text = Self.threadReplySuffix(thread.replyCount)
+        countLabel.text = ChatStrings.threadReplies(thread.replyCount)
         countLabel.font = L.threadBarFont
         countLabel.textColor = theme.threadBarText
         stack.addArrangedSubview(countLabel)
@@ -270,15 +336,6 @@ open class DefaultChatContentFactory: ChatContentFactory {
         return container
     }
 
-    private static func threadReplySuffix(_ count: Int) -> String {
-        let mod10 = count % 10
-        let mod100 = count % 100
-        if mod100 >= 11 && mod100 <= 19 { return "\(count) ответов" }
-        if mod10 == 1 { return "\(count) ответ" }
-        if mod10 >= 2 && mod10 <= 4 { return "\(count) ответа" }
-        return "\(count) ответов"
-    }
-
     // MARK: - Превью ответа
 
     open func replyPreviewView(
@@ -305,10 +362,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
     ) -> UIView? {
         let ownership = message.ownership
         let isOutgoing = ownership == .mine
-        let hasFooter = features.showTimestamp
-            || (message.isEdited && features.showEditedMark)
-            || (isOutgoing && features.showMessageStatus)
-        guard hasFooter else { return nil }
+        guard MessageSizeCalculator.hasFooter(for: message, features: features) else { return nil }
 
         let stack = UIStackView()
         stack.axis = .horizontal
@@ -317,25 +371,15 @@ open class DefaultChatContentFactory: ChatContentFactory {
 
         let editedLabel = UILabel()
         editedLabel.font = layout.editedFont
-        editedLabel.text = "изм."
-        switch ownership {
-        case .mine:           editedLabel.textColor = theme.outgoingEdited
-        case .theirs:         editedLabel.textColor = theme.incomingEdited
-        case .system:         editedLabel.textColor = theme.systemTime
-        case .pinned:         editedLabel.textColor = theme.pinnedTime
-        }
+        editedLabel.text = ChatStrings.editedMark
+        editedLabel.textColor = theme.editedColor(for: ownership)
         editedLabel.isHidden = !message.isEdited || !features.showEditedMark
         stack.addArrangedSubview(editedLabel)
 
         let timeLabel = UILabel()
         timeLabel.font = layout.timeFont
         timeLabel.text = DateHelper.shared.timeString(from: message.timestamp)
-        switch ownership {
-        case .mine:           timeLabel.textColor = theme.outgoingTime
-        case .theirs:         timeLabel.textColor = theme.incomingTime
-        case .system:         timeLabel.textColor = theme.systemTime
-        case .pinned:         timeLabel.textColor = theme.pinnedTime
-        }
+        timeLabel.textColor = theme.timeColor(for: ownership)
         timeLabel.isHidden = !features.showTimestamp
         stack.addArrangedSubview(timeLabel)
 
@@ -379,7 +423,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
         let label = UILabel()
         label.font = layout.forwardedFont
         label.numberOfLines = 1
-        label.text = "Переслано от \(from)"
+        label.text = ChatStrings.forwardedFrom(from)
         label.textColor = ownership == .mine ? theme.outgoingForwardedLabel : theme.incomingForwardedLabel
         return label
     }
@@ -423,7 +467,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
 
     open func emptyStateView(theme: ChatTheme, layout: ChatLayout) -> UIView {
         let label = UILabel()
-        label.text = NSLocalizedString("chat.empty", value: "Сообщений пока нет.\nНапишите первым!", comment: "")
+        label.text = ChatStrings.emptyState
         label.font = layout.emptyStateFont
         label.textColor = theme.emptyStateText
         label.textAlignment = .center
@@ -521,9 +565,7 @@ open class DefaultChatContentFactory: ChatContentFactory {
                 imageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
                 imageView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             ])
-            ImageCache.shared.load(url: url) { image in
-                imageView.image = image
-            }
+            imageView.loadChatImage(url: url)
         }
 
         return container

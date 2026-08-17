@@ -29,7 +29,7 @@ public final class InputBarView: UIView {
     private var textViewHeightConstraint: NSLayoutConstraint!
     private var hasText = false
 
-    private(set) var layout = ChatLayout()
+    private(set) var layout = ChatLayout.shared
     private(set) var voiceRecorder = VoiceRecorder()
 
     public var placeholder: String? {

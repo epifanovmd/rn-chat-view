@@ -4,7 +4,7 @@ public enum MessageSizeCalculator {
 
     // MARK: - Публичное API
 
-    public static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory(), resolvedReply: ReplyDisplayInfo? = nil) -> CGFloat {
+    public static func cellHeight(for msg: ChatMessage, maxWidth: CGFloat, layout L: ChatLayout = ChatLayout.shared, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory(), resolvedReply: ReplyDisplayInfo? = nil) -> CGFloat {
         let bw = bubbleWidth(for: msg, containerWidth: maxWidth, layout: L, showSenderName: showSenderName, features: features, factory: factory, resolvedReply: resolvedReply)
         let bh = bubbleHeight(for: msg, bubbleWidth: bw, layout: L, showSenderName: showSenderName, features: features, factory: factory)
         return bh + L.cellVSpacing
@@ -12,7 +12,7 @@ public enum MessageSizeCalculator {
 
     // MARK: - Ширина пузыря
 
-    public static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory(), resolvedReply: ReplyDisplayInfo? = nil) -> CGFloat {
+    public static func bubbleWidth(for msg: ChatMessage, containerWidth: CGFloat, layout L: ChatLayout = ChatLayout.shared, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory(), resolvedReply: ReplyDisplayInfo? = nil) -> CGFloat {
         let avatarSpace: CGFloat = (features.showAvatars && msg.ownership == .theirs)
             ? L.avatarSize + L.avatarLeadingMargin + L.avatarBubbleSpacing
             : 0
@@ -94,7 +94,7 @@ public enum MessageSizeCalculator {
 
     // MARK: - Высота пузыря
 
-    public static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = ChatLayout(), showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
+    public static func bubbleHeight(for msg: ChatMessage, bubbleWidth bw: CGFloat, layout L: ChatLayout = ChatLayout.shared, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), factory: ChatContentFactory = DefaultChatContentFactory()) -> CGFloat {
         let content = msg.content
         let emojiCount = content.content == nil ? EmojiHelper.emojiOnlyCount(content.text) : nil
         let showsName = showSenderName && msg.senderName != nil
@@ -114,7 +114,7 @@ public enum MessageSizeCalculator {
                 h += CGFloat(reactionLines) * (L.reactionChipHeight + L.reactionChipSpacing)
             }
 
-            let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.ownership == .mine && features.showMessageStatus)
+            let hasFooter = Self.hasFooter(for: msg, features: features)
             if hasFooter { h += L.footerHeight }
             h += L.bubbleBottomPad
             return h
@@ -151,7 +151,7 @@ public enum MessageSizeCalculator {
             h += CGFloat(reactionLines) * (L.reactionChipHeight + L.reactionChipSpacing)
         }
 
-        let hasFooter = features.showTimestamp || (msg.isEdited && features.showEditedMark) || (msg.ownership == .mine && features.showMessageStatus)
+        let hasFooter = Self.hasFooter(for: msg, features: features)
         if hasFooter { h += L.footerHeight }
         h += L.bubbleBottomPad
         return h
@@ -159,7 +159,7 @@ public enum MessageSizeCalculator {
 
     // MARK: - Строки реакций
 
-    public static func reactionLinesCount(for reactions: [Reaction], maxWidth: CGFloat, layout L: ChatLayout = ChatLayout()) -> Int {
+    public static func reactionLinesCount(for reactions: [Reaction], maxWidth: CGFloat, layout L: ChatLayout = ChatLayout.shared) -> Int {
         guard !reactions.isEmpty else { return 0 }
         var currentLineWidth: CGFloat = 0
         var lines = 1
@@ -181,7 +181,7 @@ public enum MessageSizeCalculator {
 
     // MARK: - Высота контента
 
-    public static func contentHeight(for content: MessageBody, width: CGFloat, layout L: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory(), textFont: UIFont? = nil) -> CGFloat {
+    public static func contentHeight(for content: MessageBody, width: CGFloat, layout L: ChatLayout = ChatLayout.shared, factory: ChatContentFactory = DefaultChatContentFactory(), textFont: UIFont? = nil) -> CGFloat {
         var h: CGFloat = 0
 
         if let media = content.content {
@@ -198,7 +198,7 @@ public enum MessageSizeCalculator {
 
     // MARK: - Ширина реакций
 
-    public static func reactionWidth(for reactions: [Reaction], layout L: ChatLayout = ChatLayout()) -> CGFloat {
+    public static func reactionWidth(for reactions: [Reaction], layout L: ChatLayout = ChatLayout.shared) -> CGFloat {
         guard !reactions.isEmpty else { return 0 }
         var total: CGFloat = 0
         for reaction in reactions {
@@ -211,7 +211,15 @@ public enum MessageSizeCalculator {
 
     // MARK: - Вспомогательные
 
-    public static func minFooterWidth(for msg: ChatMessage, layout L: ChatLayout = ChatLayout(), features: ChatFeatures = ChatFeatures()) -> CGFloat {
+    /// Единый предикат наличия футера — используется и расчётом высоты,
+    /// и фабрикой view. Расхождение = высота ячейки не совпадёт с фактом.
+    public static func hasFooter(for msg: ChatMessage, features: ChatFeatures) -> Bool {
+        features.showTimestamp
+            || (msg.isEdited && features.showEditedMark)
+            || (msg.ownership == .mine && features.showMessageStatus)
+    }
+
+    public static func minFooterWidth(for msg: ChatMessage, layout L: ChatLayout = ChatLayout.shared, features: ChatFeatures = ChatFeatures()) -> CGFloat {
         var w: CGFloat = 0
         if features.showTimestamp {
             w += ChatTextMeasurer.width(DateHelper.shared.timeString(from: msg.timestamp), font: L.timeFont)
@@ -220,7 +228,7 @@ public enum MessageSizeCalculator {
             w += L.statusIconSize + L.footerSpacing
         }
         if msg.isEdited && features.showEditedMark {
-            w += ChatTextMeasurer.width("изм.", font: L.editedFont) + L.footerSpacing
+            w += ChatTextMeasurer.width(ChatStrings.editedMark, font: L.editedFont) + L.footerSpacing
         }
         if w > 0 { w += L.footerSpacing * 2 }
         return w
@@ -232,11 +240,14 @@ public enum MessageSizeCalculator {
 public enum EmojiHelper {
     public static func emojiOnlyCount(_ text: String?) -> Int? {
         guard let text, !text.isEmpty else { return nil }
+        // Быстрый отсев обычных сообщений: 3 эмодзи (включая ZWJ-семьи)
+        // занимают не больше ~100 байт — длинные тексты не сканируем.
+        guard text.utf8.count <= 120 else { return nil }
+        let count = text.count
+        guard count >= 1 && count <= 3 else { return nil }
         let scalars = text.unicodeScalars
         let stripped = scalars.filter { !$0.properties.isJoinControl && !$0.properties.isVariationSelector && $0.value != 0xFE0F }
         guard stripped.allSatisfy({ $0.properties.isEmoji && $0.properties.isEmojiPresentation || $0.properties.isEmojiModifier || $0.value == 0x200D }) else { return nil }
-        let count = text.count
-        guard count >= 1 && count <= 3 else { return nil }
         return count
     }
 }

@@ -19,7 +19,7 @@ public final class MessageBubbleView: UIView {
     private var footerView: UIView?
 
     private var isEmojiOnly = false
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
     private(set) var currentMessage: ChatMessage?
 
     // MARK: - Констрейнты
@@ -51,7 +51,7 @@ public final class MessageBubbleView: UIView {
 
         NSLayoutConstraint.activate([stackTopConstraint, stackLeadingConstraint, stackTrailingConstraint])
 
-        applyLayout(ChatLayout())
+        applyLayout(ChatLayout.shared)
     }
 
     private func applyLayout(_ L: ChatLayout) {
@@ -65,10 +65,8 @@ public final class MessageBubbleView: UIView {
 
     // MARK: - Конфигурация
 
-    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
+    func configure(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout.shared, factory: ChatContentFactory = DefaultChatContentFactory()) {
         applyLayout(layout)
-        let ownership = message.ownership
-        let content = message.content
         isEmojiOnly = Self.isBubblelessEmoji(
             message, showSenderName: showSenderName, features: features)
 
@@ -76,78 +74,26 @@ public final class MessageBubbleView: UIView {
             backgroundColor = .clear
             layer.cornerRadius = 0
         } else {
-            switch ownership {
-            case .mine:   backgroundColor = theme.outgoingBubble
-            case .theirs: backgroundColor = theme.incomingBubble
-            case .system: backgroundColor = theme.systemBubble
-            case .pinned: backgroundColor = theme.pinnedBubble
-            }
+            backgroundColor = theme.bubbleColor(for: message.ownership)
             layer.cornerRadius = currentLayout.bubbleCornerRadius
         }
 
-        stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
         if showSenderName, let name = message.senderName {
-            let senderView = factory.senderNameView(name: name, theme: theme, layout: currentLayout)
-            stack.addArrangedSubview(senderView)
+            stack.addArrangedSubview(factory.senderNameView(name: name, theme: theme, layout: currentLayout))
         }
 
-        let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
         if let fwd = message.forwardedFrom, features.showForwardedMark {
-            let L = currentLayout
-            let accentColor = ownership == .mine ? theme.outgoingForwardedAccent : theme.incomingForwardedAccent
-
-            let forwardedHeaderLabel = factory.forwardedHeaderView(from: fwd, ownership: message.ownership, theme: theme, layout: currentLayout)
-
-            let forwardedAccent = UIView()
-            forwardedAccent.translatesAutoresizingMaskIntoConstraints = false
-            forwardedAccent.backgroundColor = accentColor
-            forwardedAccent.layer.cornerRadius = L.forwardedAccentWidth / 2
-
-            let forwardedStack = UIStackView()
-            forwardedStack.axis = .vertical
-            forwardedStack.spacing = L.bubbleSpacing
-            forwardedStack.translatesAutoresizingMaskIntoConstraints = false
-
-            forwardedStack.addArrangedSubview(forwardedHeaderLabel)
-
+            stack.addArrangedSubview(buildForwardedContainer(
+                from: fwd, message: message, resolvedReply: resolvedReply,
+                theme: theme, bubbleWidth: bubbleWidth, features: features, factory: factory
+            ))
+        } else {
             if features.showReplyPreview, let reply = message.reply {
-                let replyView = factory.replyPreviewView(reply: reply, resolved: resolvedReply, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
-                    self?.onReplyTap?()
-                }
-                forwardedStack.addArrangedSubview(replyView)
-            }
-
-            let contentInnerW = bubbleWidth - L.bubbleHPad * 2 - L.forwardedAccentWidth - L.forwardedContentInset
-            let newContent = createContentView(for: message, width: contentInnerW, theme: theme, features: features, factory: factory)
-            contentView = newContent
-            forwardedStack.addArrangedSubview(newContent)
-
-            let forwardedContainer = UIView()
-            forwardedContainer.addSubview(forwardedAccent)
-            forwardedContainer.addSubview(forwardedStack)
-
-            NSLayoutConstraint.activate([
-                forwardedAccent.leadingAnchor.constraint(equalTo: forwardedContainer.leadingAnchor),
-                forwardedAccent.topAnchor.constraint(equalTo: forwardedContainer.topAnchor),
-                forwardedAccent.bottomAnchor.constraint(equalTo: forwardedContainer.bottomAnchor),
-                forwardedAccent.widthAnchor.constraint(equalToConstant: L.forwardedAccentWidth),
-
-                forwardedStack.leadingAnchor.constraint(equalTo: forwardedAccent.trailingAnchor, constant: L.forwardedContentInset),
-                forwardedStack.trailingAnchor.constraint(equalTo: forwardedContainer.trailingAnchor),
-                forwardedStack.topAnchor.constraint(equalTo: forwardedContainer.topAnchor),
-                forwardedStack.bottomAnchor.constraint(equalTo: forwardedContainer.bottomAnchor),
-            ])
-
-            stack.addArrangedSubview(forwardedContainer)
-        }
-
-        if !isForwarded {
-            if features.showReplyPreview, let reply = message.reply {
-                let replyView = factory.replyPreviewView(reply: reply, resolved: resolvedReply, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
-                    self?.onReplyTap?()
-                }
-                stack.addArrangedSubview(replyView)
+                stack.addArrangedSubview(makeReplyView(
+                    reply: reply, message: message, resolvedReply: resolvedReply, theme: theme, factory: factory
+                ))
             }
 
             let innerW = bubbleWidth - currentLayout.bubbleHPad * 2
@@ -184,6 +130,62 @@ public final class MessageBubbleView: UIView {
         }
 
         currentMessage = message
+    }
+
+    // MARK: - Сборка секций
+
+    private func makeReplyView(reply: ReplyInfo, message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, factory: ChatContentFactory) -> UIView {
+        factory.replyPreviewView(reply: reply, resolved: resolvedReply, ownership: message.ownership, theme: theme, layout: currentLayout) { [weak self] in
+            self?.onReplyTap?()
+        }
+    }
+
+    /// Пересланное сообщение: вертикальная полоса-акцент + заголовок,
+    /// цитата и контент со сдвигом вправо.
+    private func buildForwardedContainer(from fwd: String, message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, features: ChatFeatures, factory: ChatContentFactory) -> UIView {
+        let L = currentLayout
+        let accentColor = message.ownership == .mine ? theme.outgoingForwardedAccent : theme.incomingForwardedAccent
+
+        let forwardedAccent = UIView()
+        forwardedAccent.translatesAutoresizingMaskIntoConstraints = false
+        forwardedAccent.backgroundColor = accentColor
+        forwardedAccent.layer.cornerRadius = L.forwardedAccentWidth / 2
+
+        let forwardedStack = UIStackView()
+        forwardedStack.axis = .vertical
+        forwardedStack.spacing = L.bubbleSpacing
+        forwardedStack.translatesAutoresizingMaskIntoConstraints = false
+
+        forwardedStack.addArrangedSubview(factory.forwardedHeaderView(from: fwd, ownership: message.ownership, theme: theme, layout: L))
+
+        if features.showReplyPreview, let reply = message.reply {
+            forwardedStack.addArrangedSubview(makeReplyView(
+                reply: reply, message: message, resolvedReply: resolvedReply, theme: theme, factory: factory
+            ))
+        }
+
+        let contentInnerW = bubbleWidth - L.bubbleHPad * 2 - L.forwardedAccentWidth - L.forwardedContentInset
+        let newContent = createContentView(for: message, width: contentInnerW, theme: theme, features: features, factory: factory)
+        contentView = newContent
+        forwardedStack.addArrangedSubview(newContent)
+
+        let container = UIView()
+        container.addSubview(forwardedAccent)
+        container.addSubview(forwardedStack)
+
+        NSLayoutConstraint.activate([
+            forwardedAccent.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            forwardedAccent.topAnchor.constraint(equalTo: container.topAnchor),
+            forwardedAccent.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            forwardedAccent.widthAnchor.constraint(equalToConstant: L.forwardedAccentWidth),
+
+            forwardedStack.leadingAnchor.constraint(equalTo: forwardedAccent.trailingAnchor, constant: L.forwardedContentInset),
+            forwardedStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            forwardedStack.topAnchor.constraint(equalTo: container.topAnchor),
+            forwardedStack.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+
+        return container
     }
 
     /// Крупное эмодзи без фона пузыря — только когда рядом нет имени
@@ -242,21 +244,15 @@ public final class MessageBubbleView: UIView {
 
     /// Обновляет bubble без пересоздания иерархии вью.
     /// Если структура изменилась — fallback на полный configure().
-    func reconfigureInPlace(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout(), factory: ChatContentFactory = DefaultChatContentFactory()) {
+    func reconfigureInPlace(message: ChatMessage, resolvedReply: ReplyDisplayInfo?, theme: ChatTheme, bubbleWidth: CGFloat, showSenderName: Bool = false, features: ChatFeatures = ChatFeatures(), layout: ChatLayout = ChatLayout.shared, factory: ChatContentFactory = DefaultChatContentFactory()) {
         guard let old = currentMessage, canReconfigureInPlace(from: old, to: message, showSenderName: showSenderName, features: features) else {
             configure(message: message, resolvedReply: resolvedReply, theme: theme, bubbleWidth: bubbleWidth, showSenderName: showSenderName, features: features, layout: layout, factory: factory)
             return
         }
 
         applyLayout(layout)
-        let content = message.content
 
-        switch message.ownership {
-        case .mine:   backgroundColor = theme.outgoingBubble
-        case .theirs: backgroundColor = theme.incomingBubble
-        case .system: backgroundColor = theme.systemBubble
-        case .pinned: backgroundColor = theme.pinnedBubble
-        }
+        backgroundColor = theme.bubbleColor(for: message.ownership)
 
         let isForwarded = features.showForwardedMark && message.forwardedFrom != nil
         let innerW: CGFloat
@@ -373,7 +369,8 @@ public final class MessageBubbleView: UIView {
     // MARK: - Переиспользование
 
     func prepareForReuse() {
-        stack.arrangedSubviews.forEach { stack.removeArrangedSubview($0); $0.removeFromSuperview() }
+        // removeFromSuperview сам убирает view и из arrangedSubviews
+        stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         contentView = nil
         threadView = nil
         reactionsView = nil

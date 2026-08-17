@@ -461,3 +461,49 @@ public extension ChatTheme {
         emptyStateText: UIColor(white: 0.5, alpha: 1)
     )
 }
+
+// MARK: - Цвета по принадлежности сообщения
+
+public extension ChatTheme {
+    /// Единая точка выбора цвета по ownership — вместо повторяющихся
+    /// switch по всему коду. Новый ownership добавляется только здесь.
+    func bubbleColor(for ownership: MessageOwnership) -> UIColor {
+        switch ownership {
+        case .mine:   return outgoingBubble
+        case .theirs: return incomingBubble
+        case .system: return systemBubble
+        case .pinned: return pinnedBubble
+        }
+    }
+
+    func textColor(for ownership: MessageOwnership) -> UIColor {
+        switch ownership {
+        case .mine:   return outgoingText
+        case .theirs: return incomingText
+        case .system: return systemText
+        case .pinned: return pinnedText
+        }
+    }
+
+    func linkColor(for ownership: MessageOwnership) -> UIColor {
+        ownership == .mine ? outgoingLink : incomingLink
+    }
+
+    func timeColor(for ownership: MessageOwnership) -> UIColor {
+        switch ownership {
+        case .mine:   return outgoingTime
+        case .theirs: return incomingTime
+        case .system: return systemTime
+        case .pinned: return pinnedTime
+        }
+    }
+
+    func editedColor(for ownership: MessageOwnership) -> UIColor {
+        switch ownership {
+        case .mine:   return outgoingEdited
+        case .theirs: return incomingEdited
+        case .system: return systemTime
+        case .pinned: return pinnedTime
+        }
+    }
+}

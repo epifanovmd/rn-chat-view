@@ -58,17 +58,28 @@ extension ChatViewController {
         return result
     }
 
+    /// Единственная точка сборки RowLayoutInfo для message-строки — используется
+    /// и полным пересчётом, и инкрементальным contentOnly-патчем. Расхождение
+    /// формул между ними = скрытый источник скролл-джампов.
+    func messageRowLayoutInfo(for msg: ChatMessage, width: CGFloat) -> RowLayoutInfo {
+        let h = computeMessageHeight(forId: msg.id, width: width)
+        let extraSpacing: CGFloat
+        switch msg.ownership {
+        case .system: extraSpacing = layout.systemCellBottomSpacing
+        case .pinned: extraSpacing = layout.pinnedCellBottomSpacing
+        default:      extraSpacing = 0
+        }
+        return RowLayoutInfo(
+            height: h,
+            topInset: layout.cellVSpacing / 2 + extraSpacing,
+            bottomInset: layout.cellVSpacing / 2 + extraSpacing
+        )
+    }
+
     private func layoutInfo(for row: ChatRow, width: CGFloat) -> RowLayoutInfo {
         switch row {
         case .message(let msg):
-            let h = computeMessageHeight(forId: msg.id, width: width)
-            let extraSpacing: CGFloat
-            switch msg.ownership {
-            case .system: extraSpacing = layout.systemCellBottomSpacing
-            case .pinned: extraSpacing = layout.pinnedCellBottomSpacing
-            default:      extraSpacing = 0
-            }
-            return RowLayoutInfo(height: h, topInset: layout.cellVSpacing / 2 + extraSpacing, bottomInset: layout.cellVSpacing / 2 + extraSpacing)
+            return messageRowLayoutInfo(for: msg, width: width)
 
         case .dateSeparator(let gd):
             let key = "date_\(gd)"
@@ -95,7 +106,7 @@ extension ChatViewController {
         msg.reply.flatMap { info -> ReplyDisplayInfo? in
             guard let original = messageIndex[info.replyToId] else { return nil }
             return ReplyDisplayInfo(
-                senderName: original.senderName ?? "Неизвестный",
+                senderName: original.senderName ?? ChatStrings.unknownSender,
                 text: original.content.text ?? "",
                 hasImage: original.content.content != nil
             )
@@ -118,6 +129,24 @@ extension ChatViewController {
         let h = max(height, layout.cellMinHeight)
         sizeCache.set(height: h, forKey: id, width: width)
         return h
+    }
+
+    /// Ширина пузыря с кешированием — иначе каждый dequeue заново меряет
+    /// текст (имя, цитату, реакции) через boundingRect.
+    func cachedBubbleWidth(for msg: ChatMessage, containerWidth: CGFloat) -> CGFloat {
+        if let cached = sizeCache.bubbleWidth(forKey: msg.id, width: containerWidth) { return cached }
+        let showName = ChatDataSource.shouldShowSenderName(for: msg, mode: features.senderNameMode)
+        let bw = MessageSizeCalculator.bubbleWidth(
+            for: msg,
+            containerWidth: containerWidth,
+            layout: layout,
+            showSenderName: showName,
+            features: features,
+            factory: contentFactory,
+            resolvedReply: resolvedReply(for: msg)
+        )
+        sizeCache.set(bubbleWidth: bw, forKey: msg.id, width: containerWidth)
+        return bw
     }
 
     func rebuildMessageIndex() {

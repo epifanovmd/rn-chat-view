@@ -423,3 +423,11 @@ public struct ChatLayout {
 
     public init() {}
 }
+
+// MARK: - Разделяемый экземпляр
+
+public extension ChatLayout {
+    /// Дефолтный экземпляр для переиспользования: создание `ChatLayout()`
+    /// инициализирует ~30 шрифтов — не создавайте новые в горячих путях.
+    static let shared = ChatLayout()
+}

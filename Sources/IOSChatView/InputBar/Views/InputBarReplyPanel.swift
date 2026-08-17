@@ -23,7 +23,7 @@ final class InputBarReplyPanel: UIView {
     // MARK: - Настройка
 
     private func setup() {
-        let L = ChatLayout()
+        let L = ChatLayout.shared
         translatesAutoresizingMaskIntoConstraints = false
         heightConstraint = heightAnchor.constraint(equalToConstant: 0)
         heightConstraint.isActive = true

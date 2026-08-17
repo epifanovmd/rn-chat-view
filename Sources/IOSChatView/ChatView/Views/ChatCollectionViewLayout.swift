@@ -210,6 +210,18 @@ final class ChatCollectionViewLayout: UICollectionViewLayout {
         return showAvatars && !avatarGroups.isEmpty
     }
 
+    // MARK: - Якорная геометрия
+
+    /// «Низ ячейки» в семантике якорей скролла: `yOffset + topInset + height`.
+    /// ВНИМАНИЕ: yOffsets уже включает topInset, так что значение смещено на
+    /// topInset относительно фактической геометрии — но сохранение и
+    /// восстановление якоря используют одну формулу, смещение сокращается.
+    /// Якоря персистятся хостом (RN) — формулу не менять.
+    func anchorCellBottom(at index: Int) -> CGFloat? {
+        guard index < rowLayoutData.count, index < yOffsets.count else { return nil }
+        return yOffsets[index] + rowLayoutData[index].topInset + rowLayoutData[index].height
+    }
+
     // MARK: - Бинарный поиск
 
     private func lowerBound(for targetY: CGFloat) -> Int {
@@ -240,5 +252,15 @@ final class ChatCollectionViewLayout: UICollectionViewLayout {
             }
         }
         return lo
+    }
+}
+
+// MARK: - Скролл-геометрия
+
+extension UICollectionView {
+    /// Максимальный contentOffset.y — «низ» контента с учётом bottom inset.
+    /// Единственная точка правды для формулы scrollToBottom/clamp.
+    var chatMaxOffsetY: CGFloat {
+        contentSize.height - bounds.height + contentInset.bottom
     }
 }

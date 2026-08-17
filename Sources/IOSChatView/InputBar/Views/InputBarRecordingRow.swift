@@ -20,7 +20,7 @@ final class InputBarRecordingRow: UIView {
     // MARK: - Настройка
 
     private func setup() {
-        let L = ChatLayout()
+        let L = ChatLayout.shared
         translatesAutoresizingMaskIntoConstraints = false
 
         dot.layer.cornerRadius = L.recordDotSize / 2

@@ -4,7 +4,7 @@ public final class MediaGridView: UIView {
 
     var onItemTap: ((Int) -> Void)?
 
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
     private var spacing: CGFloat { currentLayout.mediaGridSpacing }
     private let maxVisible = 4
     private var cellViews: [MediaCellView] = []
@@ -22,7 +22,7 @@ public final class MediaGridView: UIView {
 
     // MARK: - Конфигурация
 
-    func configure(media: [MediaItem], width: CGFloat, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(media: [MediaItem], width: CGFloat, theme: ChatTheme, layout: ChatLayout = ChatLayout.shared) {
         currentLayout = layout
         layer.cornerRadius = currentLayout.imageCornerRadius
 
@@ -109,7 +109,7 @@ public final class MediaGridView: UIView {
 
     // MARK: - Статическая высота
 
-    static func gridHeight(for media: [MediaItem], width: CGFloat, layout L: ChatLayout = ChatLayout()) -> CGFloat {
+    static func gridHeight(for media: [MediaItem], width: CGFloat, layout L: ChatLayout = ChatLayout.shared) -> CGFloat {
         let count = media.count
         guard count > 0 else { return 0 }
 
@@ -143,7 +143,7 @@ private final class MediaCellView: UIView {
     private let durationLabel = UILabel()
     private let overlayView = UIView()
     private let overlayLabel = UILabel()
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
 
     // MARK: - Сохранённые констрейнты
 
@@ -223,7 +223,7 @@ private final class MediaCellView: UIView {
         ])
     }
 
-    func configure(item: MediaItem, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(item: MediaItem, theme: ChatTheme, layout: ChatLayout = ChatLayout.shared) {
         currentLayout = layout
         let L = currentLayout
 

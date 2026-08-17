@@ -1,6 +1,11 @@
 import UIKit
 
 public final class VoiceContentView: UIView {
+    /// Вертикальные отступы контента — используются и view, и расчётом
+    /// высоты в фабрике: правка в одном месте, высоты не разъезжаются.
+    static let contentTopPadding: CGFloat = 8
+    static let contentBottomPadding: CGFloat = 4
+
     var onPlayTap: (() -> Void)?
 
     // MARK: - Вью
@@ -21,7 +26,7 @@ public final class VoiceContentView: UIView {
     private var isCached = false
     private var isPrefetching = false
     private var isFailed = false
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
 
     // MARK: - Сохранённые констрейнты
 
@@ -66,22 +71,8 @@ public final class VoiceContentView: UIView {
         playButton.addSubview(playIcon)
 
         // Кольцо загрузки внутри кнопки
-        let inset: CGFloat = 4
-        let ringRadius = btnSize / 2 - inset
-        loadingRing.frame = CGRect(x: 0, y: 0, width: btnSize, height: btnSize)
-        loadingRing.path = UIBezierPath(
-            arcCenter: CGPoint(x: btnSize / 2, y: btnSize / 2),
-            radius: ringRadius,
-            startAngle: -.pi / 2,
-            endAngle: .pi * 1.5,
-            clockwise: true
-        ).cgPath
-        loadingRing.fillColor = UIColor.clear.cgColor
+        LoadingRing.configure(loadingRing, size: btnSize)
         loadingRing.strokeColor = UIColor.white.cgColor
-        loadingRing.lineWidth = 2
-        loadingRing.lineCap = .round
-        loadingRing.strokeStart = 0
-        loadingRing.strokeEnd = 0.75
         loadingRing.isHidden = true
         playButton.layer.addSublayer(loadingRing)
 
@@ -104,8 +95,8 @@ public final class VoiceContentView: UIView {
 
         let waveH = btnSize - L.voiceDurationFont.lineHeight - 2
 
-        let vPadTop: CGFloat = 8
-        let vPadBottom: CGFloat = 4
+        let vPadTop = Self.contentTopPadding
+        let vPadBottom = Self.contentBottomPadding
         playButtonWidthConstraint = playButton.widthAnchor.constraint(equalToConstant: btnSize)
         playButtonHeightConstraint = playButton.heightAnchor.constraint(equalToConstant: btnSize)
         viewHeightConstraint = heightAnchor.constraint(equalToConstant: btnSize + vPadTop + vPadBottom)
@@ -137,7 +128,7 @@ public final class VoiceContentView: UIView {
 
     // MARK: - Конфигурация
 
-    func configure(voice: VoicePayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(voice: VoicePayload, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout.shared) {
         currentLayout = layout
         let L = currentLayout
         let btnSize = L.voicePlaySize
@@ -154,22 +145,13 @@ public final class VoiceContentView: UIView {
         let waveH = btnSize - L.voiceDurationFont.lineHeight - 2
         playButtonWidthConstraint.constant = btnSize
         playButtonHeightConstraint.constant = btnSize
-        viewHeightConstraint.constant = btnSize + 12 // 8pt top + 4pt bottom padding
+        viewHeightConstraint.constant = btnSize + Self.contentTopPadding + Self.contentBottomPadding
         waveformHeightConstraint.constant = waveH
         waveformLeadingConstraint.constant = L.voiceContentSpacing
         waveformTrailingConstraint.constant = -L.voiceWaveformTrailingInset
 
         // Пересоздание кольца загрузки под новый размер
-        let inset: CGFloat = 4
-        let ringRadius = btnSize / 2 - inset
-        loadingRing.frame = CGRect(x: 0, y: 0, width: btnSize, height: btnSize)
-        loadingRing.path = UIBezierPath(
-            arcCenter: CGPoint(x: btnSize / 2, y: btnSize / 2),
-            radius: ringRadius,
-            startAngle: -.pi / 2,
-            endAngle: .pi * 1.5,
-            clockwise: true
-        ).cgPath
+        LoadingRing.configure(loadingRing, size: btnSize)
 
         accentColor = isOutgoing ? theme.outgoingStatusRead : theme.voiceWaveformActive
         playButton.backgroundColor = accentColor
@@ -254,18 +236,12 @@ public final class VoiceContentView: UIView {
     private func showLoadingRing() {
         guard loadingRing.isHidden else { return }
         loadingRing.isHidden = false
-        let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
-        rotation.fromValue = 0
-        rotation.toValue = CGFloat.pi * 2
-        rotation.duration = 0.8
-        rotation.repeatCount = .infinity
-        rotation.isRemovedOnCompletion = false
-        loadingRing.add(rotation, forKey: "spin")
+        LoadingRing.startSpinning(loadingRing)
     }
 
     private func hideLoadingRing() {
         guard !loadingRing.isHidden else { return }
-        loadingRing.removeAnimation(forKey: "spin")
+        LoadingRing.stopSpinning(loadingRing)
         loadingRing.isHidden = true
     }
 
@@ -331,7 +307,7 @@ public final class WaveformView: UIView, UIGestureRecognizerDelegate {
     private var didLockDirection = false
     private var isHorizontalPan = false
     private var isDimmed = false
-    private var currentLayout = ChatLayout()
+    private var currentLayout = ChatLayout.shared
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -344,7 +320,7 @@ public final class WaveformView: UIView, UIGestureRecognizerDelegate {
 
     public required init?(coder: NSCoder) { fatalError() }
 
-    func configure(waveform: [Float], activeColor: UIColor, inactiveColor: UIColor, progress: Float, layout: ChatLayout = ChatLayout()) {
+    func configure(waveform: [Float], activeColor: UIColor, inactiveColor: UIColor, progress: Float, layout: ChatLayout = ChatLayout.shared) {
         self.waveform = waveform.isEmpty
             ? Array(repeating: 0.3, count: 40)
             : Self.normalize(waveform)

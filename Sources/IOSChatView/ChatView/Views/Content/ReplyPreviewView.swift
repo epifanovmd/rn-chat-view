@@ -32,14 +32,14 @@ public final class ReplyPreviewView: UIView {
         contentLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(contentLabel)
 
-        heightConstraint = heightAnchor.constraint(equalToConstant: ChatLayout().replyHeight)
+        heightConstraint = heightAnchor.constraint(equalToConstant: ChatLayout.shared.replyHeight)
 
         NSLayoutConstraint.activate([
             heightConstraint,
             accentBar.leadingAnchor.constraint(equalTo: leadingAnchor),
             accentBar.topAnchor.constraint(equalTo: topAnchor),
             accentBar.bottomAnchor.constraint(equalTo: bottomAnchor),
-            accentBar.widthAnchor.constraint(equalToConstant: ChatLayout().replyAccentWidth),
+            accentBar.widthAnchor.constraint(equalToConstant: ChatLayout.shared.replyAccentWidth),
             senderLabel.leadingAnchor.constraint(equalTo: accentBar.trailingAnchor, constant: 8),
             senderLabel.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             senderLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
@@ -48,7 +48,7 @@ public final class ReplyPreviewView: UIView {
             contentLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
         ])
 
-        applyLayout(ChatLayout())
+        applyLayout(ChatLayout.shared)
 
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
         addGestureRecognizer(tap)
@@ -78,7 +78,7 @@ public final class ReplyPreviewView: UIView {
         return "…"
     }
 
-    func configure(reply: ReplyInfo, resolved: ReplyDisplayInfo?, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout()) {
+    func configure(reply: ReplyInfo, resolved: ReplyDisplayInfo?, ownership: MessageOwnership, theme: ChatTheme, layout: ChatLayout = ChatLayout.shared) {
         applyLayout(layout)
         let isOutgoing = ownership == .mine
         backgroundColor = isOutgoing ? theme.outgoingReplyBackground : theme.incomingReplyBackground

@@ -46,10 +46,19 @@ extension ChatViewController: UICollectionViewDelegate {
         }
 
         updateFABVisibility(animated: true)
-        updateVisibleMessages()
+        throttledUpdateVisibleMessages()
         updateFloatingDate()
         reportScrollAnchorIfNeeded()
         if isLoadingTop { hideFirstDateSeparator(true) }
+    }
+
+    /// Сбор видимых ячеек (сортировка, интерсекции) не выполняется на каждом
+    /// кадре — только раз в ~80мс; финальное состояние добирается на settle.
+    func throttledUpdateVisibleMessages() {
+        let now = CACurrentMediaTime()
+        guard now - lastVisibleCollectTime >= 0.08 else { return }
+        lastVisibleCollectTime = now
+        updateVisibleMessages()
     }
 
     public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
@@ -60,12 +69,14 @@ extension ChatViewController: UICollectionViewDelegate {
     public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         isUserDragging = false
         if !decelerate {
+            updateVisibleMessages()
             reportScrollAnchorOnSettled()
             flushPendingMessages()
         }
     }
 
     public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        updateVisibleMessages()
         reportScrollAnchorOnSettled()
         flushPendingMessages()
     }
